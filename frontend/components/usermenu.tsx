@@ -10,6 +10,7 @@ import {
   Monitor,
   Building2,
   Check,
+  Plus,
 } from "lucide-react";
 import { api, type Me } from "@/lib/api";
 import { useThemeMode } from "@/lib/theme";
@@ -61,19 +62,19 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
             <span>{me.user.email}</span>
           </div>
 
-          {me.tenants.length > 0 && (
-            <>
-              <div className="um__sect">Байгууллага</div>
-              {me.tenants.map((t) => (
-                <button key={t.id} className={`um__item${t.id === me.tenant_id ? " is-on" : ""}`}
-                  onClick={() => selectTenant(t.id)}>
-                  <Building2 size={16} />
-                  <span style={{ flex: 1 }}>{t.name}</span>
-                  {t.id === me.tenant_id && <Check size={15} />}
-                </button>
-              ))}
-            </>
-          )}
+          <div className="um__sect">Байгууллага</div>
+          {me.tenants.map((t) => (
+            <button key={t.id} className={`um__item${t.id === me.tenant_id ? " is-on" : ""}`}
+              onClick={() => selectTenant(t.id)}>
+              <Building2 size={16} />
+              <span style={{ flex: 1 }}>{t.name}</span>
+              {t.id === me.tenant_id && <Check size={15} />}
+            </button>
+          ))}
+          <button className="um__item" onClick={() => { setOpen(false); router.push("/org/new"); }}>
+            <Plus size={16} />
+            Байгууллага нэмэх
+          </button>
 
           <div className="um__sect">Тохиргоо</div>
           <div className="um__prefrow">

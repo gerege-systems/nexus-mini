@@ -24,12 +24,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
     try {
       const me = await api.get<Me>("/api/me");
       if (!me.tenant_id) {
-        // Байгууллагагүй/сонгоогүй: жагсаалтаас эхнийхийг идэвхжүүлнэ.
+        // Байгууллагагүй/сонгоогүй: жагсаалтаас эхнийхийг идэвхжүүлнэ,
+        // огт байхгүй бол (нэвтэрсэн хэвээрээ) шинээр үүсгүүлнэ.
         if (me.tenants.length > 0) {
           await api.post("/api/session/tenant", { tenant_id: me.tenants[0].id });
           return load();
         }
-        router.replace("/signup");
+        router.replace("/org/new");
         return;
       }
       const menu = await api.get<{ apps: MenuApp[] }>("/api/menu");
