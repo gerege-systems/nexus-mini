@@ -377,3 +377,11 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   .main { margin-left: var(--rail-w); }
   .topbar__context { display: none; }
 }
+
+/* ─── Админд icon rail байхгүй — дан sidebar ─── */
+.rail { display: none; }
+.panel { left: 0; width: 15rem; padding: 0.9rem 0.7rem; }
+.main { margin-left: 15rem; }
+@media (max-width: 900px) {
+  .main { margin-left: 0; }
+}

@@ -71,15 +71,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </button>
       </header>
 
-      <aside className="rail">
-        {nav.map((n) => (
-          <Link key={n.path} href={n.path}
-            className={`rail__tile${isOn(n.path) ? " is-on" : ""}`} title={n.label}>
-            <n.icon size={20} strokeWidth={1.8} />
-          </Link>
-        ))}
-      </aside>
-
       <nav className="panel">
         <div className="panel__title">Удирдлага</div>
         {nav.map((n) => (
