@@ -72,7 +72,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <nav className="panel">
-        <div className="panel__title">Удирдлага</div>
         {nav.map((n) => (
           <Link key={n.path} href={n.path}
             className={`nav__item${isOn(n.path) ? " is-on" : ""}`}>
