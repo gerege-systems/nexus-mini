@@ -14,16 +14,40 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// cmdMigrate — nexus-mini migrate
+// cmdMigrate — nexus-mini migrate: миграц + env-ээс анхны админ.
 func cmdMigrate(_ []string) error {
 	ownerURL := os.Getenv("DATABASE_URL_OWNER")
 	if ownerURL == "" {
-		return fmt.Errorf("DATABASE_URL_OWNER алга — эхлээд `nexus-mini setup` ажиллуул")
+		return fmt.Errorf("DATABASE_URL_OWNER алга — nexus-mini.env-ээ бөглөсөн үү? (.env.example-г хар)")
 	}
-	return migrate.RunAll(ownerURL, func(f string, a ...any) { fmt.Printf(f+"\n", a...) })
+	if err := migrate.RunAll(ownerURL, func(f string, a ...any) { fmt.Printf(f+"\n", a...) }); err != nil {
+		return err
+	}
+	return ensureAdminFromEnv(ownerURL)
 }
 
-// cmdAdmin — nexus-mini admin [--email --name --password | --from-env]
+// ensureAdminFromEnv — ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD өгөгдсөн бөгөөд
+// платформын админ огт байхгүй үед л үүсгэнэ. Байгаа бол юунд ч хүрэхгүй —
+// env доторх нууц үг хожим өөрчлөгдсөн ч дахин бичихгүй.
+func ensureAdminFromEnv(ownerURL string) error {
+	e, n, p := os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_NAME"), os.Getenv("ADMIN_PASSWORD")
+	if e == "" || p == "" {
+		return nil
+	}
+	if n == "" {
+		n = "Admin"
+	}
+	exists, err := platformAdminExists(ownerURL)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+	return upsertAdmin(ownerURL, e, n, p)
+}
+
+// cmdAdmin — nexus-mini admin [--email --name --password]
 // Имэйл бүртгэлтэй бол платформын админ болгож өргөмжилнө (нууц үг хэвээр);
 // байхгүй бол шинээр үүсгэнэ.
 func cmdAdmin(args []string) error {
@@ -31,34 +55,13 @@ func cmdAdmin(args []string) error {
 	email := fs.String("email", "", "имэйл")
 	name := fs.String("name", "", "нэр")
 	pass := fs.String("password", "", "нууц үг (8+)")
-	fromEnv := fs.Bool("from-env", false, "ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD хувьсагчаас (byхгүй бол чимээгүй алгасна)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
 	ownerURL := os.Getenv("DATABASE_URL_OWNER")
 	if ownerURL == "" {
-		return fmt.Errorf("DATABASE_URL_OWNER алга — эхлээд `nexus-mini setup` ажиллуул")
-	}
-
-	if *fromEnv {
-		// Docker compose гэх мэт интерактив бус орчинд: хувьсагч өгөөгүй
-		// эсвэл платформын админ аль хэдийн байгаа бол юу ч хийхгүй.
-		e, n, p := os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_NAME"), os.Getenv("ADMIN_PASSWORD")
-		if e == "" || p == "" {
-			return nil
-		}
-		if n == "" {
-			n = "Admin"
-		}
-		exists, err := platformAdminExists(ownerURL)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return nil
-		}
-		return upsertAdmin(ownerURL, e, n, p)
+		return fmt.Errorf("DATABASE_URL_OWNER алга — nexus-mini.env-ээ бөглөсөн үү? (.env.example-г хар)")
 	}
 
 	in := bufio.NewReader(os.Stdin)
@@ -76,23 +79,6 @@ func cmdAdmin(args []string) error {
 		*pass = p
 	}
 	return upsertAdmin(ownerURL, *email, *name, *pass)
-}
-
-// createAdminInteractive — setup wizard-аас дуудагдана.
-func createAdminInteractive(in *bufio.Reader, ownerURL string) error {
-	for {
-		email := prompt(in, "  Имэйл", "")
-		name := prompt(in, "  Нэр", "")
-		pass, err := promptPassword(in, "  Нууц үг (8+)")
-		if err != nil {
-			return err
-		}
-		if err := upsertAdmin(ownerURL, email, name, pass); err != nil {
-			fmt.Printf("  ✗ %v — дахин оролдъё\n", err)
-			continue
-		}
-		return nil
-	}
 }
 
 func platformAdminExists(ownerURL string) (bool, error) {

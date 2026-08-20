@@ -1,12 +1,9 @@
 # nexus-mini
-# Локал хөгжүүлэлт: `make dev-db` (нэг удаа) → `make migrate` → `make api`
+# Локал хөгжүүлэлт: deploy/01-roles.sql (нэг удаа) → .env бөглөх → make migrate → make api
 
-# Тохиргоо backend/nexus-mini.env-д амьдарна — `make setup` үүсгэнэ.
+# Тохиргоо backend/nexus-mini.env-д амьдарна — .env.example-г хуулж бөглөнө.
 
-.PHONY: setup migrate api web check push
-
-setup: ## анхны тохируулга — интерактив CLI (role, DB, миграц, админ)
-	cd backend && go run ./cmd/nexus-mini setup
+.PHONY: migrate api web check push
 
 migrate:
 	cd backend && go run ./cmd/nexus-mini migrate

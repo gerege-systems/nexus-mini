@@ -1,7 +1,6 @@
 // nexus-mini — платформын командын хэрэгсэл.
 //
-//	nexus-mini setup     анхны тохируулга: DB, role, миграц, админ (интерактив)
-//	nexus-mini migrate   миграц ажиллуулах
+//	nexus-mini migrate   миграц + (env-д ADMIN_* байвал) анхны админ
 //	nexus-mini admin     платформын админ үүсгэх / өргөмжлөх
 //	nexus-mini serve     API сервер асаах
 package main
@@ -17,17 +16,16 @@ import (
 const usage = `nexus-mini — платформын командын хэрэгсэл
 
 Хэрэглээ:
-  nexus-mini setup     Анхны тохируулга (интерактив): Postgres дээр role/DB
-                       үүсгэж, nexus-mini.env бичиж, миграц ажиллуулж,
-                       платформын админаа бүртгэнэ
-  nexus-mini migrate   Цөм + модулиудын миграцыг ажиллуулна
+  nexus-mini migrate   Цөм + модулиудын миграцыг ажиллуулна; env-д
+                       ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
+                       платформын админ хараахан байхгүй бол үүсгэнэ
   nexus-mini admin     Платформын админ үүсгэх/өргөмжлөх
-                       (--email --name --password эсвэл интерактив;
-                        --from-env бол ADMIN_* хувьсагчаас, байвал л)
+                       (--email --name --password эсвэл интерактив)
   nexus-mini serve     API серверийг асаана
 
 Тохиргоо: коммандууд ажлын хавтаснаас nexus-mini.env (эсвэл --env <зам>)
-файлыг уншина; орчны хувьсагч файлаас дээгүүр үйлчилнэ.
+файлыг уншина; орчны хувьсагч файлаас дээгүүр үйлчилнэ. Загвар нь
+репогийн .env.example — хуулж бөглөөд л болно.
 `
 
 func main() {
@@ -42,8 +40,6 @@ func main() {
 
 	var err error
 	switch cmd {
-	case "setup":
-		err = cmdSetup(args)
 	case "migrate":
 		err = withEnv(args, cmdMigrate)
 	case "admin":

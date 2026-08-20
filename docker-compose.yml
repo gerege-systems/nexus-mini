@@ -18,12 +18,10 @@ services:
 
   migrate:
     build: ./backend
-    # Миграц + (хувьсагч өгсөн бол) анхны платформын админ.
-    command: sh -c "/nexus-mini migrate && /nexus-mini admin --from-env"
+    # Миграц + (ADMIN_* өгсөн бол) анхны платформын админ.
+    command: /nexus-mini migrate
     environment:
       DATABASE_URL_OWNER: postgres://nexus_owner:nexus-dev@db:5432/nexus_mini
-      # Анхны админ — ЗААВАЛ ӨӨРИЙНХӨӨРӨӨ СОЛЬЖ асаана уу.
-      # Хоосон орхивол дараа нь: docker compose run --rm migrate /nexus-mini admin
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_NAME: ${ADMIN_NAME:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
