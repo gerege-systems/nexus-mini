@@ -13,11 +13,10 @@ set +a
 
 echo "== backend build =="
 cd backend
-go build -o bin/api ./cmd/api
-go build -o bin/migrate ./cmd/migrate
+go build -o bin/nexus-mini ./cmd/nexus-mini
 
 echo "== migrate =="
-./bin/migrate
+./bin/nexus-mini migrate
 
 echo "== frontend build =="
 cd ../frontend

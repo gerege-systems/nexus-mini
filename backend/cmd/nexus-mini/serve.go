@@ -1,4 +1,3 @@
-// cmd/api — nexus-mini HTTP API.
 package main
 
 import (
@@ -8,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/handlers"
-	"github.com/gerege-systems/nexus-mini/backend/internal/modules"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/appstore"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/auth"
@@ -20,28 +18,36 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func main() {
+// cmdServe — nexus-mini serve
+func cmdServe(_ []string) error {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	modules.RegisterAll()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	pools, err := db.Connect(ctx, cfg.DatabaseURL, cfg.DatabaseURLAdmin)
 	cancel()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer pools.Close()
 
 	// Boot sync: permission ба апп каталог.
 	syncCtx, syncCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	if err := appstore.Sync(syncCtx, pools.Admin, cfg.CatalogPath); err != nil {
-		log.Fatalf("каталог sync: %v", err)
+		syncCancel()
+		return err
 	}
 	syncCancel()
+
+	// Админгүй instance ажиллах л болно, гэхдээ сануулна.
+	var hasAdmin bool
+	_ = pools.Admin.QueryRow(context.Background(),
+		`SELECT EXISTS (SELECT 1 FROM users WHERE platform_admin)`).Scan(&hasAdmin)
+	if !hasAdmin {
+		log.Println("АНХААР: платформын админ алга — `nexus-mini admin` коммандаар үүсгэ")
+	}
 
 	tdb := db.NewTenantDB(pools.App)
 	authSvc := auth.NewService(pools.App, cfg.CookieSecure)
@@ -66,8 +72,6 @@ func main() {
 	})
 
 	// Нээлттэй.
-	r.Get("/api/setup", authH.SetupState)
-	r.Post("/api/setup", authH.SetupCreate)
 	r.Post("/api/signup", authH.Signup)
 	r.Post("/api/login", authH.Login)
 	r.Post("/api/logout", authH.Logout)
@@ -129,7 +133,5 @@ func main() {
 	}
 
 	log.Printf("nexus-mini API :%s (%d модуль)", cfg.Port, len(nexus.Registered()))
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		log.Fatal(err)
-	}
+	return http.ListenAndServe(":"+cfg.Port, r)
 }

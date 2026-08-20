@@ -12,20 +12,34 @@ nexus-mini нь [Gerege Nexus](https://github.com/gerege-systems/open-gerege-nex
 
 ## Эхлүүлэх
 
+Анхны тохируулгыг `nexus-mini` CLI хийнэ — DB-ийн role/сан, миграц,
+платформын админыг нэг интерактив коммандаар:
+
 ```bash
 git clone https://github.com/gerege-systems/nexus-mini.git
-cd nexus-mini
-docker compose up -d     # PostgreSQL + миграц + API + вэб
+cd nexus-mini/backend
+
+go run ./cmd/nexus-mini setup   # Postgres холболт асууна → role+DB үүсгэнэ
+                                # → nexus-mini.env бичнэ → миграц → админ бүртгэнэ
+go run ./cmd/nexus-mini serve   # API :8084
+
+cd ../frontend && pnpm install && pnpm dev   # вэб :3020
 ```
 
-Дараа нь хөтчөөр `http://localhost:3020` — эхний удаад `/setup` wizard
-админ хэрэглэгчээ үүсгүүлээд шууд эхэлнэ. Өөр юу ч тохируулах шаардлагагүй.
+CLI-ийн бусад коммандууд: `nexus-mini migrate` (миграц),
+`nexus-mini admin` (платформын админ нэмэх/өргөмжлөх), `nexus-mini serve`.
+Тохиргоо `nexus-mini.env` файлд амьдарна; орчны хувьсагч түүнээс дээгүүр.
 
-Docker-гүй бол:
+### Docker Compose
 
 ```bash
-make dev    # локал Postgres дээр DB/role үүсгээд, миграц + API + вэб асаана
+ADMIN_EMAIL=tanii@mail.mn ADMIN_NAME="Таны нэр" ADMIN_PASSWORD='нууц-үг' \
+  docker compose up -d
 ```
+
+Postgres, миграц, API, вэб бүгд асаад `http://localhost:3020` бэлэн болно.
+`ADMIN_*`-ийг орхивол дараа нь `docker compose run --rm migrate /nexus-mini admin`
+коммандаар админаа үүсгэнэ.
 
 ## Бүтэц
 

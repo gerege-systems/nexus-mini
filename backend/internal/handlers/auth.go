@@ -28,52 +28,6 @@ type Auth struct {
 
 var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
-// GET /api/setup — платформ анх тохируулагдсан эсэх.
-func (h *Auth) SetupState(w http.ResponseWriter, r *http.Request) {
-	var done bool
-	if err := h.Pool.QueryRow(r.Context(), `SELECT setup_done()`).Scan(&done); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "setup state failed")
-		return
-	}
-	httpx.JSON(w, http.StatusOK, map[string]bool{"done": done})
-}
-
-// POST /api/setup — эхний платформын админыг үүсгэнэ (нэг л удаа ажиллана).
-func (h *Auth) SetupCreate(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-	if !httpx.Decode(w, r, &in) {
-		return
-	}
-	in.Name = strings.TrimSpace(in.Name)
-	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
-	if in.Name == "" || !emailRe.MatchString(in.Email) || len(in.Password) < 8 {
-		httpx.Error(w, http.StatusBadRequest, "нэр, зөв имэйл, 8+ тэмдэгт нууц үг шаардлагатай")
-		return
-	}
-	hash, err := password.Hash(in.Password)
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "hash failed")
-		return
-	}
-	var uid string
-	err = h.Pool.QueryRow(r.Context(),
-		`SELECT setup_create_admin($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
-		in.Email, hash, in.Name).Scan(&uid)
-	if err != nil {
-		httpx.Error(w, http.StatusConflict, "setup аль хэдийн хийгдсэн")
-		return
-	}
-	if _, err := h.Svc.StartSession(r.Context(), w, uid); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "session failed")
-		return
-	}
-	httpx.JSON(w, http.StatusCreated, map[string]string{"user_id": uid})
-}
-
 // POST /api/signup — landing-аас: хэрэглэгч + байгууллага хамт бүртгэнэ.
 func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 	var in struct {

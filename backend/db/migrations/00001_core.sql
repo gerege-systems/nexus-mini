@@ -268,38 +268,10 @@ LANGUAGE sql SECURITY DEFINER AS $$
 $$;
 -- +goose StatementEnd
 
--- setup: платформын админ огт байхгүй үед л нэг удаа ажиллана.
--- +goose StatementBegin
-CREATE FUNCTION setup_done()
-RETURNS boolean
-LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT EXISTS (SELECT 1 FROM users WHERE platform_admin)
-$$;
--- +goose StatementEnd
-
--- +goose StatementBegin
-CREATE FUNCTION setup_create_admin(p_email varchar(255), p_password_hash varchar(255), p_name varchar(120))
-RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE v_id uuid;
-BEGIN
-  PERFORM pg_advisory_xact_lock(hashtext('nexus_setup'));
-  IF EXISTS (SELECT 1 FROM users WHERE platform_admin) THEN
-    RAISE EXCEPTION 'setup already completed';
-  END IF;
-  INSERT INTO users (email, password_hash, name, platform_admin)
-  VALUES (lower(p_email), p_password_hash, p_name, true)
-  RETURNING users.id INTO v_id;
-  RETURN v_id;
-END $$;
--- +goose StatementEnd
-
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nexus_app, nexus_admin;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO nexus_app, nexus_admin;
 
 -- +goose Down
-DROP FUNCTION setup_create_admin(varchar, varchar, varchar);
-DROP FUNCTION setup_done();
 DROP FUNCTION auth_session_delete(char);
 DROP FUNCTION auth_session_set_tenant(uuid, uuid);
 DROP FUNCTION auth_session_lookup(char);

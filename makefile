@@ -1,25 +1,18 @@
 # nexus-mini
 # Локал хөгжүүлэлт: `make dev-db` (нэг удаа) → `make migrate` → `make api`
 
-PG_SUPER ?= postgres
-DEV_PW   ?= dev
+# Тохиргоо backend/nexus-mini.env-д амьдарна — `make setup` үүсгэнэ.
 
-export DATABASE_URL       ?= postgres://nexus_app:$(DEV_PW)@127.0.0.1:5432/nexus_mini
-export DATABASE_URL_ADMIN ?= postgres://nexus_admin:$(DEV_PW)@127.0.0.1:5432/nexus_mini
-export DATABASE_URL_OWNER ?= postgres://nexus_owner:$(DEV_PW)@127.0.0.1:5432/nexus_mini
+.PHONY: setup migrate api web check push
 
-.PHONY: dev-db migrate api web check push
-
-dev-db: ## локал Postgres дээр role + DB үүсгэнэ (нэг удаа)
-	psql -h 127.0.0.1 -d $(PG_SUPER) \
-	  -v owner_pw='$(DEV_PW)' -v app_pw='$(DEV_PW)' -v admin_pw='$(DEV_PW)' \
-	  -f deploy/01-roles.sql
+setup: ## анхны тохируулга — интерактив CLI (role, DB, миграц, админ)
+	cd backend && go run ./cmd/nexus-mini setup
 
 migrate:
-	cd backend && go run ./cmd/migrate
+	cd backend && go run ./cmd/nexus-mini migrate
 
 api:
-	cd backend && go run ./cmd/api
+	cd backend && go run ./cmd/nexus-mini serve
 
 web:
 	cd frontend && pnpm dev
