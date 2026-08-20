@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "id": "mn.gerege.nexus_mini.devices",
+      "short_id": "devices",
+      "name": "Төхөөрөмжийн бүртгэл",
+      "version": "1.0.0",
+      "description": "Байгууллагын төхөөрөмжүүдийн бүртгэл: нэр, төрөл, сериал, статус. SDK-г баталдаг жишээ модуль — шинэ модуль бичихдээ эндээс эхэл.",
+      "publisher": "gerege-systems",
+      "go_module": "github.com/gerege-systems/nexus-mini/backend/internal/apps/devices"
+    }
+  ]
+}
