@@ -13,16 +13,15 @@ main() {
   git pull --ff-only
 
   export PATH=/usr/local/go/bin:$PATH
-  set -a
-  source /home/bay/secrets/nexus-mini.env
-  set +a
 
   echo "== backend build =="
   cd backend
   go build -o bin/nexus-mini ./cmd/nexus-mini
 
   echo "== migrate =="
-  ./bin/nexus-mini migrate
+  # Env-ийг export хийхгүй (#8: ADMIN_* гэх мэт нууц child process бүрт
+  # задрах ёсгүй) — migrate --env флагаараа өөрөө уншина.
+  ./bin/nexus-mini migrate --env /home/bay/secrets/nexus-mini.env
 
   echo "== frontend build =="
   cd ../frontend

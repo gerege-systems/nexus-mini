@@ -13,6 +13,7 @@ import {
   Package,
   ScrollText,
   ShieldCheck,
+  UserRound,
   Users,
 } from "lucide-react";
 import { api, type Me } from "@/lib/api";
@@ -26,6 +27,7 @@ const nav = [
   { path: "/users", label: "Хэрэглэгчид", icon: Users },
   { path: "/apps", label: "Каталог", icon: Package },
   { path: "/audit", label: "Audit", icon: ScrollText },
+  { path: "/profile", label: "Профайл", icon: UserRound },
 ];
 
 export function Shell({ children }: { children: React.ReactNode }) {

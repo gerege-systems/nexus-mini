@@ -19,12 +19,22 @@ const (
 	saltLen    = 16
 )
 
+// argon2 нэг дуудлагадаа 64MB эзэлдэг — зэрэг ажиллах тоог хязгаарлахгүй
+// бол login-ий шуурга RAM-аар DoS хийнэ. Нэг зэрэг ≤4 (256MB тааз).
+var sem = make(chan struct{}, 4)
+
+func idKey(pass, salt []byte, t, m uint32, p uint8, l uint32) []byte {
+	sem <- struct{}{}
+	defer func() { <-sem }()
+	return argon2.IDKey(pass, salt, t, m, p, l)
+}
+
 func Hash(plain string) (string, error) {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	key := argon2.IDKey([]byte(plain), salt, timeCost, memoryCost, threads, keyLen)
+	key := idKey([]byte(plain), salt, timeCost, memoryCost, threads, keyLen)
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
 		memoryCost, timeCost, threads,
 		base64.RawStdEncoding.EncodeToString(salt),
@@ -51,6 +61,6 @@ func Verify(plain, encoded string) bool {
 	if err != nil {
 		return false
 	}
-	got := argon2.IDKey([]byte(plain), salt, t, m, p, uint32(len(want)))
+	got := idKey([]byte(plain), salt, t, m, p, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
 }

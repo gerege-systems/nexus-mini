@@ -16,6 +16,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 )
 
 // cmdServe — nexus-mini serve
@@ -66,20 +67,27 @@ func cmdServe(_ []string) error {
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
+	// CSRF (#5): SameSite=Lax нь same-site (*.домэйн) хоорондын хүсэлтээс
+	// хамгаалдаггүй — бичих хүсэлт бүрд Origin-ийг хостой тулгана.
+	r.Use(sameOriginOnly)
 
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("ok"))
 	})
 
-	// Нээлттэй.
-	r.Post("/api/signup", authH.Signup)
-	r.Post("/api/login", authH.Login)
+	// Нээлттэй. Rate limit (#1): нууц үгийн endpoint-ууд argon2-ийн улмаас
+	// үнэтэй тул IP тус бүрд хязгаарлана.
+	authLimit := httprate.LimitByIP(10, time.Minute)
+	r.With(httprate.LimitByIP(5, time.Minute)).Post("/api/signup", authH.Signup)
+	r.With(authLimit).Post("/api/login", authH.Login)
 	r.Post("/api/logout", authH.Logout)
 
 	// Нэвтэрсэн (tenant сонгоогүй байж болно).
 	r.Group(func(g chi.Router) {
 		g.Use(authSvc.RequireUser)
 		g.Get("/api/me", authH.Me)
+		g.Put("/api/me", authH.UpdateProfile)
+		g.With(httprate.LimitByIP(10, time.Minute)).Post("/api/me/password", authH.ChangePassword)
 		g.Post("/api/session/tenant", authH.SelectTenant)
 		g.Post("/api/tenants", authH.CreateTenant)
 	})
@@ -134,4 +142,20 @@ func cmdServe(_ []string) error {
 
 	log.Printf("nexus-mini API :%s (%d модуль)", cfg.Port, len(nexus.Registered()))
 	return http.ListenAndServe(":"+cfg.Port, r)
+}
+
+// sameOriginOnly — бичих хүсэлтийн Origin (байвал) хүсэлтийн хосттой
+// таарахгүй бол 403. Origin-гүй клиент (curl, server-to-server) хэвээр.
+func sameOriginOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			if origin := r.Header.Get("Origin"); origin != "" {
+				if origin != "https://"+r.Host && origin != "http://"+r.Host {
+					http.Error(w, `{"error":"origin mismatch"}`, http.StatusForbidden)
+					return
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }

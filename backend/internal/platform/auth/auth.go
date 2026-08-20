@@ -90,8 +90,12 @@ func (s *Service) StartSession(ctx context.Context, w http.ResponseWriter, userI
 }
 
 func (s *Service) EndSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(CookieName); err == nil {
-		_, _ = s.pool.Exec(ctx, `SELECT auth_session_delete($1::char(64))`, hashToken(c.Value))
+	// Ижил нэртэй бүх cookie-гийн session-ийг устгана (Resolve-той ижил
+	// логик — нэгийг нь л устгавал үлдсэнээрээ нэвтэрсэн хэвээр үлдэнэ).
+	for _, c := range r.CookiesNamed(CookieName) {
+		if c.Value != "" {
+			_, _ = s.pool.Exec(ctx, `SELECT auth_session_delete($1::char(64))`, hashToken(c.Value))
+		}
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: CookieName, Value: "", Path: "/", HttpOnly: true,

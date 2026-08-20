@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var errLastAdmin = errors.New("last admin")
 
 // RBACH — role, гишүүдийн удирдлага. core.* permission-ууд платформынх
 // (модулийн prefix дүрэм модулиудад л үйлчилнэ).
@@ -174,6 +177,19 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// tenantHasAdmin — өөрчлөлтийн ДАРАА tenant-д admin role-тэй гишүүн
+// үлдсэн эсэх (tenant lockout-оос сэргийлнэ, аудитын #4).
+func tenantHasAdmin(r *http.Request, tx pgx.Tx, tenantID string) (bool, error) {
+	var ok bool
+	err := tx.QueryRow(r.Context(), `
+		SELECT EXISTS (
+		  SELECT 1 FROM membership_roles mr
+		    JOIN roles ro ON ro.id = mr.role_id AND ro.code = 'admin'
+		    JOIN memberships m ON m.id = mr.membership_id
+		   WHERE m.tenant_id = $1::uuid)`, tenantID).Scan(&ok)
+	return ok, err
+}
+
 // GET /api/members — гишүүд role-уудтайгаа.
 func (h *RBACH) Members(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(r.Context(), `
@@ -328,8 +344,19 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
+		ok, err := tenantHasAdmin(r, tx, tenantID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errLastAdmin
+		}
 		return nil
 	})
+	if err == errLastAdmin {
+		httpx.Error(w, http.StatusConflict, "байгууллагад дор хаяж нэг админ үлдэх ёстой")
+		return
+	}
 	if err == pgx.ErrNoRows {
 		httpx.Error(w, http.StatusNotFound, "гишүүн олдсонгүй")
 		return
@@ -347,14 +374,36 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 func (h *RBACH) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	membershipID := chi.URLParam(r, "id")
 	tenantID := nexus.TenantID(r.Context())
-	tag, err := h.DB.Exec(r.Context(),
-		`DELETE FROM memberships WHERE id = $1::uuid AND tenant_id = $2::uuid AND user_id <> $3::uuid`,
-		membershipID, tenantID, nexus.UserID(r.Context()))
+	var removed bool
+	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+		tag, err := tx.Exec(r.Context(),
+			`DELETE FROM memberships WHERE id = $1::uuid AND tenant_id = $2::uuid AND user_id <> $3::uuid`,
+			membershipID, tenantID, nexus.UserID(r.Context()))
+		if err != nil {
+			return err
+		}
+		removed = tag.RowsAffected() > 0
+		if !removed {
+			return nil
+		}
+		ok, err := tenantHasAdmin(r, tx, tenantID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errLastAdmin
+		}
+		return nil
+	})
+	if err == errLastAdmin {
+		httpx.Error(w, http.StatusConflict, "байгууллагад дор хаяж нэг админ үлдэх ёстой")
+		return
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "remove failed")
 		return
 	}
-	if tag.RowsAffected() == 0 {
+	if !removed {
 		httpx.Error(w, http.StatusNotFound, "гишүүн олдсонгүй (өөрийгөө хасаж болохгүй)")
 		return
 	}
