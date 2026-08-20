@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 // Landing — юу болохыг нь эхнээс нь тайлбарлана: цөм + app store + модуль
-// хөгжүүлэлт. Анхны тохируулга нь вэбээр биш `nexus-mini setup` CLI-ээр
-// хийгддэг тул энд ямар ч төлөв шалгадаггүй.
+// хөгжүүлэлт. Анхны тохируулга env + `nexus-mini migrate`-ээр хийгддэг
+// тул энд ямар ч төлөв шалгадаггүй.
 export default function Landing() {
   return (
     <div className="mkt">
@@ -155,8 +155,8 @@ export default function Landing() {
           <div style={{ flex: 1, minWidth: 240 }}>
             <b>Өөрөө ажиллуулж үзэх үү?</b>
             <div style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
-              <code>git clone</code> → <code>nexus-mini setup</code> — CLI нь DB, миграц,
-              админыг тань тохируулна. Эсвэл <code>docker compose up</code>.
+              <code>git clone</code> → env-ээ бөглөөд <code>nexus-mini migrate</code> →{" "}
+              <code>serve</code>. Эсвэл <code>docker compose up</code>.
             </div>
           </div>
           <Link href="/signup" className="btn">Эсвэл эндээ бүртгүүлэх</Link>
