@@ -86,13 +86,13 @@ export default function RolesPage() {
       </div>
       {err && <div className="alert alert--danger">{err}</div>}
 
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table className="table" style={{ minWidth: 640 }}>
+      <div className="card" style={{ overflowX: "auto", width: "fit-content", maxWidth: "100%" }}>
+        <table className="table" style={{ minWidth: 560 }}>
           <thead>
             <tr>
-              <th>Permission</th>
+              <th style={{ minWidth: 300 }}>Permission</th>
               {roles.map((r) => (
-                <th key={r.id} style={{ textAlign: "center" }}>
+                <th key={r.id} style={{ textAlign: "center", width: 150, minWidth: 130 }}>
                   {r.name}
                   <div style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
                     <code style={{ fontSize: "0.75rem" }}>{r.code}</code>
