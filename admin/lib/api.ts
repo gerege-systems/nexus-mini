@@ -9,9 +9,11 @@ export class ApiError extends Error {
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const lang =
+    typeof window !== "undefined" ? localStorage.getItem("nexus_locale") || "mn" : "mn";
   const res = await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", "X-Lang": lang, ...init?.headers },
     credentials: "same-origin",
   });
   const body = await res.json().catch(() => ({}));

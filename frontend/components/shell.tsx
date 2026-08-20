@@ -10,6 +10,7 @@ import { Boxes } from "lucide-react";
 import { api, type Me, type MenuApp } from "@/lib/api";
 import { Icon } from "./icons";
 import { UserMenu } from "./usermenu";
+import { useT } from "@/lib/i18n";
 
 type ShellData = { me: Me; menu: MenuApp[]; refresh: () => void };
 const ShellCtx = createContext<ShellData | null>(null);
@@ -19,6 +20,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<ShellData | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useT();
 
   const load = useCallback(async () => {
     try {
@@ -50,9 +52,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const isOn = (p: string) => pathname === p || pathname.startsWith(p + "/");
 
   const adminItems = [
-    { path: "/members", label: "Гишүүд", icon: "users", perm: "core.members.manage" },
-    { path: "/roles", label: "Эрхийн тохиргоо", icon: "key", perm: "core.roles.manage" },
-    { path: "/audit", label: "Audit лог", icon: "scroll", perm: "core.audit.read" },
+    { path: "/members", label: t("Гишүүд"), icon: "users", perm: "core.members.manage" },
+    { path: "/roles", label: t("Эрхийн тохиргоо"), icon: "key", perm: "core.roles.manage" },
+    { path: "/audit", label: t("Audit лог"), icon: "scroll", perm: "core.audit.read" },
   ].filter((i) => perms[i.perm]);
 
   // Gerege загвар: rail нь идэвхтэй АПП сонгогч. Одоогийн зам аль нэг
@@ -83,7 +85,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <aside className="rail">
         <Link href="/dashboard"
           className={`rail__tile${!activeModule ? " is-on" : ""}`}
-          title="Платформ" aria-label="Платформ">
+          title={t("Нүүр")} aria-label={t("Нүүр")}>
           <Icon name="home" size={20} />
         </Link>
         {menu.map((m) => (
@@ -108,16 +110,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </>
         ) : (
           <>
-            <div className="panel__title">Цэс</div>
+            <div className="panel__title">{t("Цэс")}</div>
             <Link href="/dashboard" className={`nav__item${isOn("/dashboard") ? " is-on" : ""}`}>
-              <Icon name="dashboard" size={17} /> Дашбоард
+              <Icon name="dashboard" size={17} /> {t("Дашбоард")}
             </Link>
             <Link href="/store" className={`nav__item${isOn("/store") ? " is-on" : ""}`}>
-              <Icon name="store" size={17} /> Апп дэлгүүр
+              <Icon name="store" size={17} /> {t("Апп дэлгүүр")}
             </Link>
             {adminItems.length > 0 && (
               <>
-                <div className="panel__title" style={{ marginTop: "1rem" }}>Удирдлага</div>
+                <div className="panel__title" style={{ marginTop: "1rem" }}>{t("Удирдлага")}</div>
                 {adminItems.map((i) => (
                   <Link key={i.path} href={i.path}
                     className={`nav__item${isOn(i.path) ? " is-on" : ""}`}>

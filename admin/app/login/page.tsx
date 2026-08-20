@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, type Me } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 // Зөвхөн платформын админ нэвтэрнэ — жирийн хэрэглэгчийг буцаана.
 export default function AdminLoginPage() {
@@ -11,6 +12,7 @@ export default function AdminLoginPage() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const { t } = useT();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,13 +23,13 @@ export default function AdminLoginPage() {
       const me = await api.get<Me>("/api/me");
       if (!me.user.platform_admin) {
         await api.post("/api/logout");
-        setErr("Энэ систем зөвхөн платформын админд зориулагдсан");
+        setErr(t("Энэ систем зөвхөн платформын админд зориулагдсан"));
         setBusy(false);
         return;
       }
       router.replace("/");
     } catch (ex) {
-      setErr(ex instanceof ApiError ? ex.message : "Алдаа гарлаа");
+      setErr(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"));
       setBusy(false);
     }
   };
@@ -38,24 +40,24 @@ export default function AdminLoginPage() {
         <div className="brand-row">
           <span className="brand-square">N</span>
           <div>
-            <h1>Платформын админ</h1>
-            <p className="sub">nexus-mini удирдлагын систем</p>
+            <h1>{t("Платформын админ")}</h1>
+            <p className="sub">{t("nexus-mini удирдлагын систем")}</p>
           </div>
         </div>
         {err && <div className="alert alert--danger">{err}</div>}
         <form onSubmit={submit}>
           <div className="field">
-            <label>Имэйл</label>
+            <label>{t("Имэйл")}</label>
             <input type="email" value={email} autoFocus required
               onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="field">
-            <label>Нууц үг</label>
+            <label>{t("Нууц үг")}</label>
             <input type="password" value={password} required
               onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
-            Нэвтрэх
+            {t("Нэвтрэх")}
           </button>
         </form>
       </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const { t } = useT();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,28 +33,28 @@ export default function LoginPage() {
         <div className="brand-row">
           <span className="brand-square">N</span>
           <div>
-            <h1>Нэвтрэх</h1>
-            <p className="sub">nexus-mini ажлын талбар</p>
+            <h1>{t("Нэвтрэх")}</h1>
+            <p className="sub">{t("nexus-mini ажлын талбар")}</p>
           </div>
         </div>
         {err && <div className="alert alert--danger">{err}</div>}
         <form onSubmit={submit}>
           <div className="field">
-            <label>Имэйл</label>
+            <label>{t("Имэйл")}</label>
             <input type="email" value={email} autoFocus required
               onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="field">
-            <label>Нууц үг</label>
+            <label>{t("Нууц үг")}</label>
             <input type="password" value={password} required
               onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
-            Нэвтрэх
+            {t("Нэвтрэх")}
           </button>
         </form>
         <div className="foot">
-          Бүртгэлгүй юу? <Link href="/signup">Байгууллагаа бүртгүүлэх</Link>
+          {t("Бүртгэлгүй юу?")} <Link href="/signup">{t("Байгууллагаа бүртгүүлэх")}</Link>
         </div>
       </div>
     </div>

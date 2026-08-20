@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 type Row = { id: string; short_id: string; name: string; version: string; compiled: boolean; publisher: string; installs: number };
 
 export default function AppsPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<Row[]>([]);
   useEffect(() => {
     void api.get<{ apps: Row[] }>("/api/admin/apps").then((r) => setRows(r.apps));
@@ -15,13 +17,13 @@ export default function AppsPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Каталог</h1>
-          <div className="sub">App store-ийн бүх апп, суулгалтын тоо</div>
+          <h1>{t("Каталог")}</h1>
+          <div className="sub">{t("App store-ийн бүх апп, суулгалтын тоо")}</div>
         </div>
       </div>
       <div className="card">
         <table className="table">
-          <thead><tr><th>Апп</th><th>ID</th><th>Хувилбар</th><th>Бинарид</th><th>Суулгалт</th></tr></thead>
+          <thead><tr><th>{t("Апп")}</th><th>ID</th><th>{t("Хувилбар")}</th><th>{t("Бинарид")}</th><th>{t("Суулгалт")}</th></tr></thead>
           <tbody>
             {rows.map((a) => (
               <tr key={a.id}>
@@ -30,8 +32,8 @@ export default function AppsPage() {
                 <td><code style={{ fontSize: "0.8rem" }}>{a.id}</code></td>
                 <td>v{a.version}</td>
                 <td>{a.compiled
-                  ? <span className="badge badge--ok">Тийм</span>
-                  : <span className="badge badge--muted">Үгүй</span>}</td>
+                  ? <span className="badge badge--ok">{t("Тийм")}</span>
+                  : <span className="badge badge--muted">{t("Үгүй")}</span>}</td>
                 <td>{a.installs}</td>
               </tr>
             ))}

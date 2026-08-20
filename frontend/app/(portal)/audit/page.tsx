@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck, ShieldX } from "lucide-react";
 import { api, type AuditEntry } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export default function AuditPage() {
+  const { t } = useT();
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [verify, setVerify] = useState<{ intact: boolean; broken_at: number | null } | null>(null);
 
@@ -22,12 +24,12 @@ export default function AuditPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Audit лог</h1>
-          <div className="sub">Append-only, hash гинжтэй үйлдлийн бүртгэл</div>
+          <h1>{t("Audit лог")}</h1>
+          <div className="sub">{t("Append-only, hash гинжтэй үйлдлийн бүртгэл")}</div>
         </div>
         <div className="spacer" />
         <button className="btn btn--ghost" onClick={runVerify}>
-          <ShieldCheck size={16} /> Гинж шалгах
+          <ShieldCheck size={16} /> {t("Гинж шалгах")}
         </button>
       </div>
 
@@ -36,15 +38,15 @@ export default function AuditPage() {
           style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           {verify.intact ? <ShieldCheck size={17} /> : <ShieldX size={17} />}
           {verify.intact
-            ? "Гинж бүрэн — бүртгэлд гар хүрээгүй"
-            : `Гинж #${verify.broken_at} дээр тасарсан!`}
+            ? t("Гинж бүрэн — бүртгэлд гар хүрээгүй")
+            : `#${verify.broken_at} ${t("дээр тасарсан!")}`}
         </div>
       )}
 
       <div className="card">
         <table className="table">
           <thead>
-            <tr><th>#</th><th>Үйлдэл</th><th>Объект</th><th>Хэн</th><th>Хэзээ</th><th>Hash</th></tr>
+            <tr><th>#</th><th>{t("Үйлдэл")}</th><th>{t("Объект")}</th><th>{t("Хэн")}</th><th>{t("Хэзээ")}</th><th>Hash</th></tr>
           </thead>
           <tbody>
             {entries?.map((e) => (
@@ -52,7 +54,7 @@ export default function AuditPage() {
                 <td style={{ color: "var(--text-3)" }}>{e.id}</td>
                 <td><span className="badge badge--accent">{e.action}</span></td>
                 <td>{e.object || "—"}</td>
-                <td>{e.user_name || "систем"}</td>
+                <td>{e.user_name || t("систем")}</td>
                 <td style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
                   {new Date(e.occurred_at).toLocaleString("mn-MN")}
                 </td>

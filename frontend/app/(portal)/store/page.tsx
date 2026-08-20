@@ -5,9 +5,11 @@ import { Download, Package, Power } from "lucide-react";
 import { api, ApiError, type StoreApp } from "@/lib/api";
 import { useShell } from "@/components/shell";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n";
 
 export default function StorePage() {
   const { me, refresh } = useShell();
+  const { t } = useT();
   const [apps, setApps] = useState<StoreApp[] | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
@@ -24,11 +26,11 @@ export default function StorePage() {
     setBusy(app.id);
     try {
       await api.post(`/api/store/apps/${app.id}/${action}`);
-      toast(action === "install" ? `${app.name} суулгагдлаа` : action === "enable" ? "Асаалаа" : "Унтраалаа");
+      toast(action === "install" ? `${app.name} ${t("суулгагдлаа")}` : action === "enable" ? t("Асаалаа") : t("Унтраалаа"));
       await load();
       refresh(); // цэс шинэчлэгдэнэ
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
     } finally {
       setBusy("");
     }
@@ -38,8 +40,8 @@ export default function StorePage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Апп дэлгүүр</h1>
-          <div className="sub">Байгууллагадаа хэрэгтэй модулиудыг суулгана</div>
+          <h1>{t("Апп дэлгүүр")}</h1>
+          <div className="sub">{t("Байгууллагадаа хэрэгтэй модулиудыг суулгана")}</div>
         </div>
       </div>
       {err && <div className="alert alert--danger">{err}</div>}
@@ -58,21 +60,21 @@ export default function StorePage() {
               <div className="app-card__foot">
                 {a.status === "enabled" ? (
                   <>
-                    <span className="badge badge--ok">Суусан</span>
+                    <span className="badge badge--ok">{t("Суусан")}</span>
                     {canManage && (
                       <button className="btn btn--ghost btn--sm" disabled={busy === a.id}
                         onClick={() => act(a, "disable")}>
-                        <Power size={14} /> Унтраах
+                        <Power size={14} /> {t("Унтраах")}
                       </button>
                     )}
                   </>
                 ) : a.status === "disabled" ? (
                   <>
-                    <span className="badge badge--warn">Унтраасан</span>
+                    <span className="badge badge--warn">{t("Унтраасан")}</span>
                     {canManage && (
                       <button className="btn btn--sm" disabled={busy === a.id}
                         onClick={() => act(a, "enable")}>
-                        <Power size={14} /> Асаах
+                        <Power size={14} /> {t("Асаах")}
                       </button>
                     )}
                   </>
@@ -80,14 +82,14 @@ export default function StorePage() {
                   canManage ? (
                     <button className="btn btn--sm" disabled={busy === a.id}
                       onClick={() => act(a, "install")}>
-                      <Download size={14} /> Суулгах
+                      <Download size={14} /> {t("Суулгах")}
                     </button>
                   ) : (
-                    <span className="badge badge--muted">Суулгаагүй</span>
+                    <span className="badge badge--muted">{t("Суулгаагүй")}</span>
                   )
                 ) : (
                   <span className="badge badge--muted" title={`nexus-mini add ${a.id}`}>
-                    Бинарид ороогүй
+                    {t("Бинарид ороогүй")}
                   </span>
                 )}
                 <span className="v">v{a.version}</span>

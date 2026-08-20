@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { slugify } from "@/lib/slug";
+import { useT } from "@/lib/i18n";
 
 // Нэвтэрсэн ч байгууллагагүй (эсвэл шинээр нэмэх) хэрэглэгчид.
 export default function NewOrgPage() {
@@ -12,6 +13,7 @@ export default function NewOrgPage() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+  const { t } = useT();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,14 +36,14 @@ export default function NewOrgPage() {
         <div className="brand-row">
           <span className="brand-square">N</span>
           <div>
-            <h1>Байгууллага үүсгэх</h1>
-            <p className="sub">Ажлын талбараа үүсгээд store-оос модулиа сонгоно</p>
+            <h1>{t("Байгууллага үүсгэх")}</h1>
+            <p className="sub">{t("Ажлын талбараа үүсгээд store-оос модулиа сонгоно")}</p>
           </div>
         </div>
         {err && <div className="alert alert--danger">{err}</div>}
         <form onSubmit={submit}>
           <div className="field">
-            <label>Байгууллагын нэр</label>
+            <label>{t("Байгууллагын нэр")}</label>
             <input value={org.name} autoFocus required
               onChange={(e) =>
                 setOrg({
@@ -51,16 +53,16 @@ export default function NewOrgPage() {
               } />
           </div>
           <div className="field">
-            <label>Богино нэр (slug)</label>
+            <label>{t("Богино нэр (slug)")}</label>
             <input value={org.slug} required
               onChange={(e) => {
                 setSlugTouched(true);
                 setOrg({ ...org, slug: slugify(e.target.value) });
               }} />
-            <div className="hint">Жижиг латин үсэг, тоо, зураас</div>
+            <div className="hint">{t("Жижиг латин үсэг, тоо, зураас")}</div>
           </div>
           <button className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
-            Үүсгэх
+            {t("Үүсгэх")}
           </button>
         </form>
       </div>

@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { api, type Me } from "@/lib/api";
+import { locales, setLocale, useT } from "@/lib/i18n";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx)!;
@@ -28,11 +29,13 @@ const nav = [
   { path: "/audit", label: "Audit", icon: ScrollText },
   { path: "/profile", label: "Профайл", icon: UserRound },
 ];
+// label нь t()-ийн түлхүүр — render үедээ орчуулагдана.
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { t, locale } = useT();
 
   useEffect(() => {
     api
@@ -59,15 +62,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/"><span className="brand-square">N</span></Link>
         </div>
         <div className="topbar__context">
-          <b>Платформын админ</b>
+          <b>{t("Платформын админ")}</b>
         </div>
         <div className="topbar__spacer" />
+        <span className="um__pills" style={{ marginRight: "0.9rem" }}>
+          {locales.map((l) => (
+            <button key={l.code}
+              className={`um__pill${locale === l.code ? " is-on" : ""}`}
+              style={{ background: "transparent", borderColor: "#334155", color: locale === l.code ? "#5fd3c2" : "#94a3b8" }}
+              onClick={() => setLocale(l.code)}>{l.label}</button>
+          ))}
+        </span>
         <span style={{ color: "#94a3b8", marginRight: "0.9rem", fontSize: "0.88rem" }}>
           {me.user.name} · {me.user.email}
         </span>
         <button className="um__btn" style={{ marginRight: "1rem" }} onClick={logout}>
           <LogOut size={15} />
-          Гарах
+          {t("Гарах")}
         </button>
       </header>
 
@@ -75,7 +86,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {nav.map((n) => (
           <Link key={n.path} href={n.path}
             className={`nav__item${isOn(n.path) ? " is-on" : ""}`}>
-            <n.icon size={17} strokeWidth={1.8} /> {n.label}
+            <n.icon size={17} strokeWidth={1.8} /> {t(n.label)}
           </Link>
         ))}
       </nav>

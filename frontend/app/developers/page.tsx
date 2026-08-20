@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BookOpen, FolderTree, GitPullRequest, Rocket } from "lucide-react";
 import { MktHeader, MktFooter } from "@/components/mkt";
+import { useT } from "@/lib/i18n";
 
 // Модуль хөгжүүлэх бүрэн гарын авлага — docs/03-module-guide.md-ийн вэб
 // хувилбар. Агуулгыг өөрчилбөл хоёуланг нь синк байлга.
@@ -11,39 +12,38 @@ function Code({ children }: { children: React.ReactNode }) {
 }
 
 export default function DevelopersPage() {
+  const { t } = useT();
   return (
     <div className="mkt">
       <MktHeader />
 
       <section className="mkt-hero" style={{ paddingBottom: "1.5rem" }}>
-        <h1>Модуль хөгжүүлэх</h1>
+        <h1>{t("Модуль хөгжүүлэх")}</h1>
         <p>
-          Модуль бол <code>pkg/nexus.Module</code> interface-ийг хэрэгжүүлсэн Go
-          package. Tenant тусгаарлалт, нэвтрэлт, суулгалт, RBAC оноолт, audit —
-          платформ хийнэ; та бизнес логикоо л бичнэ. Хамгийн сайн заавар бол
-          ажиллаж байгаа жишээ —{" "}
+          {t("Модуль бол")} <code>pkg/nexus.Module</code> {t("interface-ийг хэрэгжүүлсэн Go package.")}{" "}
+          {t("Tenant тусгаарлалт, нэвтрэлт, суулгалт, RBAC оноолт, audit — платформ хийнэ; та бизнес логикоо л бичнэ. Хамгийн сайн заавар бол ажиллаж байгаа жишээ —")}{" "}
           <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/devices"
             style={{ color: "var(--accent)", fontWeight: 600 }}>backend/apps/devices</a>.
         </p>
       </section>
 
       <section className="mkt-sect" style={{ paddingTop: 0 }}>
-        <h2>Хэн юу хариуцдаг вэ</h2>
+        <h2>{t("Хэн юу хариуцдаг вэ")}</h2>
         <div className="card" style={{ margin: "1rem 0 2rem", overflowX: "auto" }}>
           <table className="table">
-            <thead><tr><th>Модуль</th><th>Платформ</th></tr></thead>
+            <thead><tr><th>{t("МОДУЛЬ")}</th><th>{t("ПЛАТФОРМ")}</th></tr></thead>
             <tbody>
-              <tr><td>Permission-оо тунхаглана</td><td>Tenant тусгаарлалт (RLS)</td></tr>
-              <tr><td>Цэсээ зарлана</td><td>Нэвтрэлт, session</td></tr>
-              <tr><td>Route-уудаа бүртгэнэ</td><td>Суулгалт, хамаарлын шийдэл</td></tr>
-              <tr><td>Өөрийн хүснэгт, миграц</td><td>RBAC default оноолт, шалгалт</td></tr>
-              <tr><td>Бизнес логик</td><td>Audit гинж, app store</td></tr>
+              <tr><td>{t("Permission-оо тунхаглана")}</td><td>{t("Tenant тусгаарлалт (RLS)")}</td></tr>
+              <tr><td>{t("Цэсээ зарлана")}</td><td>{t("Нэвтрэлт, session")}</td></tr>
+              <tr><td>{t("Route-уудаа бүртгэнэ")}</td><td>{t("Суулгалт, хамаарлын шийдэл")}</td></tr>
+              <tr><td>{t("Өөрийн хүснэгт, миграц")}</td><td>{t("RBAC default оноолт, шалгалт")}</td></tr>
+              <tr><td>{t("Бизнес логик")}</td><td>{t("Audit гинж, app store")}</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h2><FolderTree size={19} style={{ verticalAlign: "-3px" }} /> Файлын бүтэц</h2>
-        <p className="lead">Жижиг модуль нэг файлаас эхэлж болно; өсөхөөрөө ингэж хуваана:</p>
+        <h2><FolderTree size={19} style={{ verticalAlign: "-3px" }} /> {t("Файлын бүтэц")}</h2>
+        <p className="lead">{t("Жижиг модуль нэг файлаас эхэлж болно; өсөхөөрөө ингэж хуваана:")}</p>
         <Code>
           <div>backend/apps/{"<нэр>"}/</div>
           <div>&nbsp;&nbsp;module.go&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">модулийн ГЭРЭЭ: ID, permission, цэс, миграц, route↔permission холболт</span></div>
@@ -52,9 +52,9 @@ export default function DevelopersPage() {
           <div>&nbsp;&nbsp;migrations/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">модулийн goose миграцууд</span></div>
         </Code>
 
-        <h2><Rocket size={19} style={{ verticalAlign: "-3px" }} /> Алхамууд</h2>
+        <h2><Rocket size={19} style={{ verticalAlign: "-3px" }} /> {t("Алхамууд")}</h2>
 
-        <h3 style={{ marginTop: "1.5rem" }}>1. Package үүсгэх</h3>
+        <h3 style={{ marginTop: "1.5rem" }}>{t("1. Package үүсгэх")}</h3>
         <Code>
           <div><span className="k">func</span> (m *Module) ID() <span className="k">string</span>      {"{"} <span className="k">return</span> <span className="s">&quot;mn.танай.&lt;нэр&gt;&quot;</span> {"}"} <span className="c">// reverse-DNS, глобал давтагдашгүй</span></div>
           <div><span className="k">func</span> (m *Module) ShortID() <span className="k">string</span> {"{"} <span className="k">return</span> <span className="s">&quot;&lt;нэр&gt;&quot;</span> {"}"}          <span className="c">// permission prefix + URL зам</span></div>
@@ -62,7 +62,7 @@ export default function DevelopersPage() {
           <div><span className="k">func</span> (m *Module) Version() <span className="k">string</span> {"{"} <span className="k">return</span> <span className="s">&quot;1.0.0&quot;</span> {"}"}</div>
         </Code>
 
-        <h3>2. Permission тунхаглах</h3>
+        <h3>{t("2. Permission тунхаглах")}</h3>
         <Code>
           <div><span className="k">func</span> (m *Module) Permissions() []nexus.PermissionDefinition {"{"}</div>
           <div>&nbsp;&nbsp;<span className="k">return</span> []nexus.PermissionDefinition{"{"}</div>
@@ -72,7 +72,7 @@ export default function DevelopersPage() {
           <div>&nbsp;&nbsp;{"}"}</div>
           <div>{"}"}</div>
         </Code>
-        <p style={{ color: "var(--text-2)" }}>Дүрмүүд (зөрчвөл бинари асахгүй):</p>
+        <p style={{ color: "var(--text-2)" }}>{t("Дүрмүүд (зөрчвөл бинари асахгүй):")}</p>
         <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
           <li>Код заавал <code>&lt;ShortID&gt;.</code>-ээр эхэлнэ — өөр модулийн эрхийг булааж чадахгүй</li>
           <li><code>DefaultRoles</code> нь суулгах үед хэн авахыг <b>тунхагладаг</b>: <code>admin</code> үргэлж бүгдийг авна, жагсаалтад бичсэн нь нэмж авна, <code>&quot;user:own&quot;</code> нь зөвхөн өөрийн мөрийн эрх</li>
@@ -80,7 +80,7 @@ export default function DevelopersPage() {
           <li><code>core</code>, <code>api</code>, <code>admin</code> зэрэг нэрс нөөцлөгдсөн</li>
         </ul>
 
-        <h3>3. Миграц</h3>
+        <h3>{t("3. Миграц")}</h3>
         <Code>
           <div><span className="c">//go:embed migrations/*.sql</span></div>
           <div><span className="k">var</span> migrations embed.FS</div>
@@ -96,7 +96,7 @@ export default function DevelopersPage() {
           Модуль бүр өөрийн goose хүснэгттэй (<code>goose_&lt;shortid&gt;</code>) тул цөм болон бусад модультай мөргөлдөхгүй.
         </p>
 
-        <h3>4. Route-ууд</h3>
+        <h3>{t("4. Route-ууд")}</h3>
         <Code>
           <div><span className="k">func</span> (m *Module) RegisterRoutes(r chi.Router, deps nexus.Deps) {"{"}</div>
           <div>&nbsp;&nbsp;h := &amp;handler{"{"}deps: deps{"}"}</div>
@@ -116,7 +116,7 @@ export default function DevelopersPage() {
           <li><code>nexus.JSON / Decode / Error / DBError</code> — вэб туслахууд</li>
         </ul>
 
-        <h3>5. Цэс</h3>
+        <h3>{t("5. Цэс")}</h3>
         <Code>
           <div><span className="k">func</span> (m *Module) Menus() []nexus.MenuDefinition {"{"}</div>
           <div>&nbsp;&nbsp;<span className="k">return</span> []nexus.MenuDefinition{"{{"}</div>
@@ -126,7 +126,7 @@ export default function DevelopersPage() {
           <div>{"}"}</div>
         </Code>
 
-        <h3>6. Бүртгэх ба асаах</h3>
+        <h3>{t("6. Бүртгэх ба асаах")}</h3>
         <Code>
           <div><span className="c">// backend/apps/apps.go — нэг мөр:</span></div>
           <div>nexus.Register(&lt;нэр&gt;.New())</div>
@@ -134,14 +134,14 @@ export default function DevelopersPage() {
           <div><span className="c">$</span> make migrate &amp;&amp; make api  <span className="c"># модуль store-д гарч ирнэ</span></div>
         </Code>
 
-        <h3>7. Store-д нийтлэх</h3>
+        <h3>{t("7. Store-д нийтлэх")}</h3>
         <p style={{ color: "var(--text-2)" }}>
           <code>catalog/apps.json</code>-д бүртгэлээ нэмээд PR илгээнэ. Үе 2-т төв
           registry + <code>nexus-mini add</code> CLI ирэхэд <code>go_module</code> замаар
           тань шууд татдаг болно.
         </p>
 
-        <h2 style={{ marginTop: "2rem" }}><BookOpen size={19} style={{ verticalAlign: "-3px" }} /> Тест</h2>
+        <h2 style={{ marginTop: "2rem" }}><BookOpen size={19} style={{ verticalAlign: "-3px" }} /> {t("Тест")}</h2>
         <p style={{ color: "var(--text-2)" }}>
           SQL parse/encode бүх логикт unit тест бич. <code>make check</code> нь linux
           cross-build + vet + test + SDK-ийн хилийн шалгалт (модуль <code>internal/*</code>
@@ -151,13 +151,13 @@ export default function DevelopersPage() {
         <div className="card card__pad" style={{ marginTop: "2rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <span className="stat__icon"><GitPullRequest size={19} /></span>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <b>Бэлэн үү?</b>
+            <b>{t("Бэлэн үү?")}</b>
             <div style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
-              devices-ийг хуулж эхлээд, дуусаад каталогт PR илгээгээрэй.
+              {t("devices-ийг хуулж эхлээд, дуусаад каталогт PR илгээгээрэй.")}
             </div>
           </div>
-          <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/03-module-guide.md" className="btn btn--ghost">Markdown хувилбар</a>
-          <Link href="/apps" className="btn">Апп дэлгүүр үзэх</Link>
+          <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/03-module-guide.md" className="btn btn--ghost">{t("Markdown хувилбар")}</a>
+          <Link href="/apps" className="btn">{t("Апп дэлгүүр үзэх")}</Link>
         </div>
       </section>
 

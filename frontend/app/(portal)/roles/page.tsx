@@ -4,9 +4,11 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { KeyRound, Plus } from "lucide-react";
 import { api, ApiError, type Permission, type Role } from "@/lib/api";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n";
 
 // Role × permission матриц: нүд бүр — / all / own гэсэн 3 төлөвт шилжинэ.
 export default function RolesPage() {
+  const { t } = useT();
   const [roles, setRoles] = useState<Role[]>([]);
   const [perms, setPerms] = useState<Permission[]>([]);
   const [err, setErr] = useState("");
@@ -27,7 +29,7 @@ export default function RolesPage() {
     const g = new Map<string, Permission[]>();
     for (const p of perms) {
       // Модулийн ID урт тул permission кодын prefix-ээр нэрлэнэ.
-      const key = p.module_id === "core" ? "Платформ" : p.code.split(".")[0];
+      const key = p.module_id === "core" ? "core" : p.code.split(".")[0];
       if (!g.has(key)) g.set(key, []);
       g.get(key)!.push(p);
     }
@@ -46,10 +48,10 @@ export default function RolesPage() {
     else delete grants[p.code];
     try {
       await api.put(`/api/roles/${role.id}/grants`, { grants });
-      toast("Оноолт хадгалагдлаа");
+      toast(t("Оноолт хадгалагдлаа"));
       await load();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
     }
   };
 
@@ -63,10 +65,10 @@ export default function RolesPage() {
       });
       setCreating(false);
       setForm({ code: "", name: "", implies: "" });
-      toast("Role үүслээ");
+      toast(t("Role үүслээ"));
       await load();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
     }
   };
 
@@ -74,14 +76,14 @@ export default function RolesPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Эрхийн тохиргоо</h1>
+          <h1>{t("Эрхийн тохиргоо")}</h1>
           <div className="sub">
-            Нүд дарж — → бүгд → өөрийн гэж эргэлдэнэ. Role нь implies-ээрээ доод role-ийн эрхийг өвлөнө.
+            {t("Нүд дарж — → бүгд → өөрийн гэж эргэлдэнэ. Role нь implies-ээрээ доод role-ийн эрхийг өвлөнө.")}
           </div>
         </div>
         <div className="spacer" />
         <button className="btn" onClick={() => { setErr(""); setCreating(true); }}>
-          <Plus size={16} /> Role нэмэх
+          <Plus size={16} /> {t("Role нэмэх")}
         </button>
       </div>
       {err && <div className="alert alert--danger">{err}</div>}
@@ -110,7 +112,7 @@ export default function RolesPage() {
                 <tr>
                   <td colSpan={roles.length + 1}
                     style={{ background: "var(--bg)", fontWeight: 700, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-2)" }}>
-                    {group}
+                    {group === "core" ? t("Платформ") : group}
                   </td>
                 </tr>
                 {list.map((p) => (
@@ -129,9 +131,9 @@ export default function RolesPage() {
                             className={`um__pill${v ? " is-on" : ""}`}
                             style={{ minWidth: "4.2rem", justifyContent: "center", opacity: r.code === "admin" ? 0.6 : 1 }}
                             disabled={r.code === "admin"}
-                            title={r.code === "admin" ? "Админ үргэлж бүх эрхтэй" : ""}
+                            title={r.code === "admin" ? t("Админ үргэлж бүх эрхтэй") : ""}
                             onClick={() => cycle(r, p)}>
-                            {v === "all" ? "Бүгд" : v === "own" ? "Өөрийн" : "—"}
+                            {v === "all" ? t("Бүгд") : v === "own" ? t("Өөрийн") : "—"}
                           </button>
                         </td>
                       );
@@ -147,37 +149,37 @@ export default function RolesPage() {
       {creating && (
         <div className="modal-back" onClick={() => setCreating(false)} onKeyDown={(e) => e.key === "Escape" && setCreating(false)}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>Role нэмэх</h3>
+            <h3>{t("Role нэмэх")}</h3>
             <div className="field">
-              <label>Код</label>
+              <label>{t("Код")}</label>
               <input value={form.code} autoFocus placeholder="warehouse_staff"
                 onChange={(e) => setForm({ ...form, code: e.target.value })} />
-              <div className="hint">Жижиг үсэг, тоо, _</div>
+              <div className="hint">{t("Жижиг үсэг, тоо, _")}</div>
             </div>
             <div className="field">
-              <label>Нэр</label>
+              <label>{t("Нэр")}</label>
               <input value={form.name} placeholder="Агуулахын ажилтан"
                 onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="field">
-              <label>Өвлөх role (сонголттой)</label>
+              <label>{t("Өвлөх role (сонголттой)")}</label>
               <select value={form.implies}
                 onChange={(e) => setForm({ ...form, implies: e.target.value })}>
-                <option value="">— өвлөхгүй —</option>
+                <option value="">{t("— өвлөхгүй —")}</option>
                 {roles.map((r) => (
                   <option key={r.id} value={r.code}>{r.name} ({r.code})</option>
                 ))}
               </select>
             </div>
             <div className="modal__actions">
-              <button className="btn btn--ghost" onClick={() => setCreating(false)}>Болих</button>
-              <button className="btn" onClick={create}>Үүсгэх</button>
+              <button className="btn btn--ghost" onClick={() => setCreating(false)}>{t("Болих")}</button>
+              <button className="btn" onClick={create}>{t("Үүсгэх")}</button>
             </div>
           </div>
         </div>
       )}
       <p style={{ color: "var(--text-3)", fontSize: "0.82rem", marginTop: "0.8rem", display: "flex", gap: "0.4rem", alignItems: "center" }}>
-        <KeyRound size={14} /> «Өөрийн» = зөвхөн өөрийн үүсгэсэн бүртгэл дээр үйлдэл хийнэ (модуль нь дэмждэг бол)
+        <KeyRound size={14} /> {t("«Өөрийн» = зөвхөн өөрийн үүсгэсэн бүртгэл дээр үйлдэл хийнэ (модуль нь дэмждэг бол)")}
       </p>
     </>
   );

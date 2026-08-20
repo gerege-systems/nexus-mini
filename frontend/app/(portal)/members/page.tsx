@@ -5,9 +5,11 @@ import { Plus, Trash2, Users } from "lucide-react";
 import { api, ApiError, type Member, type Role } from "@/lib/api";
 import { useShell } from "@/components/shell";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n";
 
 export default function MembersPage() {
   const { me } = useShell();
+  const { t } = useT();
   const [members, setMembers] = useState<Member[] | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [adding, setAdding] = useState(false);
@@ -34,10 +36,10 @@ export default function MembersPage() {
       await api.post("/api/members", form);
       setAdding(false);
       setForm({ email: "", name: "", password: "", roles: ["user"] });
-      toast("Гишүүн нэмэгдлээ");
+      toast(t("Гишүүн нэмэгдлээ"));
       await load();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
     }
   };
 
@@ -45,20 +47,20 @@ export default function MembersPage() {
     const next = on ? [...m.roles, code] : m.roles.filter((r) => r !== code);
     try {
       await api.put(`/api/members/${m.membership_id}/roles`, { roles: next });
-      toast("Role шинэчлэгдлээ");
+      toast(t("Role шинэчлэгдлээ"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Алдаа гарлаа", "err");
+      toast(e instanceof ApiError ? e.message : t("Алдаа гарлаа"), "err");
     }
     await load();
   };
 
   const remove = async (m: Member) => {
-    if (!confirm(`${m.name}-г байгууллагаас хасах уу?`)) return;
+    if (!confirm(`${m.name} ${t("хасах уу?")}`)) return;
     try {
       await api.del(`/api/members/${m.membership_id}`);
-      toast("Гишүүн хасагдлаа");
+      toast(t("Гишүүн хасагдлаа"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Алдаа гарлаа", "err");
+      toast(e instanceof ApiError ? e.message : t("Алдаа гарлаа"), "err");
     }
     await load();
   };
@@ -67,12 +69,12 @@ export default function MembersPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Гишүүд</h1>
-          <div className="sub">Байгууллагын гишүүд ба role оноолт</div>
+          <h1>{t("Гишүүд")}</h1>
+          <div className="sub">{t("Байгууллагын гишүүд ба role оноолт")}</div>
         </div>
         <div className="spacer" />
         <button className="btn" onClick={() => { setErr(""); setAdding(true); }}>
-          <Plus size={16} /> Гишүүн нэмэх
+          <Plus size={16} /> {t("Гишүүн нэмэх")}
         </button>
       </div>
 
@@ -80,12 +82,12 @@ export default function MembersPage() {
         {members && members.length === 0 ? (
           <div className="empty">
             <Users size={36} strokeWidth={1.4} />
-            <b>Гишүүн алга</b>
+            <b>{t("Гишүүн алга")}</b>
           </div>
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Нэр</th><th>Имэйл</th><th>Role</th><th></th></tr>
+              <tr><th>{t("Нэр")}</th><th>{t("Имэйл")}</th><th>Role</th><th></th></tr>
             </thead>
             <tbody>
               {members?.map((m) => (
@@ -101,7 +103,7 @@ export default function MembersPage() {
                           <button key={code}
                             className={`um__pill${on ? " is-on" : ""}`}
                             disabled={self}
-                            title={self ? "Өөрийн role-г эндээс өөрчлөхгүй" : ""}
+                            title={self ? t("Өөрийн role-г эндээс өөрчлөхгүй") : ""}
                             onClick={() => setMemberRoles(m, code, !on)}>
                             {code}
                           </button>
@@ -111,7 +113,7 @@ export default function MembersPage() {
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {m.user_id !== me.user.id && (
-                      <button className="btn btn--ghost btn--sm" aria-label={`${m.name} хасах`}
+                      <button className="btn btn--ghost btn--sm" aria-label={`${m.name} ${t("хасах уу?")}`}
                         onClick={() => remove(m)}>
                         <Trash2 size={13} />
                       </button>
@@ -127,20 +129,20 @@ export default function MembersPage() {
       {adding && (
         <div className="modal-back" onClick={() => setAdding(false)} onKeyDown={(e) => e.key === "Escape" && setAdding(false)}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>Гишүүн нэмэх</h3>
+            <h3>{t("Гишүүн нэмэх")}</h3>
             {err && <div className="alert alert--danger">{err}</div>}
             <div className="field">
-              <label>Имэйл</label>
+              <label>{t("Имэйл")}</label>
               <input value={form.email} autoFocus
                 onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <div className="hint">Бүртгэлтэй имэйл бол шууд нэгдэнэ, нэр/нууц үг хэрэггүй</div>
+              <div className="hint">{t("Бүртгэлтэй имэйл бол шууд нэгдэнэ, нэр/нууц үг хэрэггүй")}</div>
             </div>
             <div className="field">
-              <label>Нэр (шинэ хэрэглэгчид)</label>
+              <label>{t("Нэр (шинэ хэрэглэгчид)")}</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="field">
-              <label>Түр нууц үг (шинэ хэрэглэгчид, 8+)</label>
+              <label>{t("Түр нууц үг (шинэ хэрэглэгчид, 8+)")}</label>
               <input type="password" value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
@@ -164,8 +166,8 @@ export default function MembersPage() {
               </span>
             </div>
             <div className="modal__actions">
-              <button className="btn btn--ghost" onClick={() => setAdding(false)}>Болих</button>
-              <button className="btn" onClick={add}>Нэмэх</button>
+              <button className="btn btn--ghost" onClick={() => setAdding(false)}>{t("Болих")}</button>
+              <button className="btn" onClick={add}>{t("Нэмэх")}</button>
             </div>
           </div>
         </div>

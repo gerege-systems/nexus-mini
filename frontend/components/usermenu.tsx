@@ -14,12 +14,14 @@ import {
 } from "lucide-react";
 import { api, type Me } from "@/lib/api";
 import { useThemeMode } from "@/lib/theme";
+import { locales, setLocale, useT } from "@/lib/i18n";
 
 export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [theme, setTheme] = useThemeMode();
+  const { t, locale } = useT();
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -62,7 +64,7 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
             <span>{me.user.email}</span>
           </div>
 
-          <div className="um__sect">Байгууллага</div>
+          <div className="um__sect">{t("Байгууллага")}</div>
           {me.tenants.map((t) => (
             <button key={t.id} className={`um__item${t.id === me.tenant_id ? " is-on" : ""}`}
               onClick={() => selectTenant(t.id)}>
@@ -73,12 +75,21 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
           ))}
           <button className="um__item" onClick={() => { setOpen(false); router.push("/org/new"); }}>
             <Plus size={16} />
-            Байгууллага нэмэх
+            {t("Байгууллага нэмэх")}
           </button>
 
-          <div className="um__sect">Тохиргоо</div>
+          <div className="um__sect">{t("Тохиргоо")}</div>
           <div className="um__prefrow">
-            <span>Загвар</span>
+            <span>{t("Хэл")}</span>
+            <div className="um__pills">
+              {locales.map((l) => (
+                <button key={l.code} className={`um__pill${locale === l.code ? " is-on" : ""}`}
+                  onClick={() => setLocale(l.code)}>{l.label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="um__prefrow">
+            <span>{t("Загвар")}</span>
             <div className="um__pills">
               <button className={`um__pill${theme === "light" ? " is-on" : ""}`}
                 onClick={() => setTheme("light")} title="Цайвар"><Sun size={14} /></button>
@@ -91,7 +102,7 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
 
           <button className="um__item um__logout" onClick={logout}>
             <LogOut size={16} />
-            Гарах
+            {t("Гарах")}
           </button>
         </div>
       )}

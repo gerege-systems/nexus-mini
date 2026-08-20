@@ -4,9 +4,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { locales, setLocale, useT } from "@/lib/i18n";
 
 export function MktHeader() {
   const pathname = usePathname();
+  const { t, locale } = useT();
   const on = (p: string) =>
     (p === "/" ? pathname === "/" : pathname.startsWith(p))
       ? { color: "var(--text)", fontWeight: 600 as const }
@@ -19,16 +21,22 @@ export function MktHeader() {
         <b>nexus-mini</b>
       </Link>
       <nav>
-        <Link href="/" style={on("/")}>Нүүр</Link>
-        <Link href="/apps" style={on("/apps")}>Апп дэлгүүр</Link>
-        <Link href="/developers" style={on("/developers")}>Модуль хөгжүүлэх</Link>
+        <Link href="/" style={on("/")}>{t("Нүүр")}</Link>
+        <Link href="/apps" style={on("/apps")}>{t("Апп дэлгүүр")}</Link>
+        <Link href="/developers" style={on("/developers")}>{t("Модуль хөгжүүлэх")}</Link>
       </nav>
       <span className="spacer" />
+      <span className="um__pills">
+        {locales.map((l) => (
+          <button key={l.code} className={`um__pill${locale === l.code ? " is-on" : ""}`}
+            onClick={() => setLocale(l.code)}>{l.label}</button>
+        ))}
+      </span>
       <a href="https://github.com/gerege-systems/nexus-mini" className="btn btn--ghost btn--sm">
         GitHub
       </a>
-      <Link href="/login" className="btn btn--ghost btn--sm">Нэвтрэх</Link>
-      <Link href="/signup" className="btn btn--sm">Бүртгүүлэх</Link>
+      <Link href="/login" className="btn btn--ghost btn--sm">{t("Нэвтрэх")}</Link>
+      <Link href="/signup" className="btn btn--sm">{t("Бүртгүүлэх")}</Link>
       </div>
     </header>
   );

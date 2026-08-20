@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useShell } from "@/components/shell";
 import { Icon } from "@/components/icons";
 import { ArrowRight, CheckCircle2, Circle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export default function Dashboard() {
   const { me, menu } = useShell();
+  const { t } = useT();
   const tenant = me.tenants.find((t) => t.id === me.tenant_id);
   const hasApps = menu.length > 0;
   const canApps = !!me.permissions["core.apps.manage"];
@@ -15,22 +17,22 @@ export default function Dashboard() {
   const steps = [
     {
       done: hasApps,
-      title: "Апп дэлгүүрээс модуль суулгах",
-      desc: "Байгууллагад тань хэрэгтэй модулиудыг сонгож суулгана",
+      title: t("Апп дэлгүүрээс модуль суулгах"),
+      desc: t("Байгууллагад тань хэрэгтэй модулиудыг сонгож суулгана"),
       href: "/store",
       show: canApps,
     },
     {
       done: false,
-      title: "Гишүүдээ урих",
-      desc: "Ажилтнуудаа нэмээд role оноогоорой",
+      title: t("Гишүүдээ урих"),
+      desc: t("Ажилтнуудаа нэмээд role оноогоорой"),
       href: "/members",
       show: canMembers,
     },
     {
       done: false,
-      title: "Эрхийн тохиргоо",
-      desc: "Role бүрийн permission-ийг өөрийн бүтцэд тааруулна",
+      title: t("Эрхийн тохиргоо"),
+      desc: t("Role бүрийн permission-ийг өөрийн бүтцэд тааруулна"),
       href: "/roles",
       show: !!me.permissions["core.roles.manage"],
     },
@@ -41,13 +43,13 @@ export default function Dashboard() {
       <div className="page-head">
         <div>
           <h1>{tenant?.name}</h1>
-          <div className="sub">Сайн байна уу, {me.user.name}</div>
+          <div className="sub">{t("Сайн байна уу,")} {me.user.name}</div>
         </div>
       </div>
 
       {!hasApps && steps.length > 0 && (
         <div className="card card__pad" style={{ marginBottom: "1rem" }}>
-          <b style={{ display: "block", marginBottom: "0.8rem" }}>Эхлэхэд туслах</b>
+          <b style={{ display: "block", marginBottom: "0.8rem" }}>{t("Эхлэхэд туслах")}</b>
           {steps.map((s) => (
             <Link key={s.title} href={s.href}
               style={{ display: "flex", gap: "0.7rem", alignItems: "center", padding: "0.55rem 0" }}>
@@ -73,21 +75,21 @@ export default function Dashboard() {
           <span className="stat__icon"><Icon name="store" /></span>
           <span>
             <b>{menu.length}</b>
-            <span>Идэвхтэй апп</span>
+            <span>{t("Идэвхтэй апп")}</span>
           </span>
         </div>
         <div className="card stat">
           <span className="stat__icon"><Icon name="key" /></span>
           <span>
             <b>{Object.keys(me.permissions).length}</b>
-            <span>Таны эрх</span>
+            <span>{t("Таны эрх")}</span>
           </span>
         </div>
         <div className="card stat">
           <span className="stat__icon"><Icon name="building" /></span>
           <span>
             <b>{me.tenants.length}</b>
-            <span>Байгууллага</span>
+            <span>{t("Байгууллага")}</span>
           </span>
         </div>
       </div>
@@ -95,7 +97,7 @@ export default function Dashboard() {
       {hasApps && (
         <div className="card" style={{ marginTop: "1rem" }}>
           <div className="card__pad" style={{ borderBottom: "1px solid var(--border)" }}>
-            <b>Суусан аппууд</b>
+            <b>{t("Суусан аппууд")}</b>
           </div>
           {menu.map((m) => (
             <Link key={m.app_id} href={m.items[0]?.path || "#"}
