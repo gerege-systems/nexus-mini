@@ -407,3 +407,17 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   outline-offset: 2px;
 }
 .field input:focus, .field select:focus { outline: none; } /* өөрийн ring-тэй */
+
+/* ─── Landing header-ийн icon товчнууд ─── */
+.mkt-iconbtn {
+  width: 2.2rem; height: 2.2rem; display: flex; align-items: center;
+  justify-content: center; border-radius: 8px; border: none;
+  background: none; color: var(--text-2);
+}
+.mkt-iconbtn:hover { background: var(--accent-soft); color: var(--text); }
+.mkt-menu {
+  position: absolute; right: 0; top: calc(100% + 0.4rem); min-width: 110px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-s); box-shadow: var(--shadow-lg);
+  overflow: hidden; z-index: 60;
+}
