@@ -86,13 +86,13 @@ export default function RolesPage() {
       </div>
       {err && <div className="alert alert--danger">{err}</div>}
 
-      <div className="card" style={{ overflowX: "auto", width: "fit-content", maxWidth: "100%" }}>
+      <div className="card" style={{ overflowX: "auto" }}>
         <table className="table" style={{ minWidth: 560 }}>
           <thead>
             <tr>
-              <th style={{ minWidth: 300 }}>Permission</th>
+              <th>Permission</th>
               {roles.map((r) => (
-                <th key={r.id} style={{ textAlign: "center", width: 150, minWidth: 130 }}>
+                <th key={r.id} style={{ textAlign: "center", width: 170, minWidth: 150, borderLeft: "1px solid var(--border)" }}>
                   {r.name}
                   <div style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
                     <code style={{ fontSize: "0.75rem" }}>{r.code}</code>
@@ -124,7 +124,7 @@ export default function RolesPage() {
                     {roles.map((r) => {
                       const v = r.code === "admin" ? "all" : r.grants[p.code];
                       return (
-                        <td key={r.id} style={{ textAlign: "center" }}>
+                        <td key={r.id} style={{ textAlign: "center", borderLeft: "1px solid var(--border)" }}>
                           <button
                             className={`um__pill${v ? " is-on" : ""}`}
                             style={{ minWidth: "4.2rem", justifyContent: "center", opacity: r.code === "admin" ? 0.6 : 1 }}
