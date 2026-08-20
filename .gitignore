@@ -6,3 +6,5 @@ dist/
 !.env.example
 .DS_Store
 backend/bin/
+frontend/node_modules/
+frontend/.next/

@@ -1,0 +1,51 @@
+# nexus-mini — татаад `docker compose up -d` хийхэд бүгд асна:
+# Postgres (role-ууд автоматаар) → миграц → API → вэб.
+# Дараа нь http://localhost:3020 — setup wizard угтана.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./deploy/docker-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ./backend
+    command: /migrate
+    environment:
+      DATABASE_URL_OWNER: postgres://nexus_owner:nexus-dev@db:5432/nexus_mini
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://nexus_app:nexus-dev@db:5432/nexus_mini
+      DATABASE_URL_ADMIN: postgres://nexus_admin:nexus-dev@db:5432/nexus_mini
+      CATALOG_PATH: /catalog/apps.json
+      PORT: "8084"
+    volumes:
+      - ./catalog:/catalog:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build: ./frontend
+    environment:
+      API_URL: http://api:8084
+    ports:
+      - "3020:3020"
+    depends_on:
+      - api
+
+volumes:
+  dbdata:
