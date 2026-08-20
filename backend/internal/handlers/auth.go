@@ -202,6 +202,9 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/logout
 func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
+	if p, ok := h.Svc.Resolve(r.Context(), r); ok && p.TenantID != "" {
+		h.Audit.RecordAs(r.Context(), p.TenantID, p.UserID, "auth.logout", p.Email, nil)
+	}
 	h.Svc.EndSession(r.Context(), w, r)
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
@@ -281,6 +284,10 @@ func (h *Auth) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		httpx.Error(w, http.StatusForbidden, "энэ байгууллагын гишүүн биш")
 		return
+	}
+	if in.TenantID != "" && in.TenantID != p.TenantID {
+		// Байгууллагад нэвтэрсэн үйлдлийг тухайн байгууллагын гинжид бичнэ.
+		h.Audit.RecordAs(r.Context(), in.TenantID, p.UserID, "auth.login", p.Email, nil)
 	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

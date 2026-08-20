@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { KeyRound, Plus } from "lucide-react";
 import { api, ApiError, type Permission, type Role } from "@/lib/api";
 import { toast } from "@/lib/toast";
@@ -106,8 +106,8 @@ export default function RolesPage() {
           </thead>
           <tbody>
             {groups.map(([group, list]) => (
-              <>
-                <tr key={group}>
+              <Fragment key={group}>
+                <tr>
                   <td colSpan={roles.length + 1}
                     style={{ background: "var(--bg)", fontWeight: 700, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-2)" }}>
                     {group}
@@ -138,15 +138,15 @@ export default function RolesPage() {
                     })}
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
 
       {creating && (
-        <div className="modal-back" onClick={() => setCreating(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-back" onClick={() => setCreating(false)} onKeyDown={(e) => e.key === "Escape" && setCreating(false)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3>Role нэмэх</h3>
             <div className="field">
               <label>Код</label>

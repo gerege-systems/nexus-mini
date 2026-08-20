@@ -111,7 +111,8 @@ export default function MembersPage() {
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {m.user_id !== me.user.id && (
-                      <button className="btn btn--ghost btn--sm" onClick={() => remove(m)}>
+                      <button className="btn btn--ghost btn--sm" aria-label={`${m.name} хасах`}
+                        onClick={() => remove(m)}>
                         <Trash2 size={13} />
                       </button>
                     )}
@@ -124,8 +125,8 @@ export default function MembersPage() {
       </div>
 
       {adding && (
-        <div className="modal-back" onClick={() => setAdding(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-back" onClick={() => setAdding(false)} onKeyDown={(e) => e.key === "Escape" && setAdding(false)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3>Гишүүн нэмэх</h3>
             {err && <div className="alert alert--danger">{err}</div>}
             <div className="field">

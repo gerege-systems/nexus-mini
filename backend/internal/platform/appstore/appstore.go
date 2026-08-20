@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -185,7 +186,39 @@ func (i *Installer) Install(ctx context.Context, appID string) error {
 		return ErrNotFound
 	}
 
-	// Хамаарлын дараалал: DFS, мөчлөг илэрвэл алдаа.
+	order, err := ResolveOrder(mods, target)
+	if err != nil {
+		return err
+	}
+
+	tenantID := nexus.TenantID(ctx)
+	err = i.db.Tx(ctx, func(tx pgx.Tx) error {
+		for _, m := range order {
+			_, err := tx.Exec(ctx, `
+				INSERT INTO app_installations (tenant_id, app_id, version, status)
+				VALUES ($1::uuid, $2::varchar(128), $3::varchar(32), 'enabled')
+				ON CONFLICT (tenant_id, app_id)
+				DO UPDATE SET status = 'enabled', version = excluded.version`,
+				tenantID, m.ID(), m.Version())
+			if err != nil {
+				return fmt.Errorf("install %s: %w", m.ID(), err)
+			}
+			if err := rbac.GrantOnInstall(ctx, tx, tenantID, m.Permissions()); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	i.perms.Invalidate(tenantID)
+	return nil
+}
+
+// ResolveOrder — суулгах дарааллыг DFS-ээр гаргана: хамаарлууд эхэлж,
+// мөчлөг/дутуу хамаарал илэрвэл алдаа. Цэвэр функц — unit тесттэй.
+func ResolveOrder(mods map[string]nexus.Module, target nexus.Module) ([]nexus.Module, error) {
 	var order []nexus.Module
 	state := map[string]int{} // 0 үзээгүй, 1 явж байна, 2 дууссан
 	var visit func(m nexus.Module) error
@@ -211,32 +244,9 @@ func (i *Installer) Install(ctx context.Context, appID string) error {
 		return nil
 	}
 	if err := visit(target); err != nil {
-		return err
+		return nil, err
 	}
-
-	tenantID := nexus.TenantID(ctx)
-	err := i.db.Tx(ctx, func(tx pgx.Tx) error {
-		for _, m := range order {
-			_, err := tx.Exec(ctx, `
-				INSERT INTO app_installations (tenant_id, app_id, version, status)
-				VALUES ($1::uuid, $2::varchar(128), $3::varchar(32), 'enabled')
-				ON CONFLICT (tenant_id, app_id)
-				DO UPDATE SET status = 'enabled', version = excluded.version`,
-				tenantID, m.ID(), m.Version())
-			if err != nil {
-				return fmt.Errorf("install %s: %w", m.ID(), err)
-			}
-			if err := rbac.GrantOnInstall(ctx, tx, tenantID, m.Permissions()); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	i.perms.Invalidate(tenantID)
-	return nil
+	return order, nil
 }
 
 // SetStatus — enable/disable.
@@ -288,6 +298,9 @@ func (g *Gate) enabled(ctx context.Context, tenantID, appID string) (bool, error
 		return false, err
 	}
 	g.mu.Lock()
+	if len(g.cache) >= 10000 {
+		g.cache = make(map[string]gateEntry)
+	}
 	g.cache[key] = gateEntry{enabled: ok, at: time.Now()}
 	g.mu.Unlock()
 	return ok, nil
@@ -298,7 +311,7 @@ func (g *Gate) Invalidate(tenantID string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for k := range g.cache {
-		if len(k) > len(tenantID) && k[:len(tenantID)] == tenantID {
+		if strings.HasPrefix(k, tenantID+":") {
 			delete(g.cache, k)
 		}
 	}

@@ -8,9 +8,13 @@ WorkingDirectory=/srv/nexus-mini/admin
 Environment=NODE_ENV=production
 Environment=API_URL=http://127.0.0.1:8084
 ExecStart=/srv/nexus-mini/admin/node_modules/.bin/next start -p 3021
-Restart=on-failure
+Restart=always
 RestartSec=3
 NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/nexus-mini/admin/.next
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

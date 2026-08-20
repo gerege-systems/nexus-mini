@@ -119,11 +119,12 @@ export default function DevicesPage() {
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     {canEdit(d) && (
                       <>
-                        <button className="btn btn--ghost btn--sm"
+                        <button className="btn btn--ghost btn--sm" aria-label={`${d.name} засах`}
                           onClick={() => { setErr(""); setForm({ id: d.id, name: d.name, kind: d.kind, serial: d.serial, status: d.status, note: d.note }); }}>
                           <Pencil size={13} />
                         </button>{" "}
-                        <button className="btn btn--ghost btn--sm" onClick={() => remove(d)}>
+                        <button className="btn btn--ghost btn--sm" aria-label={`${d.name} устгах`}
+                          onClick={() => remove(d)}>
                           <Trash2 size={13} />
                         </button>
                       </>
@@ -137,8 +138,8 @@ export default function DevicesPage() {
       </div>
 
       {form && (
-        <div className="modal-back" onClick={() => setForm(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-back" onClick={() => setForm(null)} onKeyDown={(e) => e.key === "Escape" && setForm(null)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3>{form.id ? "Төхөөрөмж засах" : "Төхөөрөмж бүртгэх"}</h3>
             {err && <div className="alert alert--danger">{err}</div>}
             <div className="field">

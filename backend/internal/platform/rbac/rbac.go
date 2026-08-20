@@ -7,6 +7,7 @@ package rbac
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +39,7 @@ func (s *Store) Invalidate(tenantID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for k := range s.cache {
-		if len(k) > len(tenantID) && k[:len(tenantID)] == tenantID {
+		if strings.HasPrefix(k, tenantID+":") {
 			delete(s.cache, k)
 		}
 	}
@@ -102,6 +103,11 @@ func (s *Store) UserGrants(ctx context.Context, tenantID, userID string) (map[st
 	}
 
 	s.mu.Lock()
+	if len(s.cache) >= 10000 {
+		// Хязгааргүй өсөхөөс сэргийлсэн бүдүүлэг тааз — TTL богино тул
+		// бүхэлд нь хаясан ч дараагийн хүсэлтүүд сэргээнэ.
+		s.cache = make(map[string]cacheEntry)
+	}
 	s.cache[key] = cacheEntry{grants: grants, at: time.Now()}
 	s.mu.Unlock()
 	return clone(grants), nil

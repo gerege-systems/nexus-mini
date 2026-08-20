@@ -115,6 +115,11 @@ func Register(m Module) {
 	if !shortIDRe.MatchString(m.ShortID()) {
 		panic(fmt.Sprintf("nexus: модулийн ShortID %q буруу форматтай", m.ShortID()))
 	}
+	// Платформын нөөцөлсөн нэрс — permission prefix/URL зам булаахгүй.
+	switch m.ShortID() {
+	case "core", "api", "admin", "platform", "store":
+		panic(fmt.Sprintf("nexus: ShortID %q нь платформын нөөцөлсөн нэр", m.ShortID()))
+	}
 	for _, r := range registry {
 		if r.ID() == m.ID() || r.ShortID() == m.ShortID() {
 			panic(fmt.Sprintf("nexus: %q модуль давхардаж бүртгэгдэв", m.ID()))

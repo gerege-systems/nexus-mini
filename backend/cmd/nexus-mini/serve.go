@@ -50,7 +50,7 @@ func cmdServe(_ []string) error {
 	_ = pools.Admin.QueryRow(context.Background(),
 		`SELECT EXISTS (SELECT 1 FROM users WHERE platform_admin)`).Scan(&hasAdmin)
 	if !hasAdmin {
-		log.Println("АНХААР: платформын админ алга — `nexus-mini admin` коммандаар үүсгэ")
+		log.Println("АНХААР: платформын админ алга — env-д ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD өгөөд `nexus-mini migrate` ажиллуул")
 	}
 
 	tdb := db.NewTenantDB(pools.App)
@@ -156,6 +156,28 @@ func cmdServe(_ []string) error {
 		WriteTimeout:      35 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
+
+	// Хугацаа дууссан session-уудыг цагийн зайцаар цэвэрлэнэ.
+	purgeStop := make(chan struct{})
+	defer close(purgeStop)
+	go func() {
+		t := time.NewTicker(time.Hour)
+		defer t.Stop()
+		for {
+			select {
+			case <-purgeStop:
+				return
+			case <-t.C:
+				var n int
+				if err := pools.App.QueryRow(context.Background(),
+					`SELECT auth_sessions_purge()`).Scan(&n); err != nil {
+					log.Printf("session purge: %v", err)
+				} else if n > 0 {
+					log.Printf("session purge: %d устгав", n)
+				}
+			}
+		}
+	}()
 
 	// Graceful shutdown: SIGTERM/SIGINT дээр идэвхтэй хүсэлтүүдээ дуусгаад
 	// унтарна — ингэснээр defer pools.Close() ч бодитоор ажиллана.

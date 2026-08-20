@@ -396,3 +396,10 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── A11y: keyboard focus ил байх ─── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.field input:focus, .field select:focus { outline: none; } /* өөрийн ring-тэй */

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,7 +16,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var errLastAdmin = errors.New("last admin")
+var (
+	errLastAdmin   = errors.New("last admin")
+	errUnknownRole = errors.New("unknown role")
+)
+
+// assignRoles — гишүүнчлэлд role-уудыг оноож, үл мэдэх код байвал алдаа
+// (өмнө нь чимээгүй алгасаад 201 буцдаг байсан).
+func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, codes []string) error {
+	if _, err := tx.Exec(r.Context(),
+		`DELETE FROM membership_roles WHERE membership_id = $1::uuid`, membershipID); err != nil {
+		return err
+	}
+	for _, code := range codes {
+		tag, err := tx.Exec(r.Context(), `
+			INSERT INTO membership_roles (membership_id, role_id)
+			SELECT $1::uuid, r.id FROM roles r
+			 WHERE r.tenant_id = $2::uuid AND r.code = $3::varchar(64)`,
+			membershipID, tenantID, code)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("%w: %s", errUnknownRole, code)
+		}
+	}
+	return nil
+}
 
 // RBACH — role, гишүүдийн удирдлага. core.* permission-ууд платформынх
 // (модулийн prefix дүрэм модулиудад л үйлчилнэ).
@@ -299,21 +326,12 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 			 RETURNING id`, tenantID, userID).Scan(&memberID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(r.Context(),
-			`DELETE FROM membership_roles WHERE membership_id = $1::uuid`, memberID); err != nil {
-			return err
-		}
-		for _, code := range in.Roles {
-			if _, err := tx.Exec(r.Context(), `
-				INSERT INTO membership_roles (membership_id, role_id)
-				SELECT $1::uuid, r.id FROM roles r
-				 WHERE r.tenant_id = $2::uuid AND r.code = $3::varchar(64)`,
-				memberID, tenantID, code); err != nil {
-				return err
-			}
-		}
-		return nil
+		return assignRoles(r, tx, memberID, tenantID, in.Roles)
 	})
+	if errors.Is(err, errUnknownRole) {
+		httpx.Error(w, http.StatusBadRequest, "үл мэдэх role код байна")
+		return
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "member add failed")
 		return
@@ -343,18 +361,8 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return pgx.ErrNoRows
 		}
-		if _, err := tx.Exec(r.Context(),
-			`DELETE FROM membership_roles WHERE membership_id = $1::uuid`, membershipID); err != nil {
+		if err := assignRoles(r, tx, membershipID, tenantID, in.Roles); err != nil {
 			return err
-		}
-		for _, code := range in.Roles {
-			if _, err := tx.Exec(r.Context(), `
-				INSERT INTO membership_roles (membership_id, role_id)
-				SELECT $1::uuid, r.id FROM roles r
-				 WHERE r.tenant_id = $2::uuid AND r.code = $3::varchar(64)`,
-				membershipID, tenantID, code); err != nil {
-				return err
-			}
 		}
 		ok, err := tenantHasAdmin(r, tx, tenantID)
 		if err != nil {
@@ -367,6 +375,10 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 	})
 	if err == errLastAdmin {
 		httpx.Error(w, http.StatusConflict, "байгууллагад дор хаяж нэг админ үлдэх ёстой")
+		return
+	}
+	if errors.Is(err, errUnknownRole) {
+		httpx.Error(w, http.StatusBadRequest, "үл мэдэх role код байна")
 		return
 	}
 	if err == pgx.ErrNoRows {
