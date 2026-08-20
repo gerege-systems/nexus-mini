@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/db"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

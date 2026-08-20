@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/appstore"
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/audit"
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/appstore"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
 )

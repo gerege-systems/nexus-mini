@@ -2,7 +2,7 @@
 
 Модуль бол `pkg/nexus.Module` interface-ийг хэрэгжүүлсэн Go package.
 Хамгийн сайн заавар бол ажиллаж байгаа жишээ —
-[`internal/apps/devices`](../backend/internal/apps/devices/module.go)-ийг
+[`backend/apps/devices`](../backend/apps/devices/module.go)-ийг
 нээгээд зэрэгцүүлж уншаарай.
 
 ## Модуль юу хийдэг, платформ юу хийдэг вэ
@@ -19,7 +19,7 @@
 
 ### 1. Package үүсгэх
 
-`backend/internal/apps/<нэр>/module.go` (өөр репод бол өөрийн module path,
+`backend/apps/<нэр>/module.go` (өөр репод бол өөрийн module path,
 `pkg/nexus`-аас л хамаарна):
 
 ```go
@@ -111,7 +111,7 @@ func (m *Module) Menus() []nexus.MenuDefinition {
 
 ### 6. Бүртгэх
 
-`backend/internal/modules/modules.go`-д нэг мөр:
+`backend/apps/apps.go`-д нэг мөр:
 
 ```go
 nexus.Register(<нэр>.New())

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/modules"
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/envfile"
+	appsreg "github.com/gerege-systems/nexus-mini/backend/apps"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/envfile"
 )
 
 const usage = `nexus-mini — платформын командын хэрэгсэл
@@ -33,7 +33,7 @@ func main() {
 	cmd, args := os.Args[1], os.Args[2:]
 
 	// Модулиуд бүх коммандад хэрэгтэй (миграц, permission sync).
-	modules.RegisterAll()
+	appsreg.RegisterAll()
 
 	var err error
 	switch cmd {

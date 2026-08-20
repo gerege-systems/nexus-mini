@@ -50,11 +50,11 @@ Postgres (role-ууд автомат), миграц + админ, API, вэб б
 
 ```
 backend/
-  cmd/nexus-mini/    CLI: migrate · admin · serve
+  cmd/nexus-mini/    CLI: migrate · serve
   db/migrations/     цөмийн SQL миграцууд
   pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна
-  internal/platform/ цөм: tenant, auth, rbac, audit, appstore
-  internal/apps/     жишээ модулиуд (devices)
+  internal/core/     цөм: tenant, auth, rbac, audit, appstore, handlers
+  apps/              модулиуд (devices + таны модуль; apps.go-д бүртгэнэ)
 frontend/            Next.js — landing + portal
 admin/               Next.js — платформын админ (тусдаа апп, тусдаа домэйн)
 catalog/             локал каталог (registry-гүй үеийн fallback)

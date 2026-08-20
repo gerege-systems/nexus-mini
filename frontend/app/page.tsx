@@ -137,9 +137,9 @@ export default function Landing() {
         </div>
         <p style={{ color: "var(--text-2)", marginTop: "1rem" }}>
           Жишээ модуль{" "}
-          <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/internal/apps/devices"
+          <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/devices"
             style={{ color: "var(--accent)", fontWeight: 600 }}>
-            internal/apps/devices
+            backend/apps/devices
           </a>{" "}
           ← эндээс хуулж эхэл. Бүрэн гарын авлага:{" "}
           <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/03-module-guide.md"

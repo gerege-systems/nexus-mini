@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

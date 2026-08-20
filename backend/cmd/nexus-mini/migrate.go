@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/migrate"
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/password"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/migrate"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/password"
 	"github.com/jackc/pgx/v5"
 )
 

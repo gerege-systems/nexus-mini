@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/identity"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -13,7 +13,7 @@ import (
 // Integration тест — бодит Postgres шаардана (миграц хийгдсэн байх):
 //
 //	NEXUS_TEST_DATABASE_URL=postgres://nexus_app:...  \
-//	NEXUS_TEST_DATABASE_URL_OWNER=postgres://nexus_owner:...  go test ./internal/platform/db/
+//	NEXUS_TEST_DATABASE_URL_OWNER=postgres://nexus_owner:...  go test ./internal/core/db/
 func testEnv(t *testing.T) (appURL, ownerURL string) {
 	t.Helper()
 	appURL = os.Getenv("NEXUS_TEST_DATABASE_URL")

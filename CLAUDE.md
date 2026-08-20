@@ -7,10 +7,9 @@
 - `backend/cmd/nexus-mini/` — CLI, зөвхөн `migrate` + `serve` (setup/admin комманд байхгүй, санал болгохгүй)
 - `backend/db/migrations/` — цөмийн goose SQL; `backend/db/embed.go`-оор embed
 - `backend/pkg/nexus/` — модулийн SDK (Module interface, Register, Scope, DB/web туслахууд)
-- `backend/internal/platform/{auth,rbac,audit,appstore,identity,db,config,...}` — цөм
-- `backend/internal/handlers/` — HTTP handler-ууд тусдаа package (import cycle-ээс сэргийлэх)
-- `backend/internal/apps/devices/` — жишээ модуль (өөрийн migrations/ FS-тэй)
-- `backend/internal/modules/modules.go` — `RegisterAll()`: бинарид орох модулиудын жагсаалт, нэг мөр = нэг модуль
+- `backend/internal/core/{auth,rbac,audit,appstore,identity,db,config,handlers,...}` — цөм (handlers нь тусдаа subpackage — import cycle-ээс сэргийлэх)
+- `backend/apps/devices/` — жишээ модуль (өөрийн migrations/ FS-тэй); модулиуд internal БИШ — гадны репо импортолж болно
+- `backend/apps/apps.go` — `RegisterAll()`: бинарид орох модулиудын жагсаалт, нэг мөр = нэг модуль
 - `frontend/` — landing + tenant portal (:3020) · `admin/` — платформын админ, ТУСДАА апп (:3021) · API :8084
 - `catalog/apps.json` — локал app store каталог (registry-гүй үеийн fallback, `CATALOG_PATH`)
 - `deploy/` — `01-roles.sql` (DB role-ууд), `deploy.sh`, 3 systemd unit, `nginx-nexus-mini.conf`
@@ -19,7 +18,7 @@
 ## Коммандууд
 - `make migrate` — миграц + env-д ADMIN_* байгаа бөгөөд админ огт байхгүй бол анхны платформ админ үүсгэнэ
 - `make api` / `make web` — API :8084 / portal dev :3020; админ: `cd admin && pnpm dev` (:3021)
-- `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`internal/apps` → `internal/platform` импорт байвал унана)
+- `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`apps/` → `backend/internal/*` импорт байвал унана)
 - `make push` — check амжилттай бол л `git push`
 - Integration тестүүд (`db/rls_test.go`, `rbac/rbac_integration_test.go`) `NEXUS_TEST_DATABASE_URL` + `NEXUS_TEST_DATABASE_URL_OWNER` шаардана, байхгүй бол Skip
 - `docker compose up -d` — PG + migrate + api + web + admin (ADMIN_* env-ээр дамжуулна)
@@ -40,7 +39,7 @@
 - Нэвтрэлт/танилтын бүх хайлт (session, имэйл, audit prev_hash) RLS-ийн ӨМНӨ ажилладаг тул SECURITY DEFINER функцээр явна; SECURITY DEFINER функц бүр `SET search_path = pg_catalog, public`-тэй.
 - Мутаци бүр `Audit(...)` бичнэ + RBAC-д нөлөөлбөл `rbac.Invalidate` дуудна (кэш). Audit hash гинж DB дотор, append-only trigger-тэй.
 - Шинэ tenant үүсгэхдээ id-г урьдчилан гаргаж `app.tenant_id`-г ЭХЭЛЖ тохируулна — INSERT..RETURNING нь RLS SELECT бодлого шаарддаг (handlers/auth.go createTenant).
-- Миграц зөвхөн `nexus_owner`-оор; апп `nexus_app`/`nexus_admin`-аар. Модулийн миграц модулийн өөрийн FS-д (`internal/apps/<x>/migrations/`), цөмийнхөд нэмэхгүй.
+- Миграц зөвхөн `nexus_owner`-оор; апп `nexus_app`/`nexus_admin`-аар. Модулийн миграц модулийн өөрийн FS-д (`backend/apps/<x>/migrations/`), цөмийнхөд нэмэхгүй.
 - Вэб талд setup wizard байхгүй, landing төлөв шалгадаггүй; анхны админ зөвхөн env + `migrate`-ээс. Энэ чиглэлээр "сайжруулалт" санал болгохгүй.
 - UI chrome-ийг өөрөө зохиохгүй — open-gerege-nexus-ийн дизайн жишиг; админ teal accent.
 - Frontend-ийн `.next` gitignore-д — серверт build заавал (deploy.sh хийнэ).

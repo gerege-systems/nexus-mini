@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

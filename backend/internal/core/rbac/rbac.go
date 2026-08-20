@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/identity"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 
