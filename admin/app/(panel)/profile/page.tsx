@@ -7,9 +7,7 @@ import { toast } from "@/lib/toast";
 export default function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [nameMsg, setNameMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pw, setPw] = useState({ current_password: "", new_password: "", confirm: "" });
-  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -21,20 +19,18 @@ export default function ProfilePage() {
 
   const saveName = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameMsg(null);
     try {
       await api.put("/api/me", { name });
       toast("Хадгалагдлаа");
     } catch (ex) {
-      setNameMsg({ ok: false, text: ex instanceof ApiError ? ex.message : "Алдаа гарлаа" });
+      toast(ex instanceof ApiError ? ex.message : "Алдаа гарлаа", "err");
     }
   };
 
   const savePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPwMsg(null);
     if (pw.new_password !== pw.confirm) {
-      setPwMsg({ ok: false, text: "Шинэ нууц үг давталттайгаа таарахгүй байна" });
+      toast("Шинэ нууц үг давталттайгаа таарахгүй байна", "err");
       return;
     }
     setBusy(true);
@@ -46,7 +42,7 @@ export default function ProfilePage() {
       setPw({ current_password: "", new_password: "", confirm: "" });
       toast("Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан");
     } catch (ex) {
-      setPwMsg({ ok: false, text: ex instanceof ApiError ? ex.message : "Алдаа гарлаа" });
+      toast(ex instanceof ApiError ? ex.message : "Алдаа гарлаа", "err");
     } finally {
       setBusy(false);
     }
@@ -63,7 +59,6 @@ export default function ProfilePage() {
 
       <div className="card card__pad" style={{ maxWidth: 480 }}>
         <b style={{ display: "block", marginBottom: "0.9rem" }}>Ерөнхий мэдээлэл</b>
-        {nameMsg && <div className="alert alert--danger">{nameMsg.text}</div>}
         <form onSubmit={saveName}>
           <div className="field">
             <label>Нэр</label>
@@ -79,7 +74,6 @@ export default function ProfilePage() {
 
       <div className="card card__pad" style={{ maxWidth: 480, marginTop: "1rem" }}>
         <b style={{ display: "block", marginBottom: "0.9rem" }}>Нууц үг солих</b>
-        {pwMsg && <div className="alert alert--danger">{pwMsg.text}</div>}
         <form onSubmit={savePassword}>
           <div className="field">
             <label>Одоогийн нууц үг</label>
