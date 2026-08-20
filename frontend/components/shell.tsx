@@ -55,6 +55,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { path: "/audit", label: "Audit лог", icon: "scroll", perm: "core.audit.read" },
   ].filter((i) => perms[i.perm]);
 
+  // Gerege загвар: rail нь идэвхтэй АПП сонгогч. Одоогийн зам аль нэг
+  // модулийн цэст харьяалагдвал тэр модуль, үгүй бол Платформ идэвхтэй —
+  // panel зөвхөн идэвхтэй аппын цэсийг харуулна.
+  const activeModule = menu.find((m) => m.items.some((i) => isOn(i.path)));
+
   return (
     <ShellCtx.Provider value={data}>
       <header className="topbar">
@@ -76,25 +81,32 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <aside className="rail">
-        {me.tenant_id && (
-          <>
-            <Link href="/dashboard" className={`rail__tile${isOn("/dashboard") ? " is-on" : ""}`}
-              title="Дашбоард"><Icon name="dashboard" size={20} /></Link>
-            <Link href="/store" className={`rail__tile${isOn("/store") ? " is-on" : ""}`}
-              title="Апп дэлгүүр"><Icon name="store" size={20} /></Link>
-          </>
-        )}
+        <Link href="/dashboard"
+          className={`rail__tile${!activeModule ? " is-on" : ""}`}
+          title="Платформ" aria-label="Платформ">
+          <Icon name="home" size={20} />
+        </Link>
         {menu.map((m) => (
           <Link key={m.app_id} href={m.items[0]?.path || "#"}
-            className={`rail__tile${m.items.some((i) => isOn(i.path)) ? " is-on" : ""}`}
-            title={m.name}>
+            className={`rail__tile${activeModule?.app_id === m.app_id ? " is-on" : ""}`}
+            title={m.name} aria-label={m.name}>
             <Icon name={m.items[0]?.icon || "package"} size={20} />
           </Link>
         ))}
       </aside>
 
       <nav className="panel">
-        {me.tenant_id && (
+        {activeModule ? (
+          <>
+            <div className="panel__title">{activeModule.name}</div>
+            {activeModule.items.map((i) => (
+              <Link key={i.id} href={i.path}
+                className={`nav__item${isOn(i.path) ? " is-on" : ""}`}>
+                <Icon name={i.icon} size={17} /> {i.label}
+              </Link>
+            ))}
+          </>
+        ) : (
           <>
             <div className="panel__title">Цэс</div>
             <Link href="/dashboard" className={`nav__item${isOn("/dashboard") ? " is-on" : ""}`}>
@@ -103,25 +115,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link href="/store" className={`nav__item${isOn("/store") ? " is-on" : ""}`}>
               <Icon name="store" size={17} /> Апп дэлгүүр
             </Link>
-          </>
-        )}
-        {menu.flatMap((m) =>
-          m.items.map((i) => (
-            <Link key={m.app_id + i.id} href={i.path}
-              className={`nav__item${isOn(i.path) ? " is-on" : ""}`}>
-              <Icon name={i.icon} size={17} /> {i.label}
-            </Link>
-          ))
-        )}
-        {adminItems.length > 0 && (
-          <>
-            <div className="panel__title" style={{ marginTop: "1rem" }}>Удирдлага</div>
-            {adminItems.map((i) => (
-              <Link key={i.path} href={i.path}
-                className={`nav__item${isOn(i.path) ? " is-on" : ""}`}>
-                <Icon name={i.icon} size={17} /> {i.label}
-              </Link>
-            ))}
+            {adminItems.length > 0 && (
+              <>
+                <div className="panel__title" style={{ marginTop: "1rem" }}>Удирдлага</div>
+                {adminItems.map((i) => (
+                  <Link key={i.path} href={i.path}
+                    className={`nav__item${isOn(i.path) ? " is-on" : ""}`}>
+                    <Icon name={i.icon} size={17} /> {i.label}
+                  </Link>
+                ))}
+              </>
+            )}
           </>
         )}
       </nav>
