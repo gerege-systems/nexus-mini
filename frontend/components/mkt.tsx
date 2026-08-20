@@ -98,8 +98,7 @@ export function MktHeader() {
       </a>
       <ThemeToggle />
       <span style={{ width: 1, height: "1.4rem", background: "var(--border)", margin: "0 0.4rem" }} />
-      <Link href="/login" className="btn btn--ghost btn--sm">{t("Нэвтрэх")}</Link>
-      <Link href="/signup" className="btn btn--sm">{t("Бүртгүүлэх")}</Link>
+      <Link href="/login" className="btn btn--sm">{t("Нэвтрэх")}</Link>
       </div>
     </header>
   );
