@@ -24,13 +24,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
     try {
       const me = await api.get<Me>("/api/me");
       if (!me.tenant_id) {
-        // Байгууллагагүй/сонгоогүй: жагсаалтаас эхнийхийг идэвхжүүлнэ,
-        // огт байхгүй бол (нэвтэрсэн хэвээрээ) шинээр үүсгүүлнэ.
+        // Байгууллагагүй/сонгоогүй: жагсаалтаас эхнийхийг идэвхжүүлнэ.
         if (me.tenants.length > 0) {
           await api.post("/api/session/tenant", { tenant_id: me.tenants[0].id });
           return load();
         }
-        router.replace("/org/new");
+        // Платформын админ байгууллагагүйгээр ч админ панель руу орж болно;
+        // бусад нь байгууллагаа үүсгэнэ.
+        if (!me.user.platform_admin) {
+          router.replace("/org/new");
+          return;
+        }
+        if (!window.location.pathname.startsWith("/admin")) {
+          router.replace("/admin");
+          return;
+        }
+        setData({ me, menu: [], refresh: () => void load() });
         return;
       }
       const menu = await api.get<{ apps: MenuApp[] }>("/api/menu");
@@ -77,10 +86,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <aside className="rail">
-        <Link href="/dashboard" className={`rail__tile${isOn("/dashboard") ? " is-on" : ""}`}
-          title="Дашбоард"><Icon name="dashboard" size={20} /></Link>
-        <Link href="/store" className={`rail__tile${isOn("/store") ? " is-on" : ""}`}
-          title="Апп дэлгүүр"><Icon name="store" size={20} /></Link>
+        {me.tenant_id && (
+          <>
+            <Link href="/dashboard" className={`rail__tile${isOn("/dashboard") ? " is-on" : ""}`}
+              title="Дашбоард"><Icon name="dashboard" size={20} /></Link>
+            <Link href="/store" className={`rail__tile${isOn("/store") ? " is-on" : ""}`}
+              title="Апп дэлгүүр"><Icon name="store" size={20} /></Link>
+          </>
+        )}
         {menu.map((m) => (
           <Link key={m.app_id} href={m.items[0]?.path || "#"}
             className={`rail__tile${m.items.some((i) => isOn(i.path)) ? " is-on" : ""}`}
@@ -96,13 +109,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <nav className="panel">
-        <div className="panel__title">Цэс</div>
-        <Link href="/dashboard" className={`nav__item${isOn("/dashboard") ? " is-on" : ""}`}>
-          <Icon name="dashboard" size={17} /> Дашбоард
-        </Link>
-        <Link href="/store" className={`nav__item${isOn("/store") ? " is-on" : ""}`}>
-          <Icon name="store" size={17} /> Апп дэлгүүр
-        </Link>
+        {me.tenant_id && (
+          <>
+            <div className="panel__title">Цэс</div>
+            <Link href="/dashboard" className={`nav__item${isOn("/dashboard") ? " is-on" : ""}`}>
+              <Icon name="dashboard" size={17} /> Дашбоард
+            </Link>
+            <Link href="/store" className={`nav__item${isOn("/store") ? " is-on" : ""}`}>
+              <Icon name="store" size={17} /> Апп дэлгүүр
+            </Link>
+          </>
+        )}
         {menu.flatMap((m) =>
           m.items.map((i) => (
             <Link key={m.app_id + i.id} href={i.path}
