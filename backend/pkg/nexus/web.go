@@ -43,6 +43,12 @@ func IsUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
+// IsFKViolation — Postgres 23503 (байхгүй мөр рүү заасан) эсэх.
+func IsFKViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
 // DBError — DB-ийн алдааг аюулгүй хариулна: давхардал бол 409 + өгсөн
 // мессеж, бусад нь серверийн логт бүрэн, клиентэд ерөнхий 500 (raw pg
 // алдааг клиентэд задалдаг байсныг аудит шүүмжилсэн).

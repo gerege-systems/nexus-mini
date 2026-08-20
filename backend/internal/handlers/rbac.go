@@ -151,6 +151,10 @@ func (h *RBACH) CreateRole(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO roles (tenant_id, code, name, implies)
 		 VALUES ($1::uuid, $2::varchar(64), $3::varchar(120), $4::varchar(64)) RETURNING id`,
 		tenantID, in.Code, in.Name, implies).Scan(&id)
+	if nexus.IsFKViolation(err) {
+		httpx.Error(w, http.StatusBadRequest, "өвлөх role олдсонгүй")
+		return
+	}
 	if err != nil {
 		httpx.DBError(w, err, "code давхардаж байна (эсвэл формат буруу)")
 		return

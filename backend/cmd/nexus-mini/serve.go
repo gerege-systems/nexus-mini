@@ -199,11 +199,19 @@ func cmdServe(_ []string) error {
 
 // sameOriginOnly — бичих хүсэлтийн Origin (байвал) хүсэлтийн хосттой
 // таарахгүй бол 403. Origin-гүй клиент (curl, server-to-server) хэвээр.
+// Next-ийн rewrite-ээр дамжсан хүсэлтийн Host нь destination болж
+// солигддог (Docker compose: api:8084) тул X-Forwarded-Host-ийг мөн
+// хүлээн зөвшөөрнө — түүнийг эцсийн proxy (Next/nginx) тавьдаг, гаднаас
+// шууд ирсэн хүсэлтэд nginx хүчээр дарж бичдэг тул хуурч болохгүй.
 func sameOriginOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			if origin := r.Header.Get("Origin"); origin != "" {
-				if origin != "https://"+r.Host && origin != "http://"+r.Host {
+				ok := origin == "https://"+r.Host || origin == "http://"+r.Host
+				if fh := r.Header.Get("X-Forwarded-Host"); !ok && fh != "" {
+					ok = origin == "https://"+fh || origin == "http://"+fh
+				}
+				if !ok {
 					http.Error(w, `{"error":"origin mismatch"}`, http.StatusForbidden)
 					return
 				}
