@@ -327,10 +327,14 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
 /* ─── Landing ─── */
 .mkt { background: var(--bg); }
 .mkt-top {
-  position: sticky; top: 0; z-index: 20; height: 3.75rem;
-  display: flex; align-items: center; gap: 1rem; padding: 0 1.5rem;
+  position: sticky; top: 0; z-index: 20;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+}
+/* Header-ийн доторх агуулга хуудасны контенттой ижил 1080px container-т */
+.mkt-top__in {
+  max-width: 1080px; margin: 0 auto; height: 3.75rem;
+  display: flex; align-items: center; gap: 1rem; padding: 0 1.5rem;
 }
 .mkt-top b { font-size: 1rem; }
 .mkt-top nav { display: flex; gap: 1.2rem; margin-left: 1.5rem; }

@@ -13,6 +13,7 @@ export function MktHeader() {
       : undefined;
   return (
     <header className="mkt-top">
+      <div className="mkt-top__in">
       <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
         <span className="brand-square">N</span>
         <b>nexus-mini</b>
@@ -28,6 +29,7 @@ export function MktHeader() {
       </a>
       <Link href="/login" className="btn btn--ghost btn--sm">Нэвтрэх</Link>
       <Link href="/signup" className="btn btn--sm">Бүртгүүлэх</Link>
+      </div>
     </header>
   );
 }
