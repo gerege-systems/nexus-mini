@@ -5,7 +5,6 @@ import {
   Building2,
   KeyRound,
   Layers,
-  Puzzle,
   ScrollText,
   ShieldCheck,
   Store,
@@ -167,8 +166,6 @@ export default function Landing() {
       <footer className="mkt-foot">
         <span className="brand-square" style={{ width: "1.6rem", height: "1.6rem", fontSize: "0.8rem" }}>N</span>
         <span>nexus-mini · Apache 2.0 · <a href="https://github.com/gerege-systems/nexus-mini" style={{ color: "var(--accent)" }}>gerege-systems/nexus-mini</a></span>
-        <span className="spacer" />
-        <span><Puzzle size={14} style={{ verticalAlign: "-2px" }} /> Gerege Nexus-аас санаа авав</span>
       </footer>
     </div>
   );
