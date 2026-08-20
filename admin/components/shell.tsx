@@ -12,7 +12,6 @@ import {
   LogOut,
   Package,
   ScrollText,
-  ShieldCheck,
   UserRound,
   Users,
 } from "lucide-react";
@@ -60,7 +59,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/"><span className="brand-square">N</span></Link>
         </div>
         <div className="topbar__context">
-          <ShieldCheck size={19} />
           <b>Платформын админ</b>
         </div>
         <div className="topbar__spacer" />
