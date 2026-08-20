@@ -421,3 +421,13 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   border-radius: var(--radius-s); box-shadow: var(--shadow-lg);
   overflow: hidden; z-index: 60;
 }
+
+/* ─── Hero eyebrow ─── */
+.mkt-eyebrow {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em;
+  color: var(--text-2); margin-bottom: 1.1rem; text-transform: uppercase;
+}
+.mkt-eyebrow .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+}

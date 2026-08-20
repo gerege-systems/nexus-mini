@@ -24,11 +24,12 @@ export default function Landing() {
       <MktHeader />
 
       <section className="mkt-hero">
-        <h1>
-          {t("Татаад ажиллуулаад,")} <em>{t("модулиа бичээд")}</em>{t(", store-д нийтэлдэг платформ")}
-        </h1>
+        <div className="mkt-eyebrow">
+          <span className="dot" /> NEXUS-MINI — {t("НЭЭЛТТЭЙ ЭХ")}
+        </div>
+        <h1>{t("Үйл ажиллагааны нэгдсэн дижитал платформ")}</h1>
         <p>
-          {t("nexus-mini бол нээлттэй эхийн multi-tenant цөм: байгууллага, эрх, audit, нэвтрэлтийг платформ хариуцна — бизнесийн боломж бүр модуль болж апп дэлгүүрээр ирнэ. Go + PostgreSQL + Next.js.")}
+          {t("Байгууллагын үйлчилгээ, үйл ажиллагаа, систем, өгөгдлийг нэг дор холбодог модульт платформ — цөм нь суурийг, апп дэлгүүр нь боломжуудыг нь өгнө.")}
         </p>
         <div className="cta">
           <Link href="/signup" className="btn">{t("Байгууллагаа бүртгүүлэх")}</Link>

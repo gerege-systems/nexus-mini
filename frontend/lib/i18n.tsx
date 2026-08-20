@@ -53,11 +53,10 @@ const en: Record<string, string> = {
   "Модуль хөгжүүлэх": "Build a module",
 
   // ─── Landing: нүүр ───
-  "Татаад ажиллуулаад,": "Download it, run it,",
-  "модулиа бичээд": "write your module",
-  ", store-д нийтэлдэг платформ": ", publish it to the store",
-  "nexus-mini бол нээлттэй эхийн multi-tenant цөм: байгууллага, эрх, audit, нэвтрэлтийг платформ хариуцна — бизнесийн боломж бүр модуль болж апп дэлгүүрээр ирнэ. Go + PostgreSQL + Next.js.":
-    "nexus-mini is an open-source multi-tenant core: organizations, permissions, audit and auth are handled by the platform — every business capability arrives as a module through the app store. Go + PostgreSQL + Next.js.",
+  "НЭЭЛТТЭЙ ЭХ": "OPEN SOURCE",
+  "Үйл ажиллагааны нэгдсэн дижитал платформ": "Integrated digital operations platform",
+  "Байгууллагын үйлчилгээ, үйл ажиллагаа, систем, өгөгдлийг нэг дор холбодог модульт платформ — цөм нь суурийг, апп дэлгүүр нь боломжуудыг нь өгнө.":
+    "A modular platform that connects an organization's services, operations, systems and data — the core provides the foundation, the app store delivers the capabilities.",
   "Байгууллагаа бүртгүүлэх": "Register your organization",
   "ЦӨМ": "CORE",
   "Платформ юу хариуцдаг вэ": "What the platform takes care of",
