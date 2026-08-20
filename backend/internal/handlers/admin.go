@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -46,12 +47,12 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	type row struct {
-		ID        string `json:"id"`
-		Slug      string `json:"slug"`
-		Name      string `json:"name"`
-		CreatedAt string `json:"created_at"`
-		Members   int    `json:"members"`
-		Apps      int    `json:"apps"`
+		ID        string    `json:"id"`
+		Slug      string    `json:"slug"`
+		Name      string    `json:"name"`
+		CreatedAt time.Time `json:"created_at"`
+		Members   int       `json:"members"`
+		Apps      int       `json:"apps"`
 	}
 	out := []row{}
 	for rows.Next() {
@@ -77,12 +78,12 @@ func (h *Admin) Users(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	type row struct {
-		ID            string `json:"id"`
-		Email         string `json:"email"`
-		Name          string `json:"name"`
-		PlatformAdmin bool   `json:"platform_admin"`
-		CreatedAt     string `json:"created_at"`
-		Tenants       int    `json:"tenants"`
+		ID            string    `json:"id"`
+		Email         string    `json:"email"`
+		Name          string    `json:"name"`
+		PlatformAdmin bool      `json:"platform_admin"`
+		CreatedAt     time.Time `json:"created_at"`
+		Tenants       int       `json:"tenants"`
 	}
 	out := []row{}
 	for rows.Next() {
@@ -144,12 +145,12 @@ func (h *Admin) Audit(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	type row struct {
-		ID         int64  `json:"id"`
-		Tenant     string `json:"tenant"`
-		UserName   string `json:"user_name"`
-		Action     string `json:"action"`
-		Object     string `json:"object"`
-		OccurredAt string `json:"occurred_at"`
+		ID         int64     `json:"id"`
+		Tenant     string    `json:"tenant"`
+		UserName   string    `json:"user_name"`
+		Action     string    `json:"action"`
+		Object     string    `json:"object"`
+		OccurredAt time.Time `json:"occurred_at"`
 	}
 	out := []row{}
 	for rows.Next() {
