@@ -51,5 +51,14 @@ services:
     depends_on:
       - api
 
+  admin:
+    build: ./admin
+    environment:
+      API_URL: http://api:8084
+    ports:
+      - "3021:3021"
+    depends_on:
+      - api
+
 volumes:
   dbdata:

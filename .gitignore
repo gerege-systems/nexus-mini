@@ -8,3 +8,5 @@ dist/
 backend/bin/
 frontend/node_modules/
 frontend/.next/
+admin/node_modules/
+admin/.next/

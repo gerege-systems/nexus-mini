@@ -29,12 +29,18 @@ main() {
   pnpm install --frozen-lockfile
   API_URL=http://127.0.0.1:8084 pnpm build
 
+  echo "== admin build =="
+  cd ../admin
+  pnpm install --frozen-lockfile
+  API_URL=http://127.0.0.1:8084 pnpm build
+
   echo "== restart =="
-  sudo systemctl restart nexus-mini-api nexus-mini-web
+  sudo systemctl restart nexus-mini-api nexus-mini-web nexus-mini-adminweb
   sleep 2
-  systemctl is-active nexus-mini-api nexus-mini-web
+  systemctl is-active nexus-mini-api nexus-mini-web nexus-mini-adminweb
   curl -sf http://127.0.0.1:8084/health > /dev/null && echo "api: ok"
   curl -sf -o /dev/null http://127.0.0.1:3020/ && echo "web: ok"
+  curl -sf -o /dev/null http://127.0.0.1:3021/login && echo "admin: ok"
   exit 0
 }
 

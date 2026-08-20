@@ -57,11 +57,12 @@ Runtime plugin/WASM хийхгүй — ойлгомжтой байдал нь mi
    эхлээд app store-оо хараад модуль суулгахаас эхэлдэг. "Юу болоод байгаа нь
    мэдэгддэггүй, аль хэдийн ажиллаад байдаг ойлгомжгүй юм" байж БОЛОХГҮЙ.
 
-## Frontend: нэг Next.js апп
+## Frontend: portal ба админ тусдаа
 
-Landing + tenant portal + админ панель (`/admin`) нэг аппд. Self-host хийхэд
-нэг л процесс — mini гэдгийн утга. UI chrome нь open-gerege-nexus-ийн
-дизайныг жишиг болгоно (өөрөө зохиохгүй — өмнөх сургамж #10).
+`frontend/` = landing + tenant portal; `admin/` = платформын админ —
+**тусдаа код, тусдаа домэйн** (хэрэглэгчийн шаардлага, 2026-08-20).
+Админ апп teal accent-тэй, зөвхөн platform_admin нэвтэрнэ. UI chrome нь
+open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө зохиохгүй — сургамж #10).
 
 ## Жишээ модуль
 
@@ -83,7 +84,8 @@ Landing + tenant portal + админ панель (`/admin`) нэг аппд. Se
 
 | Хэсэг | Хаяг | Порт |
 |---|---|---|
-| Web + API (нэг домэйн: /api/* → Go) | nexus-mini.runestonetechnologies.com | 3020 / 8084 |
+| Portal + API (/api/* → Go) | nexus-mini.runestonetechnologies.com | 3020 / 8084 |
+| Платформын админ | nexus-mini-admin.runestonetechnologies.com | 3021 |
 | Registry (үе 2) | nexus-mini-registry.runestonetechnologies.com | 8085 |
 
 Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.

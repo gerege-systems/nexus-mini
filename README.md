@@ -55,7 +55,8 @@ backend/
   pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна
   internal/platform/ цөм: tenant, auth, rbac, audit, appstore
   internal/apps/     жишээ модулиуд (devices)
-frontend/            Next.js — landing + portal + админ панель нэг апп
+frontend/            Next.js — landing + portal
+admin/               Next.js — платформын админ (тусдаа апп, тусдаа домэйн)
 catalog/             локал каталог (registry-гүй үеийн fallback)
 docs/                шийдвэр, архитектур, модуль хөгжүүлэх гарын авлага
 ```

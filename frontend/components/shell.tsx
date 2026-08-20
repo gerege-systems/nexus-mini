@@ -6,7 +6,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Boxes, ShieldCheck } from "lucide-react";
+import { Boxes } from "lucide-react";
 import { api, type Me, type MenuApp } from "@/lib/api";
 import { Icon } from "./icons";
 import { UserMenu } from "./usermenu";
@@ -29,17 +29,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           await api.post("/api/session/tenant", { tenant_id: me.tenants[0].id });
           return load();
         }
-        // Платформын админ байгууллагагүйгээр ч админ панель руу орж болно;
-        // бусад нь байгууллагаа үүсгэнэ.
-        if (!me.user.platform_admin) {
-          router.replace("/org/new");
-          return;
-        }
-        if (!window.location.pathname.startsWith("/admin")) {
-          router.replace("/admin");
-          return;
-        }
-        setData({ me, menu: [], refresh: () => void load() });
+        router.replace("/org/new");
         return;
       }
       const menu = await api.get<{ apps: MenuApp[] }>("/api/menu");
@@ -101,11 +91,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Icon name={m.items[0]?.icon || "package"} size={20} />
           </Link>
         ))}
-        <div style={{ flex: 1 }} />
-        {me.user.platform_admin && (
-          <Link href="/admin" className={`rail__tile${isOn("/admin") ? " is-on" : ""}`}
-            title="Платформын админ"><ShieldCheck size={20} strokeWidth={1.8} /></Link>
-        )}
       </aside>
 
       <nav className="panel">
@@ -137,14 +122,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <Icon name={i.icon} size={17} /> {i.label}
               </Link>
             ))}
-          </>
-        )}
-        {me.user.platform_admin && (
-          <>
-            <div className="panel__title" style={{ marginTop: "1rem" }}>Платформ</div>
-            <Link href="/admin" className={`nav__item${isOn("/admin") ? " is-on" : ""}`}>
-              <Icon name="shield" size={17} /> Админ панель
-            </Link>
           </>
         )}
       </nav>
