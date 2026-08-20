@@ -5,10 +5,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { locales, setLocale, useT } from "@/lib/i18n";
+import { useThemeMode } from "@/lib/theme";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 export function MktHeader() {
   const pathname = usePathname();
   const { t, locale } = useT();
+  const [theme, setTheme] = useThemeMode();
   const on = (p: string) =>
     (p === "/" ? pathname === "/" : pathname.startsWith(p))
       ? { color: "var(--text)", fontWeight: 600 as const }
@@ -31,6 +34,14 @@ export function MktHeader() {
           <button key={l.code} className={`um__pill${locale === l.code ? " is-on" : ""}`}
             onClick={() => setLocale(l.code)}>{l.label}</button>
         ))}
+      </span>
+      <span className="um__pills">
+        <button className={`um__pill${theme === "light" ? " is-on" : ""}`}
+          aria-label="Light" onClick={() => setTheme("light")}><Sun size={14} /></button>
+        <button className={`um__pill${theme === "dark" ? " is-on" : ""}`}
+          aria-label="Dark" onClick={() => setTheme("dark")}><Moon size={14} /></button>
+        <button className={`um__pill${theme === "system" ? " is-on" : ""}`}
+          aria-label="System" onClick={() => setTheme("system")}><Monitor size={14} /></button>
       </span>
       <a href="https://github.com/gerege-systems/nexus-mini" className="btn btn--ghost btn--sm">
         GitHub
