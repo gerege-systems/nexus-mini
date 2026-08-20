@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"log"
 	"net/http"
 	"time"
 
@@ -104,6 +105,8 @@ func (s *Service) EndSession(ctx context.Context, w http.ResponseWriter, r *http
 func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool) {
 	c, err := r.Cookie(CookieName)
 	if err != nil || c.Value == "" {
+		// ТҮРИЙН ОНОШИЛГОО: cookie огт ирээгүй юу?
+		log.Printf("auth: cookie алга (Cookie header: %q)", r.Header.Get("Cookie"))
 		return Principal{}, false
 	}
 	var p Principal
@@ -113,6 +116,8 @@ func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool
 		   FROM auth_session_lookup($1::char(64))`, hashToken(c.Value)).
 		Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email)
 	if err == pgx.ErrNoRows || err != nil {
+		log.Printf("auth: cookie ирсэн ч session олдсонгүй (len=%d prefix=%.8s err=%v)",
+			len(c.Value), c.Value, err)
 		return Principal{}, false
 	}
 	if tenantID != nil {
