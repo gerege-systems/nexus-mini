@@ -15,6 +15,27 @@
 | Өөрийн хүснэгт, миграц | RBAC default оноолт, шалгалт |
 | Бизнес логик | Audit гинж, app store |
 
+## Файлын бүтэц
+
+Жижиг модуль нэг файлаас эхэлж болно; өсөхөөрөө ингэж хуваана
+(devices нь яг энэ хуваарийн амьд жишээ):
+
+```
+backend/apps/<нэр>/
+  module.go              модулийн ГЭРЭЭ: ID, permission, цэс, миграц,
+                         route↔permission холболт — бүгд нэг дор
+  types.go               хүсэлт/хариултын struct + validation
+  handlers.go            HTTP handler-ууд (нэг resource = нэг файл)
+  reports_handlers.go    хоёр дахь resource нэмэгдвэл тусдаа файл
+  reports_types.go
+  migrations/            модулийн goose миграцууд
+```
+
+Зарчим: **route бүр аль permission-ээр хамгаалагдаж байгаа нь module.go-д
+нэг дор харагдана**; handler файлууд зөвхөн бизнес логик агуулна. SQL нь
+handler дотроо explicit байхад mini-д хангалттай — query олон газар давхардаж
+эхэлбэл л store.go гэж тусгаарлана.
+
 ## Алхамууд
 
 ### 1. Package үүсгэх
