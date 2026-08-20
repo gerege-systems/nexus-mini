@@ -1,7 +1,6 @@
 // nexus-mini — платформын командын хэрэгсэл.
 //
 //	nexus-mini migrate   миграц + (env-д ADMIN_* байвал) анхны админ
-//	nexus-mini admin     платформын админ үүсгэх / өргөмжлөх
 //	nexus-mini serve     API сервер асаах
 package main
 
@@ -19,8 +18,6 @@ const usage = `nexus-mini — платформын командын хэрэгс
   nexus-mini migrate   Цөм + модулиудын миграцыг ажиллуулна; env-д
                        ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
                        платформын админ хараахан байхгүй бол үүсгэнэ
-  nexus-mini admin     Платформын админ үүсгэх/өргөмжлөх
-                       (--email --name --password эсвэл интерактив)
   nexus-mini serve     API серверийг асаана
 
 Тохиргоо: коммандууд ажлын хавтаснаас nexus-mini.env (эсвэл --env <зам>)
@@ -42,8 +39,6 @@ func main() {
 	switch cmd {
 	case "migrate":
 		err = withEnv(args, cmdMigrate)
-	case "admin":
-		err = withEnv(args, cmdAdmin)
 	case "serve":
 		err = withEnv(args, cmdServe)
 	case "help", "--help", "-h":

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -45,40 +43,6 @@ func ensureAdminFromEnv(ownerURL string) error {
 		return nil
 	}
 	return upsertAdmin(ownerURL, e, n, p)
-}
-
-// cmdAdmin — nexus-mini admin [--email --name --password]
-// Имэйл бүртгэлтэй бол платформын админ болгож өргөмжилнө (нууц үг хэвээр);
-// байхгүй бол шинээр үүсгэнэ.
-func cmdAdmin(args []string) error {
-	fs := flag.NewFlagSet("admin", flag.ContinueOnError)
-	email := fs.String("email", "", "имэйл")
-	name := fs.String("name", "", "нэр")
-	pass := fs.String("password", "", "нууц үг (8+)")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
-	ownerURL := os.Getenv("DATABASE_URL_OWNER")
-	if ownerURL == "" {
-		return fmt.Errorf("DATABASE_URL_OWNER алга — nexus-mini.env-ээ бөглөсөн үү? (.env.example-г хар)")
-	}
-
-	in := bufio.NewReader(os.Stdin)
-	if *email == "" {
-		*email = prompt(in, "Имэйл", "")
-	}
-	if *name == "" {
-		*name = prompt(in, "Нэр", "")
-	}
-	if *pass == "" {
-		p, err := promptPassword(in, "Нууц үг (8+)")
-		if err != nil {
-			return err
-		}
-		*pass = p
-	}
-	return upsertAdmin(ownerURL, *email, *name, *pass)
 }
 
 func platformAdminExists(ownerURL string) (bool, error) {

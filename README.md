@@ -33,9 +33,8 @@ go run ./cmd/nexus-mini serve            # API :8084
 cd ../frontend && pnpm install && pnpm dev   # вэб :3020
 ```
 
-CLI коммандууд: `migrate` (миграц + env-ээс анхны админ), `admin`
-(дараагийн админ нэмэх/өргөмжлөх), `serve`. Тохиргоо `nexus-mini.env`
-файлд амьдарна; орчны хувьсагч түүнээс дээгүүр.
+CLI коммандууд: `migrate` (миграц + env-ээс анхны админ), `serve`.
+Тохиргоо `nexus-mini.env` файлд амьдарна; орчны хувьсагч түүнээс дээгүүр.
 
 ### Docker Compose
 

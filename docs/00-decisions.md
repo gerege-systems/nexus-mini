@@ -47,10 +47,10 @@ Runtime plugin/WASM хийхгүй — ойлгомжтой байдал нь mi
 1. **Эхний ажиллуулалт: бүх тохиргоо env файлд** — DB холболтууд +
    `ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD`-оо `nexus-mini.env`-д бичээд
    `nexus-mini migrate` (миграц + админ байхгүй бол env-ээс үүсгэнэ) →
-   `nexus-mini serve`. Вэб талд setup wizard БАЙХГҮЙ, landing төлөв
-   шалгадаггүй. Түүх: эхлээд вэб wizard хийсэн → хэрэглэгч буруушааж CLI
-   болгосон → интерактив `setup` коммандыг ч илүүц гэж үзээд env-д
-   суурилсан энэ хэлбэрт тогтсон (2026-08-20).
+   `nexus-mini serve`. CLI = migrate + serve хоёрхон комманд; тусдаа
+   setup/admin комманд байхгүй. Вэб талд setup wizard БАЙХГҮЙ, landing
+   төлөв шалгадаггүй. Түүх: вэб wizard → CLI setup → бүгдийг env-д
+   (хэрэглэгчийн шаардлагаар алхам алхмаар хялбарчилсан, 2026-08-20).
 2. **Админ панель** — платформын админд хэрэгтэй бүх тохиргоо нэг дор
 3. **Landing page** — цөм ба app store яаж ажилладаг, модуль яаж хөгжүүлэх нь
    бүгд тодорхой; тэндээсээ өөрийгөө + tenant-аа бүртгүүлээд орно; шинэ tenant
@@ -71,7 +71,7 @@ Landing + tenant portal + админ панель (`/admin`) нэг аппд. Se
 
 | Үе | Агуулга |
 |---|---|
-| 1 | Цөм: миграц + CLI (migrate/admin/serve) + session auth + tenant + RBAC + audit + module SDK + devices модуль + app store (локал каталог) + landing/portal/админ панель |
+| 1 | Цөм: миграц + CLI (migrate/serve) + session auth + tenant + RBAC + audit + module SDK + devices модуль + app store (локал каталог) + landing/portal/админ панель |
 | 2 | Төв registry + гарын үсэгтэй каталог + `nexus-mini add` CLI |
 | 3 | OIDC provider + SSO client federation |
 | 4 | Resilience давхарга, чанаржуулалт |
