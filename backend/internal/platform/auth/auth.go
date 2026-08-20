@@ -11,12 +11,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -102,28 +100,30 @@ func (s *Service) EndSession(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 // Resolve нь cookie-гоос Principal тодорхойлно; олдохгүй бол ok=false.
+//
+// Браузер ижил нэртэй ХЭД ХЭДЭН cookie зэрэг явуулж болдог (хуучирсан
+// domain-cookie шинэ host-cookie-гийн урд жагсдаг тохиолдол бодитоор
+// гарсан) тул эхнийхээр нь биш, бүгдээр нь оролдоно.
 func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool) {
-	c, err := r.Cookie(CookieName)
-	if err != nil || c.Value == "" {
-		// ТҮРИЙН ОНОШИЛГОО: cookie огт ирээгүй юу?
-		log.Printf("auth: cookie алга (Cookie header: %q)", r.Header.Get("Cookie"))
-		return Principal{}, false
+	for _, c := range r.CookiesNamed(CookieName) {
+		if c.Value == "" {
+			continue
+		}
+		var p Principal
+		var tenantID *string
+		err := s.pool.QueryRow(ctx,
+			`SELECT session_id, user_id, tenant_id, platform_admin, name, email
+			   FROM auth_session_lookup($1::char(64))`, hashToken(c.Value)).
+			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email)
+		if err != nil {
+			continue // хуучирсан/танигдахгүй token — дараагийнхыг үзнэ
+		}
+		if tenantID != nil {
+			p.TenantID = *tenantID
+		}
+		return p, true
 	}
-	var p Principal
-	var tenantID *string
-	err = s.pool.QueryRow(ctx,
-		`SELECT session_id, user_id, tenant_id, platform_admin, name, email
-		   FROM auth_session_lookup($1::char(64))`, hashToken(c.Value)).
-		Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email)
-	if err == pgx.ErrNoRows || err != nil {
-		log.Printf("auth: cookie ирсэн ч session олдсонгүй (len=%d prefix=%.8s err=%v)",
-			len(c.Value), c.Value, err)
-		return Principal{}, false
-	}
-	if tenantID != nil {
-		p.TenantID = *tenantID
-	}
-	return p, true
+	return Principal{}, false
 }
 
 // SetTenant нь session-ий идэвхтэй tenant-ийг сольж, гишүүнчлэлийг DB
