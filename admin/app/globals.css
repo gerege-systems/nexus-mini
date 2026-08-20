@@ -385,3 +385,7 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
 @media (max-width: 900px) {
   .main { margin-left: 0; }
 }
+/* Топбарын урд хэсэг (brand 4rem + context) sidebar-тай яг ижил 15rem */
+.topbar__context { width: 11rem; }
+/* Сонгогдсон цэсний зүүн зураасгүй */
+.nav__item.is-on { box-shadow: none; }
