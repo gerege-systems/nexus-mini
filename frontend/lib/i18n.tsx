@@ -203,6 +203,19 @@ const en: Record<string, string> = {
   "засах": "edit",
   "устгах": "delete",
   "төхөөрөмжийг устгах уу?": "— delete this device?",
+  "миграц: цөм ok · devices ok": "migrations: core ok · devices ok",
+  "платформын админ үүслээ": "platform admin created",
+  "модуль": "module",
+  "нэг бинари": "one binary",
+  "Тусгаарлалт DB давхаргад": "Isolation at the database layer",
+  "Байгууллага бүрийн өгөгдөл PostgreSQL Row-Level Security-ээр тусгаарлагдана — кодын алдаа ч хана даван харагдуулахгүй.":
+    "Each organization's data is isolated with PostgreSQL Row-Level Security — even a code bug can't leak across the wall.",
+  "Эрх тунхаглалаар, бүртгэл гинжээр": "Permissions by declaration, records by chain",
+  "Permission суулгах үед role-уудад автоматаар оноогдоно; бүх чухал үйлдэл hash chain-тэй audit бүртгэлд үлдэнэ.":
+    "Permissions are granted to roles automatically on install; every important action lands in a hash-chained audit log.",
+  "7 метод = таны модуль": "7 methods = your module",
+  "Go interface хэрэгжүүлээд каталогт PR илгээхэд л таны модуль store-д — нэг бинари, микросервисийн төвөггүй.":
+    "Implement the Go interface and send a catalog PR — your module is in the store. One binary, no microservice overhead.",
 
   // ─── Серверийн алдааны мессежүүд (клиент талд орчуулна) ───
   "имэйл эсвэл нууц үг буруу": "Wrong email or password",

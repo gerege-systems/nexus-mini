@@ -1,17 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  Code2,
-  KeyRound,
-  Layers,
-  ScrollText,
-  ShieldCheck,
-  Store,
-  Waves,
-} from "lucide-react";
+import { ArrowRight, Code2, Store } from "lucide-react";
 import { MktHeader, MktFooter } from "@/components/mkt";
 import { useT } from "@/lib/i18n";
 
@@ -38,41 +28,21 @@ export default function Landing() {
       </section>
 
       <section className="mkt-sect" id="core">
-        <div className="mkt-num">{t("ЦӨМ")}</div>
-        <h2>{t("Платформ юу хариуцдаг вэ")}</h2>
-        <p className="lead">
-          {t("Модуль бүр дахин бичдэг байсан зүйлс нэг л удаа, цөмд:")}
-        </p>
         <div className="mkt-grid3">
           <div className="card mkt-feature">
-            <span className="ic"><Building2 size={19} /></span>
-            <h3>{t("Tenant тусгаарлалт")}</h3>
-            <p>{t("Байгууллага бүрийн өгөгдөл PostgreSQL Row-Level Security-ээр DB давхаргад тусгаарлагдана — кодын алдаа ч хана даван харагдуулахгүй.")}</p>
+            <div className="mkt-mono-tag">tenant + RLS</div>
+            <h3>{t("Тусгаарлалт DB давхаргад")}</h3>
+            <p>{t("Байгууллага бүрийн өгөгдөл PostgreSQL Row-Level Security-ээр тусгаарлагдана — кодын алдаа ч хана даван харагдуулахгүй.")}</p>
           </div>
           <div className="card mkt-feature">
-            <span className="ic"><KeyRound size={19} /></span>
-            <h3>RBAC</h3>
-            <p>{t("Модуль permission-оо тунхаглаад л болоо: суулгахад role-уудад автоматаар оноогдоно. «Зөвхөн өөрийн бүртгэл» scope, role-ийн өвлөлт дэмжинэ.")}</p>
+            <div className="mkt-mono-tag">rbac + audit</div>
+            <h3>{t("Эрх тунхаглалаар, бүртгэл гинжээр")}</h3>
+            <p>{t("Permission суулгах үед role-уудад автоматаар оноогдоно; бүх чухал үйлдэл hash chain-тэй audit бүртгэлд үлдэнэ.")}</p>
           </div>
           <div className="card mkt-feature">
-            <span className="ic"><ScrollText size={19} /></span>
-            <h3>{t("Audit гинж")}</h3>
-            <p>{t("Бүх чухал үйлдэл append-only, hash chain-тэй бүртгэлд ордог — гар хүрвэл гинж тасарч илэрнэ. Нэг товчоор шалгана.")}</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="ic"><ShieldCheck size={19} /></span>
-            <h3>{t("Нэвтрэлт ба SSO")}</h3>
-            <p>{t("Session auth өнөөдөр; OIDC provider + өөр nexus-mini-тэй federation дараагийн үед ирнэ.")}</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="ic"><Waves size={19} /></span>
-            <h3>Resilience</h3>
-            <p>{t("Circuit breaker, load shedding, retry — гадаад системтэй холбогддог модулиудад бэлэн хэрэгсэл (үе 4).")}</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="ic"><Layers size={19} /></span>
-            <h3>{t("Нэг бинари")}</h3>
-            <p>{t("Модулиуд Go кодоор нэг бинарид компиллогдоно — микросервисийн төвөгггүй, сүлжээний нэмэлт дуудлагагүй.")}</p>
+            <div className="mkt-mono-tag">nexus.Module</div>
+            <h3>{t("7 метод = таны модуль")}</h3>
+            <p>{t("Go interface хэрэгжүүлээд каталогт PR илгээхэд л таны модуль store-д — нэг бинари, микросервисийн төвөггүй.")}</p>
           </div>
         </div>
       </section>
