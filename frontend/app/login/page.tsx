@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
@@ -11,6 +11,12 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    void api.get<{ done: boolean }>("/api/setup").then((r) => {
+      if (!r.done) router.replace("/setup");
+    }).catch(() => {});
+  }, [router]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

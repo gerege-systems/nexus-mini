@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Building2,
   KeyRound,
   Layers,
   Puzzle,
+  Rocket,
   ScrollText,
   ShieldCheck,
   Store,
@@ -16,15 +16,18 @@ import {
 import { api } from "@/lib/api";
 
 // Landing — юу болохыг нь эхнээс нь тайлбарлана: цөм + app store + модуль
-// хөгжүүлэлт. Анх асаж байгаа instance бол /setup руу аваачна.
+// хөгжүүлэлт. Анх асаж буй instance дээр ч landing хэвээр харагдана —
+// зөвхөн CTA нь "Эхлүүлэх" (setup wizard) болж хувирна.
 export default function Landing() {
-  const router = useRouter();
+  // null = хараахан мэдэхгүй; true = setup хийгдсэн; false = анхны асаалт.
+  const [setupDone, setSetupDone] = useState<boolean | null>(null);
   useEffect(() => {
     void api
       .get<{ done: boolean }>("/api/setup")
-      .then((r) => { if (!r.done) router.replace("/setup"); })
-      .catch(() => {});
-  }, [router]);
+      .then((r) => setSetupDone(r.done))
+      .catch(() => setSetupDone(true));
+  }, []);
+  const firstRun = setupDone === false;
 
   return (
     <div className="mkt">
@@ -40,9 +43,30 @@ export default function Landing() {
         <a href="https://github.com/gerege-systems/nexus-mini" className="btn btn--ghost btn--sm">
           GitHub
         </a>
-        <Link href="/login" className="btn btn--ghost btn--sm">Нэвтрэх</Link>
-        <Link href="/signup" className="btn btn--sm">Бүртгүүлэх</Link>
+        {firstRun ? (
+          <Link href="/setup" className="btn btn--sm"><Rocket size={14} /> Эхлүүлэх</Link>
+        ) : (
+          <>
+            <Link href="/login" className="btn btn--ghost btn--sm">Нэвтрэх</Link>
+            <Link href="/signup" className="btn btn--sm">Бүртгүүлэх</Link>
+          </>
+        )}
       </header>
+
+      {firstRun && (
+        <div style={{ background: "var(--accent-soft)", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0.7rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap" }}>
+            <Rocket size={17} style={{ color: "var(--accent)" }} />
+            <span style={{ flex: 1, minWidth: 240 }}>
+              <b>Энэ instance анх удаа асаж байна.</b>{" "}
+              <span style={{ color: "var(--text-2)" }}>
+                Хоёрхон алхам: админ эрхээ бүртгүүлээд байгууллагаа үүсгэнэ.
+              </span>
+            </span>
+            <Link href="/setup" className="btn btn--sm">Тохируулж эхлэх</Link>
+          </div>
+        </div>
+      )}
 
       <section className="mkt-hero">
         <h1>
@@ -54,7 +78,11 @@ export default function Landing() {
           апп дэлгүүрээр ирнэ. Go + PostgreSQL + Next.js.
         </p>
         <div className="cta">
-          <Link href="/signup" className="btn">Байгууллагаа бүртгүүлэх</Link>
+          {firstRun ? (
+            <Link href="/setup" className="btn"><Rocket size={16} /> Тохируулж эхлэх</Link>
+          ) : (
+            <Link href="/signup" className="btn">Байгууллагаа бүртгүүлэх</Link>
+          )}
           <a href="#dev" className="btn btn--ghost">Модуль хөгжүүлэх</a>
         </div>
       </section>
