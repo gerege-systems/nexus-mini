@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, type Me } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 export default function ProfilePage() {
   const [name, setName] = useState("");
@@ -23,7 +24,7 @@ export default function ProfilePage() {
     setNameMsg(null);
     try {
       await api.put("/api/me", { name });
-      setNameMsg({ ok: true, text: "Хадгалагдлаа" });
+      toast("Хадгалагдлаа");
     } catch (ex) {
       setNameMsg({ ok: false, text: ex instanceof ApiError ? ex.message : "Алдаа гарлаа" });
     }
@@ -43,7 +44,7 @@ export default function ProfilePage() {
         new_password: pw.new_password,
       });
       setPw({ current_password: "", new_password: "", confirm: "" });
-      setPwMsg({ ok: true, text: "Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан" });
+      toast("Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан");
     } catch (ex) {
       setPwMsg({ ok: false, text: ex instanceof ApiError ? ex.message : "Алдаа гарлаа" });
     } finally {
@@ -62,9 +63,7 @@ export default function ProfilePage() {
 
       <div className="card card__pad" style={{ maxWidth: 480 }}>
         <b style={{ display: "block", marginBottom: "0.9rem" }}>Ерөнхий мэдээлэл</b>
-        {nameMsg && (
-          <div className={`alert ${nameMsg.ok ? "alert--ok" : "alert--danger"}`}>{nameMsg.text}</div>
-        )}
+        {nameMsg && <div className="alert alert--danger">{nameMsg.text}</div>}
         <form onSubmit={saveName}>
           <div className="field">
             <label>Нэр</label>
@@ -80,9 +79,7 @@ export default function ProfilePage() {
 
       <div className="card card__pad" style={{ maxWidth: 480, marginTop: "1rem" }}>
         <b style={{ display: "block", marginBottom: "0.9rem" }}>Нууц үг солих</b>
-        {pwMsg && (
-          <div className={`alert ${pwMsg.ok ? "alert--ok" : "alert--danger"}`}>{pwMsg.text}</div>
-        )}
+        {pwMsg && <div className="alert alert--danger">{pwMsg.text}</div>}
         <form onSubmit={savePassword}>
           <div className="field">
             <label>Одоогийн нууц үг</label>

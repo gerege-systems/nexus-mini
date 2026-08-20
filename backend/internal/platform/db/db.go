@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -66,7 +67,7 @@ func (d *TenantDB) acquire(ctx context.Context) (*pgxpool.Conn, func(), error) {
 	_, err = conn.Exec(ctx,
 		`SELECT set_config('app.tenant_id', $1::text, false),
 		        set_config('app.user_id',   $2::text, false)`,
-		nexus.TenantID(ctx), nexus.UserID(ctx))
+		identity.TenantID(ctx), identity.UserID(ctx))
 	if err != nil {
 		conn.Release()
 		return nil, nil, err

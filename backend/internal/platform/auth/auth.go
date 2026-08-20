@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -152,6 +153,9 @@ func (s *Service) RequireUser(next http.Handler) http.Handler {
 			return
 		}
 		ctx := context.WithValue(r.Context(), principalKey{}, p)
+		// identity нь DB-ийн RLS context (дотоод), nexus нь модулиудын
+		// зөвхөн-унших хувилбар.
+		ctx = identity.With(ctx, p.TenantID, p.UserID)
 		ctx = nexus.WithIdentity(ctx, p.TenantID, p.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

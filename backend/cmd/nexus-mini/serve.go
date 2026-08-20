@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/handlers"
@@ -53,7 +56,7 @@ func cmdServe(_ []string) error {
 	tdb := db.NewTenantDB(pools.App)
 	authSvc := auth.NewService(pools.App, cfg.CookieSecure)
 	perms := rbac.NewStore(tdb)
-	rec := audit.NewRecorder(pools.App)
+	rec := audit.NewRecorder(tdb)
 	installer := appstore.NewInstaller(tdb, perms)
 	gate := appstore.NewGate(tdb)
 	deps := nexus.Deps{DB: tdb, Perms: perms, Audit: rec}
@@ -140,8 +143,36 @@ func cmdServe(_ []string) error {
 		})
 	}
 
-	log.Printf("nexus-mini API :%s (%d модуль)", cfg.Port, len(nexus.Registered()))
-	return http.ListenAndServe(":"+cfg.Port, r)
+	// Default нь loopback — гадагш nginx л нээнэ; Docker-т LISTEN_ADDR=0.0.0.0.
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1"
+	}
+	srv := &http.Server{
+		Addr:              addr + ":" + cfg.Port,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      35 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+
+	// Graceful shutdown: SIGTERM/SIGINT дээр идэвхтэй хүсэлтүүдээ дуусгаад
+	// унтарна — ингэснээр defer pools.Close() ч бодитоор ажиллана.
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe() }()
+	log.Printf("nexus-mini API %s (%d модуль)", srv.Addr, len(nexus.Registered()))
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case err := <-errCh:
+		return err
+	case <-stop:
+		shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shCancel()
+		return srv.Shutdown(shCtx)
+	}
 }
 
 // sameOriginOnly — бичих хүсэлтийн Origin (байвал) хүсэлтийн хосттой

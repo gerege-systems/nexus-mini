@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MonitorSmartphone, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { api, ApiError, type Device } from "@/lib/api";
 import { useShell } from "@/components/shell";
+import { toast } from "@/lib/toast";
 
 const statusMn: Record<Device["status"], { label: string; cls: string }> = {
   active: { label: "Ашиглагдаж байгаа", cls: "badge--ok" },
@@ -56,6 +57,7 @@ export default function DevicesPage() {
       if (form.id) await api.put(`/api/apps/devices/${form.id}`, body);
       else await api.post("/api/apps/devices/", body);
       setForm(null);
+      toast(form.id ? "Хадгалагдлаа" : "Бүртгэгдлээ");
       await load(q);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
@@ -65,6 +67,7 @@ export default function DevicesPage() {
   const remove = async (d: Device) => {
     if (!confirm(`"${d.name}" төхөөрөмжийг устгах уу?`)) return;
     await api.del(`/api/apps/devices/${d.id}`);
+    toast("Устгагдлаа");
     await load(q);
   };
 

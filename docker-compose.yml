@@ -36,6 +36,7 @@ services:
       DATABASE_URL_ADMIN: postgres://nexus_admin:nexus-dev@db:5432/nexus_mini
       CATALOG_PATH: /catalog/apps.json
       PORT: "8084"
+      LISTEN_ADDR: 0.0.0.0
     volumes:
       - ./catalog:/catalog:ro
     depends_on:

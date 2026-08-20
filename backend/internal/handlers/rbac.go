@@ -59,6 +59,10 @@ func (h *RBACH) Roles(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, x)
 	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "roles query failed")
+		return
+	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"roles": out})
 }
 
@@ -86,6 +90,10 @@ func (h *RBACH) Permissions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "permissions query failed")
+		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"permissions": out})
 }
@@ -117,7 +125,7 @@ func (h *RBACH) CreateRole(w http.ResponseWriter, r *http.Request) {
 		 VALUES ($1::uuid, $2::varchar(64), $3::varchar(120), $4::varchar(64)) RETURNING id`,
 		tenantID, in.Code, in.Name, implies).Scan(&id)
 	if err != nil {
-		httpx.Error(w, http.StatusConflict, "code давхардаж байна эсвэл буруу форматтай")
+		httpx.DBError(w, err, "code давхардаж байна (эсвэл формат буруу)")
 		return
 	}
 	h.Perms.Invalidate(tenantID)
@@ -222,6 +230,10 @@ func (h *RBACH) Members(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "members query failed")
+		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"members": out})
 }

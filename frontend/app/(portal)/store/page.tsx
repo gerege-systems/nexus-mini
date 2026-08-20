@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, Package, Power } from "lucide-react";
 import { api, ApiError, type StoreApp } from "@/lib/api";
 import { useShell } from "@/components/shell";
+import { toast } from "@/lib/toast";
 
 export default function StorePage() {
   const { me, refresh } = useShell();
@@ -23,6 +24,7 @@ export default function StorePage() {
     setBusy(app.id);
     try {
       await api.post(`/api/store/apps/${app.id}/${action}`);
+      toast(action === "install" ? `${app.name} суулгагдлаа` : action === "enable" ? "Асаалаа" : "Унтраалаа");
       await load();
       refresh(); // цэс шинэчлэгдэнэ
     } catch (e) {

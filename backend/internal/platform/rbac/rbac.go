@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 
@@ -59,7 +60,7 @@ func (s *Store) UserGrants(ctx context.Context, tenantID, userID string) (map[st
 	// (гүн ≤ 5 — санамсаргүй мөчлөгөөс хамгаална), дараа нь grant-ууд.
 	// TenantDB нь ctx-ийн identity-гээр RLS context тохируулдаг тул энд
 	// шийдэж буй хосыг нь ctx-д тавьж өгнө.
-	qctx := nexus.WithIdentity(ctx, tenantID, userID)
+	qctx := identity.With(ctx, tenantID, userID)
 	rows, err := s.db.Query(qctx, `
 		WITH RECURSIVE chain AS (
 		  SELECT r.id, r.code, r.implies, 0 AS depth

@@ -7,16 +7,17 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
+	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Recorder struct {
-	pool *pgxpool.Pool
+	db nexus.DB
 }
 
-func NewRecorder(pool *pgxpool.Pool) *Recorder { return &Recorder{pool: pool} }
+func NewRecorder(db nexus.DB) *Recorder { return &Recorder{db: db} }
 
 var _ nexus.AuditRecorder = (*Recorder)(nil)
 
@@ -46,7 +47,16 @@ func (r *Recorder) RecordAs(ctx context.Context, tenantID, userID, action, objec
 	if userID != "" {
 		uid = userID
 	}
-	_, err = r.pool.Exec(ctx,
+	// Хүсэлтийн ctx цуцлагдсан ч (client тасрах, timeout) audit бичигдэх
+	// ёстой — бизнес бичилт commit болчихоод audit нь алдагдвал hash chain
+	// худал дүр зурагтай болно. Өөрийн 5с хугацаатай, цуцлагдашгүй ctx.
+	base := context.WithoutCancel(ctx)
+	wctx, cancel := context.WithTimeout(base, 5*time.Second)
+	defer cancel()
+	// TenantDB нь identity-ээс GUC тохируулдаг тул audit_append доторх
+	// app_tenant_id() шалгалт (00005) энэ tenant-тай таарна.
+	wctx = identity.With(wctx, tenantID, userID)
+	_, err = r.db.Exec(wctx,
 		`SELECT audit_append($1::uuid, $2::uuid, $3::varchar(128), $4::varchar(255), $5::jsonb)`,
 		tenantID, uid, action, object, dj)
 	if err != nil {

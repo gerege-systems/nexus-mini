@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/appstore"
@@ -55,6 +56,10 @@ func (h *Store) List(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, a)
 	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "store query failed")
+		return
+	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"apps": out})
 }
 
@@ -71,7 +76,8 @@ func (h *Store) Install(w http.ResponseWriter, r *http.Request) {
 			"энэ апп бинарид ороогүй байна — `nexus-mini add` коммандаар нэмээд дахин build хийнэ")
 		return
 	case err != nil:
-		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		log.Printf("app install %s: %v", appID, err)
+		httpx.Error(w, http.StatusInternalServerError, "суулгалт амжилтгүй боллоо")
 		return
 	}
 	h.Gate.Invalidate(nexus.TenantID(r.Context()))

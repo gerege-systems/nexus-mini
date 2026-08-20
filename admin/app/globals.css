@@ -389,3 +389,22 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
 .topbar__context { width: 11rem; }
 /* Сонгогдсон цэсний зүүн зураасгүй */
 .nav__item.is-on { box-shadow: none; }
+
+/* ─── Toast ─── */
+.toaster {
+  position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 120;
+  display: flex; flex-direction: column; gap: 0.5rem; max-width: min(360px, 90vw);
+}
+.toast {
+  display: flex; align-items: center; gap: 0.55rem;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-left: 3px solid var(--ok);
+  border-radius: var(--radius-s); padding: 0.7rem 1rem;
+  box-shadow: var(--shadow-lg); font-size: 0.9rem;
+  animation: toast-in 0.2s ease-out;
+}
+.toast--err { border-left-color: var(--danger); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

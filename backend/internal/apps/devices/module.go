@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
 )
@@ -98,7 +97,7 @@ func (h *handler) list(w http.ResponseWriter, r *http.Request) {
 		 ORDER BY d.created_at DESC LIMIT 200`,
 		nexus.TenantID(r.Context()), q)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "devices query failed")
+		nexus.Error(w, http.StatusInternalServerError, "devices query failed")
 		return
 	}
 	defer rows.Close()
@@ -107,12 +106,16 @@ func (h *handler) list(w http.ResponseWriter, r *http.Request) {
 		var d deviceRow
 		if err := rows.Scan(&d.ID, &d.Name, &d.Kind, &d.Serial, &d.Status, &d.Note,
 			&d.CreatedBy, &d.OwnerName, &d.CreatedAt); err != nil {
-			httpx.Error(w, http.StatusInternalServerError, "scan failed")
+			nexus.Error(w, http.StatusInternalServerError, "scan failed")
 			return
 		}
 		out = append(out, d)
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"devices": out, "scope": nexus.Scope(r.Context())})
+	if err := rows.Err(); err != nil {
+		nexus.Error(w, http.StatusInternalServerError, "devices query failed")
+		return
+	}
+	nexus.JSON(w, http.StatusOK, map[string]any{"devices": out, "scope": nexus.Scope(r.Context())})
 }
 
 type deviceInput struct {
@@ -139,11 +142,11 @@ func (in *deviceInput) valid() bool {
 
 func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 	var in deviceInput
-	if !httpx.Decode(w, r, &in) {
+	if !nexus.Decode(w, r, &in) {
 		return
 	}
 	if !in.valid() {
-		httpx.Error(w, http.StatusBadRequest, "нэр, сериал шаардлагатай; статус буруу")
+		nexus.Error(w, http.StatusBadRequest, "нэр, сериал шаардлагатай; статус буруу")
 		return
 	}
 	var id string
@@ -155,11 +158,11 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 		nexus.TenantID(r.Context()), in.Name, in.Kind, in.Serial, in.Status, in.Note,
 		nexus.UserID(r.Context())).Scan(&id)
 	if err != nil {
-		httpx.Error(w, http.StatusConflict, "сериал давхардаж байна")
+		nexus.DBError(w, err, "сериал давхардаж байна")
 		return
 	}
 	h.deps.Audit.Record(r.Context(), "devices.create", in.Serial, map[string]any{"name": in.Name})
-	httpx.JSON(w, http.StatusCreated, map[string]string{"id": id})
+	nexus.JSON(w, http.StatusCreated, map[string]string{"id": id})
 }
 
 // ownFilter — ScopeOwn үед created_by шүүлт (docs/02-rbac.md #3). $n нь
@@ -174,11 +177,11 @@ func ownFilter(r *http.Request, n int) (string, []any) {
 func (h *handler) update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var in deviceInput
-	if !httpx.Decode(w, r, &in) {
+	if !nexus.Decode(w, r, &in) {
 		return
 	}
 	if !in.valid() {
-		httpx.Error(w, http.StatusBadRequest, "нэр, сериал шаардлагатай; статус буруу")
+		nexus.Error(w, http.StatusBadRequest, "нэр, сериал шаардлагатай; статус буруу")
 		return
 	}
 	extra, extraArgs := ownFilter(r, 8)
@@ -190,15 +193,15 @@ func (h *handler) update(w http.ResponseWriter, r *http.Request) {
 		 WHERE id = $1::uuid AND tenant_id = $2::uuid`+extra,
 		append(args, extraArgs...)...)
 	if err != nil {
-		httpx.Error(w, http.StatusConflict, "хадгалж чадсангүй (сериал давхардсан уу?)")
+		nexus.DBError(w, err, "сериал давхардаж байна")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		httpx.Error(w, http.StatusNotFound, "олдсонгүй эсвэл таны бүртгэл биш")
+		nexus.Error(w, http.StatusNotFound, "олдсонгүй эсвэл таны бүртгэл биш")
 		return
 	}
 	h.deps.Audit.Record(r.Context(), "devices.update", id, nil)
-	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	nexus.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
@@ -208,13 +211,13 @@ func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
 		`DELETE FROM devices WHERE id = $1::uuid AND tenant_id = $2::uuid`+extra,
 		append([]any{id, nexus.TenantID(r.Context())}, extraArgs...)...)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "delete failed")
+		nexus.Error(w, http.StatusInternalServerError, "delete failed")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		httpx.Error(w, http.StatusNotFound, "олдсонгүй эсвэл таны бүртгэл биш")
+		nexus.Error(w, http.StatusNotFound, "олдсонгүй эсвэл таны бүртгэл биш")
 		return
 	}
 	h.deps.Audit.Record(r.Context(), "devices.delete", id, nil)
-	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+	nexus.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

@@ -15,8 +15,11 @@ web:
 	cd frontend && pnpm dev
 
 # push бүрийн өмнө заавал (docs/01-lessons.md #4): linux build + vet + test
+# + SDK-ийн хил: модуль internal/platform-оос юу ч импортлохгүй байх ёстой
 check:
 	cd backend && GOOS=linux GOARCH=amd64 go build ./... && go vet ./... && go test ./...
+	@cd backend && bad=$$(go list -deps ./internal/apps/... | grep 'internal/platform' || true); \
+	 if [ -n "$$bad" ]; then echo "SDK хил зөрчигдөв — модуль internal/platform импортолж байна:"; echo "$$bad"; exit 1; fi
 
 push: check
 	git push

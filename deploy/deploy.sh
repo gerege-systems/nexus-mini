@@ -16,22 +16,35 @@ main() {
 
   echo "== backend build =="
   cd backend
-  go build -o bin/nexus-mini ./cmd/nexus-mini
+  # Атом солилт: шинийг тусад нь build хийж, ажиллаж буй binary-г mv-ээр
+  # (rename нь атом) дарна; өмнөхийг rollback-д үлдээнэ.
+  go build -o bin/nexus-mini.new ./cmd/nexus-mini
+  [ -f bin/nexus-mini ] && cp bin/nexus-mini bin/nexus-mini.prev
+  mv -f bin/nexus-mini.new bin/nexus-mini
 
   echo "== migrate =="
   # Env-ийг export хийхгүй (#8: ADMIN_* гэх мэт нууц child process бүрт
   # задрах ёсгүй) — migrate --env флагаараа өөрөө уншина.
   ./bin/nexus-mini migrate --env /home/bay/secrets/nexus-mini.env
 
+  # Next build-ийг амьд .next дээр биш тусдаа хавтаст хийж, дуусмагц
+  # атомоор солино (mid-build 500/404-өөс сэргийлнэ).
+  build_next() {
+    pnpm install --frozen-lockfile
+    rm -rf .next.new
+    API_URL=http://127.0.0.1:8084 NEXT_DIST_DIR=.next.new pnpm build
+    rm -rf .next.prev
+    [ -d .next ] && mv .next .next.prev
+    mv .next.new .next
+  }
+
   echo "== frontend build =="
   cd ../frontend
-  pnpm install --frozen-lockfile
-  API_URL=http://127.0.0.1:8084 pnpm build
+  build_next
 
   echo "== admin build =="
   cd ../admin
-  pnpm install --frozen-lockfile
-  API_URL=http://127.0.0.1:8084 pnpm build
+  build_next
 
   echo "== restart =="
   sudo systemctl restart nexus-mini-api nexus-mini-web nexus-mini-adminweb

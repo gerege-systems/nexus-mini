@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Users } from "lucide-react";
 import { api, ApiError, type Member, type Role } from "@/lib/api";
 import { useShell } from "@/components/shell";
+import { toast } from "@/lib/toast";
 
 export default function MembersPage() {
   const { me } = useShell();
@@ -33,6 +34,7 @@ export default function MembersPage() {
       await api.post("/api/members", form);
       setAdding(false);
       setForm({ email: "", name: "", password: "", roles: ["user"] });
+      toast("Гишүүн нэмэгдлээ");
       await load();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
@@ -41,13 +43,23 @@ export default function MembersPage() {
 
   const setMemberRoles = async (m: Member, code: string, on: boolean) => {
     const next = on ? [...m.roles, code] : m.roles.filter((r) => r !== code);
-    await api.put(`/api/members/${m.membership_id}/roles`, { roles: next });
+    try {
+      await api.put(`/api/members/${m.membership_id}/roles`, { roles: next });
+      toast("Role шинэчлэгдлээ");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Алдаа гарлаа", "err");
+    }
     await load();
   };
 
   const remove = async (m: Member) => {
     if (!confirm(`${m.name}-г байгууллагаас хасах уу?`)) return;
-    await api.del(`/api/members/${m.membership_id}`);
+    try {
+      await api.del(`/api/members/${m.membership_id}`);
+      toast("Гишүүн хасагдлаа");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Алдаа гарлаа", "err");
+    }
     await load();
   };
 

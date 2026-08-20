@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/httpx"
+	"github.com/gerege-systems/nexus-mini/backend/internal/platform/identity"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/password"
 	"github.com/gerege-systems/nexus-mini/backend/internal/platform/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
@@ -54,19 +56,26 @@ func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "hash failed")
 		return
 	}
-	var uid string
-	err = h.Pool.QueryRow(r.Context(),
-		`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
-		in.Email, hash, in.Name).Scan(&uid)
+	// Хэрэглэгч + байгууллага НЭГ гүйлгээнд — slug давхардвал орфан
+	// хэрэглэгч үлдэж "имэйл бүртгэлтэй" гацаа үүсгэдэг байсан (аудит).
+	var uid, tenantID string
+	err = h.DB.Tx(identity.With(r.Context(), "", ""), func(tx pgx.Tx) error {
+		if err := tx.QueryRow(r.Context(),
+			`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
+			in.Email, hash, in.Name).Scan(&uid); err != nil {
+			return err
+		}
+		var err error
+		tenantID, err = createTenantTx(r.Context(), tx, uid, in.TenantName, in.TenantSlug)
+		return err
+	})
 	if err != nil {
-		httpx.Error(w, http.StatusConflict, "энэ имэйл бүртгэлтэй байна")
-		return
-	}
-
-	tenantID, err := h.createTenant(r, uid, in.TenantName, in.TenantSlug)
-	if err != nil {
-		log.Printf("signup: tenant create: %v", err)
-		httpx.Error(w, http.StatusConflict, "байгууллага үүсгэж чадсангүй (slug давхардсан уу?)")
+		if nexus.IsUniqueViolation(err) {
+			httpx.Error(w, http.StatusConflict, "имэйл эсвэл байгууллагын slug бүртгэлтэй байна")
+			return
+		}
+		log.Printf("signup: %v", err)
+		httpx.Error(w, http.StatusInternalServerError, "бүртгэл амжилтгүй боллоо")
 		return
 	}
 	sid, err := h.Svc.StartSession(r.Context(), w, uid)
@@ -84,47 +93,51 @@ func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusCreated, map[string]string{"user_id": uid, "tenant_id": tenantID})
 }
 
-// createTenant — tenant + гишүүнчлэл + default role-ууд + admin оноолт,
-// нэг гүйлгээнд. Дуудагч нь identity-гээ ctx-д биш параметрээр өгнө
-// (signup үед session хараахан байхгүй).
-func (h *Auth) createTenant(r *http.Request, userID, name, slug string) (string, error) {
-	ctx := nexus.WithIdentity(r.Context(), "", userID)
+// createTenantTx — tenant + гишүүнчлэл + default role-ууд + admin оноолт,
+// өгөгдсөн гүйлгээн дотор. Гүйлгээний RLS context-оо өөрөө SET LOCAL хийдэг
+// тул дуудагчийн ctx identity ямар ч байж болно.
+func createTenantTx(ctx context.Context, tx pgx.Tx, userID, name, slug string) (string, error) {
+	// Хэрэглэгчийн context — tenants INSERT бодлогод app_user_id() хэрэгтэй.
+	if _, err := tx.Exec(ctx,
+		`SELECT set_config('app.user_id', $1::text, true)`, userID); err != nil {
+		return "", err
+	}
+	// Tenant-ийн id-г урьдчилан гаргаж context-оо ЭХЭЛЖ тохируулна:
+	// INSERT ... RETURNING нь SELECT бодлого шаарддаг тул шинэ tenant
+	// өөрийн app.tenant_id-тэй таарч байж л буцаж харагдана.
 	var tenantID string
-	err := h.DB.Tx(ctx, func(tx pgx.Tx) error {
-		// Tenant-ийн id-г урьдчилан гаргаж context-оо ЭХЭЛЖ тохируулна:
-		// INSERT ... RETURNING нь SELECT бодлого шаарддаг тул шинэ tenant
-		// өөрийн app.tenant_id-тэй таарч байж л буцаж харагдана.
-		if err := tx.QueryRow(ctx, `SELECT gen_random_uuid()`).Scan(&tenantID); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx,
-			`SELECT set_config('app.tenant_id', $1::text, true)`, tenantID); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx,
-			`INSERT INTO tenants (id, slug, name) VALUES ($1::uuid, $2::varchar(64), $3::varchar(160))`,
-			tenantID, slug, name); err != nil {
-			return err
-		}
-		var memberID string
-		if err := tx.QueryRow(ctx,
-			`INSERT INTO memberships (tenant_id, user_id) VALUES ($1::uuid, $2::uuid) RETURNING id`,
-			tenantID, userID).Scan(&memberID); err != nil {
-			return err
-		}
-		adminRoleID, err := rbac.SeedTenantRoles(ctx, tx, tenantID)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx,
-			`INSERT INTO membership_roles (membership_id, role_id) VALUES ($1::uuid, $2::uuid)`,
-			memberID, adminRoleID); err != nil {
-			return err
-		}
-		// Платформын core permission-уудын default оноолт.
-		return rbac.GrantOnInstall(ctx, tx, tenantID, rbac.CorePermissions())
-	})
-	return tenantID, err
+	if err := tx.QueryRow(ctx, `SELECT gen_random_uuid()`).Scan(&tenantID); err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(ctx,
+		`SELECT set_config('app.tenant_id', $1::text, true)`, tenantID); err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO tenants (id, slug, name) VALUES ($1::uuid, $2::varchar(64), $3::varchar(160))`,
+		tenantID, slug, name); err != nil {
+		return "", err
+	}
+	var memberID string
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO memberships (tenant_id, user_id) VALUES ($1::uuid, $2::uuid) RETURNING id`,
+		tenantID, userID).Scan(&memberID); err != nil {
+		return "", err
+	}
+	adminRoleID, err := rbac.SeedTenantRoles(ctx, tx, tenantID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO membership_roles (membership_id, role_id) VALUES ($1::uuid, $2::uuid)`,
+		memberID, adminRoleID); err != nil {
+		return "", err
+	}
+	// Платформын core permission-уудын default оноолт.
+	if err := rbac.GrantOnInstall(ctx, tx, tenantID, rbac.CorePermissions()); err != nil {
+		return "", err
+	}
+	return tenantID, nil
 }
 
 // POST /api/tenants — нэвтэрсэн хэрэглэгч шинэ байгууллага үүсгэнэ.
@@ -143,9 +156,14 @@ func (h *Auth) CreateTenant(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "нэр ба slug шаардлагатай")
 		return
 	}
-	tenantID, err := h.createTenant(r, p.UserID, in.Name, in.Slug)
+	var tenantID string
+	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+		var err error
+		tenantID, err = createTenantTx(r.Context(), tx, p.UserID, in.Name, in.Slug)
+		return err
+	})
 	if err != nil {
-		httpx.Error(w, http.StatusConflict, "slug давхардаж байна")
+		httpx.DBError(w, err, "slug давхардаж байна")
 		return
 	}
 	h.Audit.RecordAs(r.Context(), tenantID, p.UserID, "tenant.create", in.Slug,
@@ -214,6 +232,10 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		tenants = append(tenants, t)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "tenants query failed")
+		return
 	}
 	if tenants == nil {
 		tenants = []tenantRow{}

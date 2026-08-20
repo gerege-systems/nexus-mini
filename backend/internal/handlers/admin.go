@@ -63,6 +63,10 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, x)
 	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "tenants query failed")
+		return
+	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"tenants": out})
 }
 
@@ -93,6 +97,10 @@ func (h *Admin) Users(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "users query failed")
+		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"users": out})
 }
@@ -128,6 +136,10 @@ func (h *Admin) Apps(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, x)
 	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "apps query failed")
+		return
+	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"apps": out})
 }
 
@@ -160,6 +172,10 @@ func (h *Admin) Audit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "audit query failed")
+		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"entries": out})
 }

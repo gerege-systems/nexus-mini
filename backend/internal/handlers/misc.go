@@ -44,6 +44,10 @@ func (h *Misc) Menu(w http.ResponseWriter, r *http.Request) {
 		}
 		installed[id] = true
 	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "menu query failed")
+		return
+	}
 
 	grants, err := h.Perms.UserGrants(r.Context(), tenantID, userID)
 	if err != nil {
@@ -136,6 +140,10 @@ func (h *Misc) Audit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "audit query failed")
+		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"entries": out})
 }

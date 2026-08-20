@@ -1,29 +1,20 @@
-// Package httpx — JSON туслахууд.
+// Package httpx — pkg/nexus-ийн вэб туслахуудын дотоод alias.
+// Хэрэгжүүлэлт нь SDK-д (pkg/nexus/web.go) амьдардаг: модулиуд internal-гүй
+// компайл хийгдэх ёстой тул эх хувь нь тэнд.
 package httpx
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 
-func JSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
+func JSON(w http.ResponseWriter, status int, v any) { nexus.JSON(w, status, v) }
 
-func Error(w http.ResponseWriter, status int, msg string) {
-	JSON(w, status, map[string]string{"error": msg})
-}
+func Error(w http.ResponseWriter, status int, msg string) { nexus.Error(w, status, msg) }
 
-// Decode — биеийг задлана, 1MB хязгаартай.
-func Decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		Error(w, http.StatusBadRequest, "invalid request body")
-		return false
-	}
-	return true
+func Decode(w http.ResponseWriter, r *http.Request, v any) bool { return nexus.Decode(w, r, v) }
+
+func DBError(w http.ResponseWriter, err error, conflictMsg string) {
+	nexus.DBError(w, err, conflictMsg)
 }

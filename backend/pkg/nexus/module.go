@@ -129,6 +129,13 @@ func Register(m Module) {
 			panic(fmt.Sprintf("nexus: %s модулийн permission %q нь %q prefix-ээр эхлэх ёстой",
 				m.ID(), p.Code, prefix))
 		}
+		for _, dr := range p.DefaultRoles {
+			if strings.HasSuffix(dr, ":own") && !p.OwnScope {
+				// Чимээгүй all болгочихвол fail-open — boot дээр унагана.
+				panic(fmt.Sprintf("nexus: %s permission %q нь OwnScope=false атлаа %q default-той",
+					m.ID(), p.Code, dr))
+			}
+		}
 	}
 	registry = append(registry, m)
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KeyRound, Plus } from "lucide-react";
 import { api, ApiError, type Permission, type Role } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
 // Role × permission матриц: нүд бүр — / all / own гэсэн 3 төлөвт шилжинэ.
 export default function RolesPage() {
@@ -45,6 +46,7 @@ export default function RolesPage() {
     else delete grants[p.code];
     try {
       await api.put(`/api/roles/${role.id}/grants`, { grants });
+      toast("Оноолт хадгалагдлаа");
       await load();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");
@@ -61,6 +63,7 @@ export default function RolesPage() {
       });
       setCreating(false);
       setForm({ code: "", name: "", implies: "" });
+      toast("Role үүслээ");
       await load();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Алдаа гарлаа");

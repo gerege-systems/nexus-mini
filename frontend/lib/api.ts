@@ -16,6 +16,15 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // Session дууссан бол хаа сайгүй "loading forever" болгохгүй —
+    // төвлөрсөн байдлаар нэвтрэх хуудас руу.
+    if (
+      res.status === 401 &&
+      path !== "/api/login" &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      window.location.href = "/login";
+    }
     throw new ApiError(res.status, (body as { error?: string }).error || res.statusText);
   }
   return body as T;
