@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, type Me } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -13,6 +13,12 @@ export default function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const { t } = useT();
+
+  useEffect(() => {
+    api.get<Me>("/api/me")
+      .then((m) => { if (m.user.platform_admin) router.replace("/"); })
+      .catch(() => {});
+  }, [router]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

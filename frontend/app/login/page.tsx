@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
@@ -13,6 +13,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const { t } = useT();
+
+  // Аль хэдийн нэвтэрсэн хүнээс дахин нууц үг нэхэхгүй — session хүчинтэй
+  // бол шууд портал руу.
+  useEffect(() => {
+    api.get("/api/me").then(() => router.replace("/dashboard")).catch(() => {});
+  }, [router]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
