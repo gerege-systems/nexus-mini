@@ -63,6 +63,43 @@ func (h *Store) List(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"apps": out})
 }
 
+// GET /api/catalog — НИЙТИЙН каталог (landing-ийн апп дэлгүүр хуудас):
+// auth шаардахгүй, суулгалтын мэдээлэл агуулахгүй.
+func (h *Store) Catalog(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT id, short_id, name, version, description, publisher, compiled
+		  FROM apps ORDER BY compiled DESC, name`)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "catalog query failed")
+		return
+	}
+	defer rows.Close()
+	type appRow struct {
+		ID          string `json:"id"`
+		ShortID     string `json:"short_id"`
+		Name        string `json:"name"`
+		Version     string `json:"version"`
+		Description string `json:"description"`
+		Publisher   string `json:"publisher"`
+		Compiled    bool   `json:"compiled"`
+	}
+	out := []appRow{}
+	for rows.Next() {
+		var a appRow
+		if err := rows.Scan(&a.ID, &a.ShortID, &a.Name, &a.Version, &a.Description,
+			&a.Publisher, &a.Compiled); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "scan failed")
+			return
+		}
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "catalog query failed")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"apps": out})
+}
+
 // POST /api/store/apps/{id}/install
 func (h *Store) Install(w http.ResponseWriter, r *http.Request) {
 	appID := chi.URLParam(r, "id")

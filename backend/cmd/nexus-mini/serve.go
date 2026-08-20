@@ -84,6 +84,7 @@ func cmdServe(_ []string) error {
 	r.With(httprate.LimitByIP(5, time.Minute)).Post("/api/signup", authH.Signup)
 	r.With(authLimit).Post("/api/login", authH.Login)
 	r.Post("/api/logout", authH.Logout)
+	r.Get("/api/catalog", storeH.Catalog)
 
 	// Нэвтэрсэн (tenant сонгоогүй байж болно).
 	r.Group(func(g chi.Router) {

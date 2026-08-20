@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import {
+  ArrowRight,
   Building2,
+  Code2,
   KeyRound,
   Layers,
   ScrollText,
@@ -10,28 +12,14 @@ import {
   Store,
   Waves,
 } from "lucide-react";
+import { MktHeader, MktFooter } from "@/components/mkt";
 
-// Landing — юу болохыг нь эхнээс нь тайлбарлана: цөм + app store + модуль
-// хөгжүүлэлт. Анхны тохируулга env + `nexus-mini migrate`-ээр хийгддэг
-// тул энд ямар ч төлөв шалгадаггүй.
+// Нүүр — ерөнхий танилцуулга. Апп дэлгүүр (/apps) ба модуль хөгжүүлэх
+// (/developers) тус тусдаа хуудсуудтай.
 export default function Landing() {
   return (
     <div className="mkt">
-      <header className="mkt-top">
-        <span className="brand-square">N</span>
-        <b>nexus-mini</b>
-        <nav>
-          <a href="#core">Цөм</a>
-          <a href="#store">Апп дэлгүүр</a>
-          <a href="#dev">Модуль хөгжүүлэх</a>
-        </nav>
-        <span className="spacer" />
-        <a href="https://github.com/gerege-systems/nexus-mini" className="btn btn--ghost btn--sm">
-          GitHub
-        </a>
-        <Link href="/login" className="btn btn--ghost btn--sm">Нэвтрэх</Link>
-        <Link href="/signup" className="btn btn--sm">Бүртгүүлэх</Link>
-      </header>
+      <MktHeader />
 
       <section className="mkt-hero">
         <h1>
@@ -44,12 +32,12 @@ export default function Landing() {
         </p>
         <div className="cta">
           <Link href="/signup" className="btn">Байгууллагаа бүртгүүлэх</Link>
-          <a href="#dev" className="btn btn--ghost">Модуль хөгжүүлэх</a>
+          <Link href="/developers" className="btn btn--ghost">Модуль хөгжүүлэх</Link>
         </div>
       </section>
 
       <section className="mkt-sect" id="core">
-        <div className="mkt-num">01 — ЦӨМ</div>
+        <div className="mkt-num">ЦӨМ</div>
         <h2>Платформ юу хариуцдаг вэ</h2>
         <p className="lead">
           Модуль бүр дахин бичдэг байсан зүйлс нэг л удаа, цөмд:
@@ -88,65 +76,25 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="mkt-sect" id="store">
-        <div className="mkt-num">02 — АПП ДЭЛГҮҮР</div>
-        <h2>Модуль хэрхэн ирдэг вэ</h2>
-        <p className="lead">
-          Байгууллага бүр өөрт хэрэгтэйгээ л суулгана — суусан апп нь эрх,
-          цэсээ өөрөө авчирна.
-        </p>
-        <div className="mkt-steps">
-          <div className="card mkt-feature">
-            <span className="mkt-num">1</span>
-            <h3>Дэлгүүрээс сонгоно</h3>
-            <p>Каталогоос аппаа сонгоод «Суулгах» — хамаарлуудыг нь платформ өөрөө цэгцэлнэ.</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="mkt-num">2</span>
-            <h3>Эрх автоматаар</h3>
-            <p>Аппын permission-ууд role-уудад тунхагласан ёсоороо оноогдоно; админ дараа нь чөлөөтэй өөрчилнө.</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="mkt-num">3</span>
-            <h3>Цэс гарч ирнэ</h3>
-            <p>Эрхтэй хэрэглэгчид л аппын цэсийг харна. Унтраавал бүх зүйл нь эргэж алга болно.</p>
-          </div>
+      <section className="mkt-sect">
+        <div className="mkt-grid3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+          <Link href="/apps" className="card mkt-feature" style={{ display: "block" }}>
+            <span className="ic"><Store size={19} /></span>
+            <h3>Апп дэлгүүр <ArrowRight size={14} style={{ verticalAlign: "-2px" }} /></h3>
+            <p>
+              Байгууллага бүр өөрт хэрэгтэй модулиа сонгож суулгана — суусан апп
+              эрх, цэсээ өөрөө авчирна. Одоо байгаа аппуудыг тайлбартай нь үзэх.
+            </p>
+          </Link>
+          <Link href="/developers" className="card mkt-feature" style={{ display: "block" }}>
+            <span className="ic"><Code2 size={19} /></span>
+            <h3>Модуль хөгжүүлэх <ArrowRight size={14} style={{ verticalAlign: "-2px" }} /></h3>
+            <p>
+              Модуль бол долоон метод хэрэгжүүлсэн Go package. Файлын бүтэц,
+              permission, миграц, route — бүрэн гарын авлага.
+            </p>
+          </Link>
         </div>
-      </section>
-
-      <section className="mkt-sect" id="dev">
-        <div className="mkt-num">03 — МОДУЛЬ ХӨГЖҮҮЛЭХ</div>
-        <h2>Долоон метод л хэрэгжүүлнэ</h2>
-        <p className="lead">
-          Модуль бол <code>pkg/nexus.Module</code> interface-тэй Go package.
-          Tenant тусгаарлалт, нэвтрэлт, суулгалт, RBAC, audit — платформ хийнэ;
-          та бизнес логикоо л бичнэ.
-        </p>
-        <div className="mkt-code">
-          <div><span className="k">func</span> (m *Module) Permissions() []nexus.PermissionDefinition {"{"}</div>
-          <div>&nbsp;&nbsp;<span className="k">return</span> []nexus.PermissionDefinition{"{{"}</div>
-          <div>&nbsp;&nbsp;&nbsp;&nbsp;Code: <span className="s">&quot;devices.manage&quot;</span>, OwnScope: <span className="k">true</span>,</div>
-          <div>&nbsp;&nbsp;&nbsp;&nbsp;DefaultRoles: []<span className="k">string</span>{"{"}<span className="s">&quot;manager&quot;</span>, <span className="s">&quot;user:own&quot;</span>{"}"}, <span className="c">// оноолт нь тунхаглал</span></div>
-          <div>&nbsp;&nbsp;{"}}"}</div>
-          <div>{"}"}</div>
-          <div>&nbsp;</div>
-          <div><span className="k">func</span> (m *Module) RegisterRoutes(r chi.Router, deps nexus.Deps) {"{"}</div>
-          <div>&nbsp;&nbsp;<span className="c">// r нь аль хэдийн хамгаалагдсан: auth + суулгалтын gate дээр сууна</span></div>
-          <div>&nbsp;&nbsp;r.With(nexus.RequirePermission(deps.Perms, <span className="s">&quot;devices.manage&quot;</span>)).Post(<span className="s">&quot;/&quot;</span>, h.create)</div>
-          <div>{"}"}</div>
-        </div>
-        <p style={{ color: "var(--text-2)", marginTop: "1rem" }}>
-          Жишээ модуль{" "}
-          <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/devices"
-            style={{ color: "var(--accent)", fontWeight: 600 }}>
-            backend/apps/devices
-          </a>{" "}
-          ← эндээс хуулж эхэл. Бүрэн гарын авлага:{" "}
-          <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/03-module-guide.md"
-            style={{ color: "var(--accent)", fontWeight: 600 }}>
-            docs/03-module-guide.md
-          </a>
-        </p>
       </section>
 
       <section className="mkt-sect">
@@ -163,10 +111,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="mkt-foot">
-        <span className="brand-square" style={{ width: "1.6rem", height: "1.6rem", fontSize: "0.8rem" }}>N</span>
-        <span>nexus-mini · Apache 2.0 · <a href="https://github.com/gerege-systems/nexus-mini" style={{ color: "var(--accent)" }}>gerege-systems/nexus-mini</a></span>
-      </footer>
+      <MktFooter />
     </div>
   );
 }
