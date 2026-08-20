@@ -72,6 +72,12 @@ const en: Record<string, string> = {
   "Шинэ нууц үг давталттайгаа таарахгүй байна": "New password doesn't match its repeat",
   "Алдаа гарлаа": "Something went wrong",
   "Нэр хоосон байж болохгүй": "Name can't be empty",
+  "имэйл эсвэл нууц үг буруу": "Wrong email or password",
+  "нэр хоосон байж болохгүй": "Name can't be empty",
+  "шинэ нууц үг 8+ тэмдэгт байх ёстой": "New password must be 8+ characters",
+  "одоогийн нууц үг буруу": "Current password is wrong",
+  "солиход алдаа гарлаа": "Failed to change password",
+  "хадгалж чадсангүй": "Could not save",
 };
 
 const dicts: Record<Locale, Record<string, string>> = { mn: {}, en };

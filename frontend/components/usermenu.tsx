@@ -92,11 +92,11 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
             <span>{t("Загвар")}</span>
             <div className="um__pills">
               <button className={`um__pill${theme === "light" ? " is-on" : ""}`}
-                onClick={() => setTheme("light")} title="Цайвар"><Sun size={14} /></button>
+                onClick={() => setTheme("light")} title={t("Цайвар")}><Sun size={14} /></button>
               <button className={`um__pill${theme === "dark" ? " is-on" : ""}`}
-                onClick={() => setTheme("dark")} title="Бараан"><Moon size={14} /></button>
+                onClick={() => setTheme("dark")} title={t("Бараан")}><Moon size={14} /></button>
               <button className={`um__pill${theme === "system" ? " is-on" : ""}`}
-                onClick={() => setTheme("system")} title="Систем"><Monitor size={14} /></button>
+                onClick={() => setTheme("system")} title={t("Систем")}><Monitor size={14} /></button>
             </div>
           </div>
 

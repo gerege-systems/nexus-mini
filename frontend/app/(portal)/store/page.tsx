@@ -44,7 +44,7 @@ export default function StorePage() {
           <div className="sub">{t("Байгууллагадаа хэрэгтэй модулиудыг суулгана")}</div>
         </div>
       </div>
-      {err && <div className="alert alert--danger">{err}</div>}
+      {err && <div className="alert alert--danger">{t(err)}</div>}
       {apps && (
         <div className="app-grid">
           {apps.map((a) => (

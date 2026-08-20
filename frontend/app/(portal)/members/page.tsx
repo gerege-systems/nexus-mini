@@ -49,7 +49,7 @@ export default function MembersPage() {
       await api.put(`/api/members/${m.membership_id}/roles`, { roles: next });
       toast(t("Role шинэчлэгдлээ"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : t("Алдаа гарлаа"), "err");
+      toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа"), "err");
     }
     await load();
   };
@@ -60,7 +60,7 @@ export default function MembersPage() {
       await api.del(`/api/members/${m.membership_id}`);
       toast(t("Гишүүн хасагдлаа"));
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : t("Алдаа гарлаа"), "err");
+      toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа"), "err");
     }
     await load();
   };
@@ -130,7 +130,7 @@ export default function MembersPage() {
         <div className="modal-back" onClick={() => setAdding(false)} onKeyDown={(e) => e.key === "Escape" && setAdding(false)}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3>{t("Гишүүн нэмэх")}</h3>
-            {err && <div className="alert alert--danger">{err}</div>}
+            {err && <div className="alert alert--danger">{t(err)}</div>}
             <div className="field">
               <label>{t("Имэйл")}</label>
               <input value={form.email} autoFocus

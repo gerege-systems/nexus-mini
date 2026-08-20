@@ -26,7 +26,7 @@ export default function SignupPage() {
       // Шинэ байгууллага — app store-оос эхэлнэ.
       router.replace("/store");
     } catch (ex) {
-      setErr(ex instanceof ApiError ? ex.message : "Алдаа гарлаа");
+      setErr(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"));
       setBusy(false);
     }
   };
@@ -41,7 +41,7 @@ export default function SignupPage() {
             <p className="sub">{t("Бүртгүүлмэгц app store-оос модулиа сонгоно")}</p>
           </div>
         </div>
-        {err && <div className="alert alert--danger">{err}</div>}
+        {err && <div className="alert alert--danger">{t(err)}</div>}
         <form onSubmit={submit}>
           <div className="field">
             <label>{t("Таны нэр")}</label>

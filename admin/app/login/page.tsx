@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
             <p className="sub">{t("nexus-mini удирдлагын систем")}</p>
           </div>
         </div>
-        {err && <div className="alert alert--danger">{err}</div>}
+        {err && <div className="alert alert--danger">{t(err)}</div>}
         <form onSubmit={submit}>
           <div className="field">
             <label>{t("Имэйл")}</label>

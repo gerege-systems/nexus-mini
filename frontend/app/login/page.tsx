@@ -28,7 +28,7 @@ export default function LoginPage() {
       await api.post("/api/login", { email, password });
       router.replace("/dashboard");
     } catch (ex) {
-      setErr(ex instanceof ApiError ? ex.message : "Алдаа гарлаа");
+      setErr(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"));
       setBusy(false);
     }
   };
@@ -43,7 +43,7 @@ export default function LoginPage() {
             <p className="sub">{t("nexus-mini ажлын талбар")}</p>
           </div>
         </div>
-        {err && <div className="alert alert--danger">{err}</div>}
+        {err && <div className="alert alert--danger">{t(err)}</div>}
         <form onSubmit={submit}>
           <div className="field">
             <label>{t("Имэйл")}</label>

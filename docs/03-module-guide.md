@@ -130,7 +130,38 @@ func (m *Module) Menus() []nexus.MenuDefinition {
 }
 ```
 
-### 6. Бүртгэх
+### 6. UI хуудас (portal)
+
+Цэсэндээ зарласан `Path`-тайгаа ижил замд Next.js хуудас үүсгэнэ —
+`frontend/app/(portal)/<нэр>/page.tsx`. Бэлэн загвар нь
+[devices-ийн хуудас](../frontend/app/(portal)/devices/page.tsx).
+
+```tsx
+"use client";
+
+export default function NamePage() {
+  const { me } = useShell();   // хэрэглэгч + permissions
+  const { t } = useT();        // хэл (mn/en)
+  const manage = me.permissions["<нэр>.manage"]; // undefined | "all" | "own"
+  // api.get(`/api/apps/<нэр>/...`) — cookie автоматаар, 401 бол login руу
+}
+```
+
+Дүрмүүд:
+
+- **Эрхээр UI-гаа нуу**: `me.permissions["<нэр>.manage"]` байхгүй бол
+  товчоо бүү харуул. Энэ нь UX — жинхэнэ хамгаалалт серверт (RequirePermission).
+- «Өөрийн» scope-той хэрэглэгчид засах/устгах товчийг
+  `created_by === me.user.id` үед л харуул (devices-ийн `canEdit` жишээ).
+- Цэсэнд зарласан icon нэрээ `frontend/components/icons.tsx`-ийн map-д
+  нэм (lucide icon).
+- Бэлэн загварууд: `card / table / btn / field / badge / modal`
+  (globals.css); амжилтад `toast(...)`, текстэд `t(...)` (lib/i18n.tsx —
+  шинэ텍стээ EN толинд нэмээрэй).
+- Хуудас бүр loading/хоосон/алдааны төлөвтэй байх (devices-ийн `empty`
+  блок жишээ).
+
+### 7. Бүртгэх ба асаах
 
 `backend/apps/apps.go`-д нэг мөр:
 
@@ -140,7 +171,7 @@ nexus.Register(<нэр>.New())
 
 `make migrate && make api` — модуль чинь store-д гарч ирнэ.
 
-### 7. Store-д нийтлэх
+### 8. Store-д нийтлэх
 
 `catalog/apps.json`-д бүртгэлээ нэмээд PR илгээнэ (үе 2-т төв registry +
 `nexus-mini add` CLI ирнэ — тэр үед go_module замаар тань шууд татна).

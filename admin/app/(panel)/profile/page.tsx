@@ -25,7 +25,7 @@ export default function ProfilePage() {
       await api.put("/api/me", { name });
       toast(t("Хадгалагдлаа"));
     } catch (ex) {
-      toast(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"), "err");
+      toast(ex instanceof ApiError ? t(ex.message) : t("Алдаа гарлаа"), "err");
     }
   };
 
@@ -44,7 +44,7 @@ export default function ProfilePage() {
       setPw({ current_password: "", new_password: "", confirm: "" });
       toast(t("Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан"));
     } catch (ex) {
-      toast(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"), "err");
+      toast(ex instanceof ApiError ? t(ex.message) : t("Алдаа гарлаа"), "err");
     } finally {
       setBusy(false);
     }

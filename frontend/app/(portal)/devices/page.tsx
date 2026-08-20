@@ -143,7 +143,7 @@ export default function DevicesPage() {
         <div className="modal-back" onClick={() => setForm(null)} onKeyDown={(e) => e.key === "Escape" && setForm(null)}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3>{form.id ? t("Төхөөрөмж засах") : t("Төхөөрөмж бүртгэх")}</h3>
-            {err && <div className="alert alert--danger">{err}</div>}
+            {err && <div className="alert alert--danger">{t(err)}</div>}
             <div className="field">
               <label>{t("Нэр")}</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}

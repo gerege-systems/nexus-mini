@@ -25,7 +25,7 @@ export default function NewOrgPage() {
       router.replace("/store");
     } catch (ex) {
       if (ex instanceof ApiError && ex.status === 401) router.replace("/login");
-      else setErr(ex instanceof ApiError ? ex.message : "Алдаа гарлаа");
+      else setErr(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"));
       setBusy(false);
     }
   };
@@ -40,7 +40,7 @@ export default function NewOrgPage() {
             <p className="sub">{t("Ажлын талбараа үүсгээд store-оос модулиа сонгоно")}</p>
           </div>
         </div>
-        {err && <div className="alert alert--danger">{err}</div>}
+        {err && <div className="alert alert--danger">{t(err)}</div>}
         <form onSubmit={submit}>
           <div className="field">
             <label>{t("Байгууллагын нэр")}</label>

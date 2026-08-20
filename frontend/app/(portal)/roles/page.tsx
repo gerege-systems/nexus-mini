@@ -86,7 +86,7 @@ export default function RolesPage() {
           <Plus size={16} /> {t("Role нэмэх")}
         </button>
       </div>
-      {err && <div className="alert alert--danger">{err}</div>}
+      {err && <div className="alert alert--danger">{t(err)}</div>}
 
       <div className="card" style={{ overflowX: "auto" }}>
         <table className="table" style={{ minWidth: 560 }}>
@@ -158,7 +158,7 @@ export default function RolesPage() {
             </div>
             <div className="field">
               <label>{t("Нэр")}</label>
-              <input value={form.name} placeholder="Агуулахын ажилтан"
+              <input value={form.name} placeholder={t("Агуулахын ажилтан")}
                 onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div className="field">
