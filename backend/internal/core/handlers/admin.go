@@ -9,6 +9,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,6 +21,7 @@ type Admin struct {
 	Pool      *pgxpool.Pool // admin pool
 	Svc       *auth.Service
 	Rec       *audit.Recorder
+	State     *tenantstate.Store
 	PortalURL string
 }
 
@@ -45,6 +47,7 @@ func (h *Admin) Overview(w http.ResponseWriter, r *http.Request) {
 func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT t.id, t.slug, t.name, t.created_at,
+		       t.suspended_at IS NOT NULL, t.suspension_reason, t.read_only,
 		       (SELECT count(*) FROM memberships m WHERE m.tenant_id = t.id),
 		       (SELECT count(*) FROM app_installations i
 		         WHERE i.tenant_id = t.id AND i.status = 'enabled')
@@ -59,13 +62,16 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 		Slug      string    `json:"slug"`
 		Name      string    `json:"name"`
 		CreatedAt time.Time `json:"created_at"`
+		Suspended bool      `json:"suspended"`
+		Reason    string    `json:"reason"`
+		ReadOnly  bool      `json:"read_only"`
 		Members   int       `json:"members"`
 		Apps      int       `json:"apps"`
 	}
 	out := []row{}
 	for rows.Next() {
 		var x row
-		if err := rows.Scan(&x.ID, &x.Slug, &x.Name, &x.CreatedAt, &x.Members, &x.Apps); err != nil {
+		if err := rows.Scan(&x.ID, &x.Slug, &x.Name, &x.CreatedAt, &x.Suspended, &x.Reason, &x.ReadOnly, &x.Members, &x.Apps); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "scan failed")
 			return
 		}
@@ -143,6 +149,48 @@ func (h *Admin) Impersonate(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]string{
 		"url": strings.TrimRight(h.PortalURL, "/") + "/api/auth/handover?token=" + url.QueryEscape(token),
 	})
+}
+
+// PUT /api/admin/tenants/{id}/state {suspended, reason, read_only} —
+// түдгэлзүүлэх / зөвхөн-унших. Admin pool (column grant app role-д байхгүй).
+func (h *Admin) SetTenantState(w http.ResponseWriter, r *http.Request) {
+	p, _ := auth.PrincipalFrom(r.Context())
+	id := chi.URLParam(r, "id")
+	var in struct {
+		Suspended bool   `json:"suspended"`
+		Reason    string `json:"reason"`
+		ReadOnly  bool   `json:"read_only"`
+	}
+	if !httpx.Decode(w, r, &in) {
+		return
+	}
+	in.Reason = strings.TrimSpace(in.Reason)
+	if len(in.Reason) > 300 {
+		httpx.Error(w, http.StatusBadRequest, "шалтгаан 300 тэмдэгтээс хэтрэхгүй")
+		return
+	}
+	if !in.Suspended {
+		in.Reason = ""
+	}
+	tag, err := h.Pool.Exec(r.Context(), `
+		UPDATE tenants
+		   SET suspended_at = CASE WHEN $2::boolean THEN coalesce(suspended_at, now()) ELSE NULL END,
+		       suspension_reason = $3::varchar(300), read_only = $4::boolean
+		 WHERE id = $1::uuid`, id, in.Suspended, in.Reason, in.ReadOnly)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "state update failed")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		httpx.Error(w, http.StatusNotFound, "байгууллага олдсонгүй")
+		return
+	}
+	if h.State != nil {
+		h.State.Invalidate(id)
+	}
+	h.Rec.RecordAs(r.Context(), id, p.UserID, "platform.tenant.state", id,
+		map[string]any{"suspended": in.Suspended, "reason": in.Reason, "read_only": in.ReadOnly})
+	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // GET /api/admin/users

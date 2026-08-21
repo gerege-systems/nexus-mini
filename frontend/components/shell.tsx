@@ -55,6 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { path: "/members", label: t("Гишүүд"), icon: "users", perm: "core.members.manage" },
     { path: "/roles", label: t("Эрхийн тохиргоо"), icon: "key", perm: "core.roles.manage" },
     { path: "/audit", label: t("Audit лог"), icon: "scroll", perm: "core.audit.read" },
+    { path: "/settings", label: t("Байгууллагын тохиргоо"), icon: "settings", perm: "core.settings.manage" },
   ].filter((i) => perms[i.perm]);
 
   // Gerege загвар: rail нь идэвхтэй АПП сонгогч. Одоогийн зам аль нэг
@@ -133,6 +134,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main">
+        {me.tenant_state?.suspended && (
+          <div className="alert alert--danger" style={{ marginBottom: "1rem" }}>
+            <b>{t("Энэ байгууллагыг платформ түдгэлзүүлсэн байна.")}</b>{" "}
+            {me.tenant_state.reason ? `${t("Шалтгаан")}: ${me.tenant_state.reason}. ` : ""}
+            {t("Өгөгдөлд хандах боломжгүй — платформын админтай холбогдоно уу.")}
+          </div>
+        )}
+        {me.tenant_state?.read_only && !me.tenant_state.suspended && (
+          <div className="alert alert--warn" style={{ marginBottom: "1rem" }}>
+            {t("Байгууллага зөвхөн уншигдах горимд байна — өөрчлөлт түр хадгалагдахгүй.")}
+          </div>
+        )}
         {me.impersonated_by && (
           <div className="alert alert--warn" style={{ marginBottom: "1rem" }}>
             {t("Платформын админ энэ хэрэглэгчийн нэрийн өмнөөс нэвтэрсэн байна — бүх үйлдэл audit-д тэмдэглэгдэнэ (30 минутын session).")}

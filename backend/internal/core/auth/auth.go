@@ -44,10 +44,17 @@ func PrincipalFrom(ctx context.Context) (Principal, bool) {
 	return p, ok
 }
 
+// TenantStateFn — RequireTenant-д байгууллагын төлөв өгнө (tenantstate.Store).
+type TenantStateFn func(ctx context.Context, tenantID string) (suspended bool, readOnly bool, err error)
+
 type Service struct {
 	pool   *pgxpool.Pool // app pool — definer функцууд дуудагдана
 	secure bool
+	state  TenantStateFn
 }
+
+// SetTenantState — түдгэлзүүлсэн/зөвхөн-унших шалгалтыг идэвхжүүлнэ.
+func (s *Service) SetTenantState(fn TenantStateFn) { s.state = fn }
 
 func NewService(pool *pgxpool.Pool, secureCookies bool) *Service {
 	return &Service{pool: pool, secure: secureCookies}
@@ -225,6 +232,22 @@ func (s *Service) RequireTenant(next http.Handler) http.Handler {
 		if p.TenantID == "" {
 			http.Error(w, `{"error":"no tenant selected"}`, http.StatusForbidden)
 			return
+		}
+		if s.state != nil {
+			suspended, readOnly, err := s.state(r.Context(), p.TenantID)
+			if err != nil {
+				http.Error(w, `{"error":"tenant state failed"}`, http.StatusInternalServerError)
+				return
+			}
+			if suspended {
+				http.Error(w, `{"error":"байгууллага түдгэлзүүлсэн байна"}`, http.StatusForbidden)
+				return
+			}
+			if readOnly && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+				w.Header().Set("Retry-After", "600")
+				http.Error(w, `{"error":"байгууллага зөвхөн уншигдах горимд байна"}`, http.StatusServiceUnavailable)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	}))

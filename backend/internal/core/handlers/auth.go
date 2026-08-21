@@ -15,6 +15,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/identity"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/password"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,6 +27,7 @@ type Auth struct {
 	Svc   *auth.Service
 	Audit *audit.Recorder
 	Perms *rbac.Store
+	State *tenantstate.Store
 }
 
 var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
@@ -276,7 +278,15 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var state any
+	if p.TenantID != "" && h.State != nil {
+		if st, err := h.State.Get(r.Context(), p.TenantID); err == nil {
+			state = st
+		}
+	}
+
 	httpx.JSON(w, http.StatusOK, map[string]any{
+		"tenant_state":    state,
 		"impersonated_by": p.ImpersonatedBy,
 		"user": map[string]any{
 			"id": p.UserID, "name": p.Name, "email": p.Email,

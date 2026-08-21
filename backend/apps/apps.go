@@ -6,6 +6,7 @@ package apps
 
 import (
 	"github.com/gerege-systems/nexus-mini/backend/apps/devices"
+	"github.com/gerege-systems/nexus-mini/backend/apps/organisation"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 
@@ -13,4 +14,5 @@ import (
 // өөрсдийн migration FS-ийг мэдэх ёстой).
 func RegisterAll() {
 	nexus.Register(devices.New())
+	nexus.Register(organisation.New())
 }

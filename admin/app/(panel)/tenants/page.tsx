@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogIn, Users } from "lucide-react";
+import { LogIn, ShieldAlert, Users } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 
-type Row = { id: string; slug: string; name: string; created_at: string; members: number; apps: number };
+type Row = { id: string; slug: string; name: string; created_at: string; suspended: boolean; reason: string; read_only: boolean; members: number; apps: number };
 type Member = { id: string; name: string; email: string; platform_admin: boolean; roles: string[] };
 
 export default function TenantsPage() {
@@ -15,9 +15,22 @@ export default function TenantsPage() {
   const [open, setOpen] = useState<Row | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [err, setErr] = useState("");
-  useEffect(() => {
-    void api.get<{ tenants: Row[] }>("/api/admin/tenants").then((r) => setRows(r.tenants));
-  }, []);
+  const [state, setState] = useState<{ row: Row; suspended: boolean; reason: string; read_only: boolean } | null>(null);
+  const loadRows = () => api.get<{ tenants: Row[] }>("/api/admin/tenants").then((r) => setRows(r.tenants));
+  useEffect(() => { void loadRows(); }, []);
+
+  const saveState = async () => {
+    if (!state) return;
+    try {
+      await api.put(`/api/admin/tenants/${state.row.id}/state`,
+        { suspended: state.suspended, reason: state.reason, read_only: state.read_only });
+      toast(t("Төлөв хадгалагдлаа"));
+      setState(null);
+      await loadRows();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
+    }
+  };
   useEffect(() => {
     if (!open) { setMembers(null); setErr(""); return; }
     void api.get<{ members: Member[] }>(`/api/admin/tenants/${open.id}/members`)
@@ -52,14 +65,22 @@ export default function TenantsPage() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td><b style={{ fontWeight: 600 }}>{r.name}</b></td>
+                <td>
+                  <b style={{ fontWeight: 600 }}>{r.name}</b>
+                  {r.suspended && <span className="badge badge--danger" style={{ marginLeft: "0.5rem" }}>{t("түдгэлзүүлсэн")}</span>}
+                  {r.read_only && !r.suspended && <span className="badge badge--warn" style={{ marginLeft: "0.5rem" }}>{t("зөвхөн унших")}</span>}
+                </td>
                 <td><code>{r.slug}</code></td>
                 <td>{r.members}</td>
                 <td>{r.apps}</td>
                 <td style={{ color: "var(--text-2)" }}>{new Date(r.created_at).toLocaleDateString("mn-MN")}</td>
-                <td style={{ textAlign: "right" }}>
+                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <button className="btn btn--ghost btn--sm" onClick={() => setOpen(r)}>
                     <Users size={14} /> {t("Гишүүд")}
+                  </button>{" "}
+                  <button className="btn btn--ghost btn--sm"
+                    onClick={() => { setErr(""); setState({ row: r, suspended: r.suspended, reason: r.reason, read_only: r.read_only }); }}>
+                    <ShieldAlert size={14} /> {t("Төлөв")}
                   </button>
                 </td>
               </tr>
@@ -67,6 +88,39 @@ export default function TenantsPage() {
           </tbody>
         </table>
       </div>
+
+      {state && (
+        <div className="modal-back" onClick={() => setState(null)} onKeyDown={(e) => e.key === "Escape" && setState(null)}>
+          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <h3>{state.row.name} — {t("Төлөв")}</h3>
+            {err && <div className="alert alert--danger">{t(err)}</div>}
+            <div className="field">
+              <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input type="checkbox" checked={state.suspended} style={{ width: "auto" }}
+                  onChange={(e) => setState({ ...state, suspended: e.target.checked })} />
+                {t("Түдгэлзүүлэх — гишүүд өгөгдөлдөө хандаж чадахгүй")}
+              </label>
+            </div>
+            {state.suspended && (
+              <div className="field">
+                <label>{t("Шалтгаан (гишүүдэд харагдана)")}</label>
+                <input value={state.reason} maxLength={300} onChange={(e) => setState({ ...state, reason: e.target.value })} />
+              </div>
+            )}
+            <div className="field">
+              <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input type="checkbox" checked={state.read_only} style={{ width: "auto" }}
+                  onChange={(e) => setState({ ...state, read_only: e.target.checked })} />
+                {t("Зөвхөн унших — бичих хүсэлт 503 (засвар, төлбөр)")}
+              </label>
+            </div>
+            <div className="modal__actions">
+              <button className="btn btn--ghost" onClick={() => setState(null)}>{t("Болих")}</button>
+              <button className="btn" onClick={saveState}>{t("Хадгалах")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div className="modal-back" onClick={() => setOpen(null)} onKeyDown={(e) => e.key === "Escape" && setOpen(null)}>

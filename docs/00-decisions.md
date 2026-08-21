@@ -100,3 +100,13 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 | Registry (үе 2) | nexus-registry.runestonetechnologies.com | 8085 |
 
 Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.
+
+## OGN-ээс авсан 3 зүйл (2026-08-22)
+
+Tenant/байгууллага/гишүүний загварыг open-gerege-nexus-тэй харьцуулсны дараа:
+
+1. **Байгууллагын профайл** (цөм) — `tenant_profiles` (хуулийн нэр, регистр, ТТД, хаяг, утас, имэйл, вэб) + байгууллагын нэр засах. `GET/PUT /api/tenant/profile`, унших — гишүүн бүр, бичих — шинэ `core.settings.manage` (admin-д автоматаар; backfill-ээр байгаа tenant-уудад ч орсон). Portal `/settings`. `tenants` UPDATE нь апп role-д зөвхөн `name` багана.
+2. **Түдгэлзүүлэх + зөвхөн-унших** (платформ админ) — `tenants.suspended_at/suspension_reason/read_only`; `RequireTenant` хүсэлт бүрд `tenant_state()` definer функцээр шалгана (30с кэш, bus-аар invalidate): suspended → 403, read_only + бичих → 503 + Retry-After. `PUT /api/admin/tenants/{id}/state`, админ UI «Төлөв», portal banner (`/api/me.tenant_state`). Logout/байгууллага солих нь RequireTenant-ийн гадна тул үргэлж ажиллана.
+3. **`organisation` модуль** (цөм биш — store-оос суулгана) — `org_departments` мод (дээд нэгж, менежер, идэвхтэй, мөчлөг шалгалт) + `org_positions` (гишүүнчлэл бүрт хэлтэс, албан тушаал). `organisation.read/manage`. Portal `/organisation/departments`, `/organisation/people`. OGN ч үүнийг эцэст нь апп болгосон (`00055_organisation_rename`).
+
+Аваагүй: `allowed_tenant_ids` (олон байгууллагаас зэрэг унших — RLS-ийг төвөгтэй болгоно, группын компанид л хэрэгтэй), толгой компанийн холбоос, 30 хоногийн хүлээлттэй устгал, квот — хэрэгцээ гарахад.

@@ -18,6 +18,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/handlers"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -63,16 +64,22 @@ func cmdServe(_ []string) error {
 	gate := appstore.NewGate(tdb)
 	deps := nexus.Deps{DB: tdb, Perms: perms, Audit: rec}
 
-	authH := &handlers.Auth{Pool: pools.App, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms}
+	tstate := tenantstate.New(pools.App)
+	authSvc.SetTenantState(func(ctx context.Context, tid string) (bool, bool, error) {
+		st, err := tstate.Get(ctx, tid)
+		return st.Suspended, st.ReadOnly, err
+	})
+	authH := &handlers.Auth{Pool: pools.App, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms, State: tstate}
 	storeH := &handlers.Store{DB: tdb, Installer: installer, Gate: gate, Audit: rec}
 	rbacH := &handlers.RBACH{DB: tdb, Pool: pools.App, Perms: perms, Audit: rec}
 	miscH := &handlers.Misc{DB: tdb, Perms: perms}
-	adminH := &handlers.Admin{Pool: pools.Admin, Svc: authSvc, Rec: rec, PortalURL: cfg.PortalURL}
+	adminH := &handlers.Admin{Pool: pools.Admin, Svc: authSvc, Rec: rec, State: tstate, PortalURL: cfg.PortalURL}
 
 	// Процесс хоорондын cache invalidation — Postgres LISTEN/NOTIFY.
 	b := bus.New(pools.App)
 	perms.SetNotifier(func(t string) { b.Publish("grants:" + t) })
 	gate.SetNotifier(func(t string) { b.Publish("gate:" + t) })
+	tstate.SetNotifier(func(t string) { b.Publish("tenant:" + t) })
 	b.Subscribe(func(payload string) {
 		kind, tid, ok := strings.Cut(payload, ":")
 		if !ok {
@@ -83,6 +90,8 @@ func cmdServe(_ []string) error {
 			perms.InvalidateLocal(tid)
 		case "gate":
 			gate.InvalidateLocal(tid)
+		case "tenant":
+			tstate.InvalidateLocal(tid)
 		}
 	})
 	busCtx, busCancel := context.WithCancel(context.Background())
@@ -137,6 +146,8 @@ func cmdServe(_ []string) error {
 		g.With(nexus.RequirePermission(perms, "core.roles.manage")).Post("/api/roles", rbacH.CreateRole)
 		g.With(nexus.RequirePermission(perms, "core.roles.manage")).Put("/api/roles/{id}/grants", rbacH.SetGrants)
 
+		g.Get("/api/tenant/profile", authH.TenantProfile)
+		g.With(nexus.RequirePermission(perms, "core.settings.manage")).Put("/api/tenant/profile", authH.UpdateTenantProfile)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members", rbacH.Members)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members/lookup", rbacH.LookupMember)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Post("/api/members", rbacH.AddMember)
@@ -157,6 +168,7 @@ func cmdServe(_ []string) error {
 		g.Get("/api/admin/audit", adminH.Audit)
 		g.Get("/api/admin/tenants/{id}/members", adminH.TenantMembers)
 		g.Post("/api/admin/impersonate", adminH.Impersonate)
+		g.Put("/api/admin/tenants/{id}/state", adminH.SetTenantState)
 	})
 
 	// Модулиуд: урьдчилан хамгаалагдсан router (docs/02-rbac.md #5) —
