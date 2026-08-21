@@ -127,13 +127,14 @@ export default function DevelopersPage() {
 
         <h3>{t("6. UI хуудас (portal)")}</h3>
         <p style={{ color: "var(--text-2)" }}>
-          {t("Цэсэндээ зарласан Path-тайгаа ижил замд Next.js хуудас үүсгэнэ — devices-ийн хуудас")}{" "}
-          (<a href="https://github.com/gerege-systems/nexus-mini/blob/main/frontend/app/(portal)/devices/page.tsx"
-            style={{ color: "var(--accent)", fontWeight: 600 }}>frontend/app/(portal)/devices/page.tsx</a>){" "}
-          {t("бэлэн загвар нь.")}
+          {t("UI нь модулийн хавтаст амьдарна: ui/pages/ доторх хуудсууд build үед app/(portal)/<нэр>/ руу хуулагдана, ui/i18n.ts толь цөмийнхтэй нэгдэнэ — цөмийн frontend файлд гар хүрэхгүй. Бэлэн загвар")}{" "}
+          (<a href="https://github.com/gerege-systems/nexus-mini/blob/main/backend/apps/devices/ui/pages/page.tsx"
+            style={{ color: "var(--accent)", fontWeight: 600 }}>apps/devices/ui/pages/page.tsx</a>,{" "}
+          <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/organisation/ui"
+            style={{ color: "var(--accent)", fontWeight: 600 }}>apps/organisation/ui</a>).
         </p>
         <Code>
-          <div><span className="c">{t("// frontend/app/(portal)/name/page.tsx — Path: \"/name\"-тэй ижил")}</span></div>
+          <div><span className="c">{t("// apps/name/ui/pages/page.tsx → /name (ui/pages/reports/page.tsx → /name/reports)")}</span></div>
           <div><span className="s">&quot;use client&quot;</span>;</div>
           <div>&nbsp;</div>
           <div><span className="k">export default function</span> NamePage() {"{"}</div>
@@ -148,21 +149,51 @@ export default function DevelopersPage() {
           <li>{t("«Өөрийн» scope-той хэрэглэгчид засах/устгах товчийг")} <code>created_by === me.user.id</code> {t("үед л харуулна")}</li>
           <li>{t("Цэсний icon нэрээ")} <code>components/icons.tsx</code>-{t("ийн map-д нэм (lucide icon)")}</li>
           <li>{t("Бэлэн загварууд:")} <code>card / table / btn / field / badge / modal</code> — globals.css; {t("амжилтад")} <code>toast(...)</code>, {t("текстэд")} <code>t(...)</code></li>
+          <li>{t("Толь:")} <code>ui/i18n.ts</code> — <code>{"{ en: { \"Төхөөрөмжүүд\": \"Devices\" } }"}</code> {t("(түлхүүр нь монгол текст)")}</li>
         </ul>
 
         <h3>{t("7. Бүртгэх ба асаах")}</h3>
         <Code>
-          <div><span className="c">{t("// backend/apps/apps.go — нэг мөр:")}</span></div>
-          <div>nexus.Register(name.New())</div>
+          <div><span className="c">{t("// backend/apps/apps.go — бинарид орох модулиуд:")}</span></div>
+          <div><span className="k">func</span> All() []nexus.Module {"{"} <span className="k">return</span> []nexus.Module{"{"} devices.New(), name.New() {"}"} {"}"}</div>
+          <div>&nbsp;</div>
+          <div><span className="c">{t("// frontend/modules.json — portal-д орох UI:")}</span></div>
+          <div>{"{"} <span className="s">&quot;short_id&quot;</span>: <span className="s">&quot;name&quot;</span>, <span className="s">&quot;ui&quot;</span>: <span className="s">&quot;../backend/apps/name/ui&quot;</span> {"}"}</div>
           <div>&nbsp;</div>
           <div><span className="c">$</span> make migrate &amp;&amp; make serve&nbsp;&nbsp;<span className="c">{t("# модуль store-д гарч ирнэ")}</span></div>
         </Code>
 
         <h3>{t("8. Store-д нийтлэх")}</h3>
         <p style={{ color: "var(--text-2)" }}>
-          <code>catalog/apps.json</code>{t("-д бүртгэлээ нэмээд PR илгээнэ. Үе 2-т төв registry +")}{" "}
+          {t("Энэ сайтын store-д оруулах бол")} <code>catalog/apps.json</code>{t("-д бүртгэлээ нэмээд PR илгээнэ. Өөрийн store-той бол өөрийн каталог (доор). Үе 2-т төв registry +")}{" "}
           <code>nexus-mini add</code> {t("CLI ирэхэд go_module замаар тань шууд татдаг болно.")}
         </p>
+
+        <h2 style={{ marginTop: "2rem" }}><GitPullRequest size={19} style={{ verticalAlign: "-3px" }} /> {t("Өөрийн дистрибуц — цөмийг fork хийхгүй")}</h2>
+        <p style={{ color: "var(--text-2)" }}>
+          {t("Өөрийн компанид nexus-mini ашиглаж, өөрийн модулиуд, өөрийн store, өөрийн харилцагчидтай (tenant) платформ ажиллуулж болно. Цөмийн репог хуулбарлаж засахгүй — хамаарал болгоно. Ингэж байж цөмийн шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.")}
+        </p>
+        <Code>
+          <div><span className="c">{t("// your-company/nexus-dist/backend/main.go — бүхэлдээ:")}</span></div>
+          <div><span className="k">package</span> main</div>
+          <div>&nbsp;</div>
+          <div><span className="k">import</span> (</div>
+          <div>&nbsp;&nbsp;<span className="s">&quot;github.com/gerege-systems/nexus-mini/backend/core&quot;</span></div>
+          <div>&nbsp;&nbsp;<span className="s">&quot;your-company/nexus-inventory&quot;</span>&nbsp;&nbsp;<span className="c">{t("// таны модуль — тусдаа репо")}</span></div>
+          <div>)</div>
+          <div>&nbsp;</div>
+          <div><span className="k">func</span> main() {"{"} core.Main(inventory.New()) {"}"}</div>
+          <div>&nbsp;</div>
+          <div><span className="c">{t("// Цөмийг шинэчлэх — merge байхгүй, зөвхөн хувилбар:")}</span></div>
+          <div><span className="c">$</span> go get github.com/gerege-systems/nexus-mini/backend@v1.5.0</div>
+          <div><span className="c">$</span> git subtree pull --prefix frontend https://github.com/gerege-systems/nexus-mini main --squash</div>
+        </Code>
+        <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
+          <li><code>core.Main</code> {t("— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө")}</li>
+          <li>{t("Frontend: цөмийн frontend-ийн хуулбар +")} <code>modules.json</code>. {t("Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул subtree pull мөргөлдөхгүй")}</li>
+          <li>{t("SDK амлалт:")} <code>pkg/nexus</code> + <code>core.Main</code> {t("v1.x дотор эвдэхгүй (semver); internal/* чөлөөтэй өөрчлөгдөнө — модуль түүнээс импортолж чадахгүй")}</li>
+          <li>{t("Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR. Харилцагч тань таны instance дээр tenant болно; та платформ админ")}</li>
+        </ul>
 
         <h2 style={{ marginTop: "2rem" }}><BookOpen size={19} style={{ verticalAlign: "-3px" }} /> {t("Тест")}</h2>
         <p style={{ color: "var(--text-2)" }}>
@@ -174,7 +205,7 @@ export default function DevelopersPage() {
           <div style={{ flex: 1, minWidth: 240 }}>
             <b>{t("Бэлэн үү?")}</b>
             <div style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
-              {t("devices-ийг хуулж эхлээд, дуусаад каталогт PR илгээгээрэй.")}
+              {t("devices-ийг хуулж эхлээд, дуусаад каталогт PR илгээгээрэй — эсвэл өөрийн дистрибуц үүсгээрэй.")}
             </div>
           </div>
           <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/03-module-guide.md" className="btn btn--ghost">{t("Markdown хувилбар")}</a>

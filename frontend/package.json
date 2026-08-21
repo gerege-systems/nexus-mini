@@ -2,7 +2,10 @@
   "name": "nexus-mini-web",
   "private": true,
   "scripts": {
+    "sync": "node scripts/sync-modules.mjs",
+    "predev": "node scripts/sync-modules.mjs",
     "dev": "next dev -p 3020",
+    "prebuild": "node scripts/sync-modules.mjs",
     "build": "next build",
     "start": "next start -p 3020"
   },

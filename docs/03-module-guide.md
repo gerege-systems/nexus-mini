@@ -21,7 +21,7 @@
 (devices нь яг энэ хуваарийн амьд жишээ):
 
 ```
-backend/apps/<нэр>/
+backend/apps/<нэр>/           (эсвэл өөрийн репо — доорх «Өөрийн дистрибуц»)
   module.go              модулийн ГЭРЭЭ: ID, permission, цэс, миграц,
                          route↔permission холболт — бүгд нэг дор
   types.go               хүсэлт/хариултын struct + validation
@@ -29,7 +29,13 @@ backend/apps/<нэр>/
   reports_handlers.go    хоёр дахь resource нэмэгдвэл тусдаа файл
   reports_types.go
   migrations/            модулийн goose миграцууд
+  ui/
+    pages/               portal хуудсууд → app/(portal)/<нэр>/ руу хуулагдана
+    i18n.ts              модулийн толь (en: {...}) → цөмийн толинд нэгдэнэ
 ```
+
+`organisation` модуль нь олон resource-тэй хувилбарын жишээ
+(`departments.go`, `people.go`, `ui/pages/departments/`, `ui/pages/people/`).
 
 Зарчим: **route бүр аль permission-ээр хамгаалагдаж байгаа нь module.go-д
 нэг дор харагдана**; handler файлууд зөвхөн бизнес логик агуулна. SQL нь
@@ -132,9 +138,17 @@ func (m *Module) Menus() []nexus.MenuDefinition {
 
 ### 6. UI хуудас (portal)
 
-Цэсэндээ зарласан `Path`-тайгаа ижил замд Next.js хуудас үүсгэнэ —
-`frontend/app/(portal)/<нэр>/page.tsx`. Бэлэн загвар нь
-[devices-ийн хуудас](../frontend/app/(portal)/devices/page.tsx).
+UI нь **модулийн хавтаст** амьдарна: `ui/pages/` доторх файлууд portal
+build үед `frontend/app/(portal)/<нэр>/` руу хуулагдана (`scripts/sync-modules.mjs`,
+`pnpm build`/`dev`-ийн өмнө автоматаар; хуулагдсан хавтас git-д ордоггүй).
+Цэсэндээ зарласан `Path` нь `/<нэр>/...` байх тул хуудасны зам нь
+`ui/pages/page.tsx` → `/<нэр>`, `ui/pages/reports/page.tsx` → `/<нэр>/reports`.
+Бэлэн загвар: [devices](../backend/apps/devices/ui/pages/page.tsx),
+олон хуудастай нь [organisation](../backend/apps/organisation/ui/pages/).
+
+Толь: `ui/i18n.ts` — түлхүүр нь монгол текст, утга нь орчуулга
+(`{ en: { "Төхөөрөмжүүд": "Devices" } }`). Цөмийн `lib/i18n.tsx`-д **гар
+хүрэхгүй** — ингэж байж цөмийг шинэчлэхэд мөргөлдөөн гарахгүй.
 
 ```tsx
 "use client";
@@ -156,25 +170,98 @@ export default function NamePage() {
 - Цэсэнд зарласан icon нэрээ `frontend/components/icons.tsx`-ийн map-д
   нэм (lucide icon).
 - Бэлэн загварууд: `card / table / btn / field / badge / modal`
-  (globals.css); амжилтад `toast(...)`, текстэд `t(...)` (lib/i18n.tsx —
-  шинэ텍стээ EN толинд нэмээрэй).
+  (globals.css); амжилтад `toast(...)`, текстэд `t(...)` (шинэ текстээ
+  модулийнхаа `ui/i18n.ts`-д нэмнэ).
 - Хуудас бүр loading/хоосон/алдааны төлөвтэй байх (devices-ийн `empty`
   блок жишээ).
 
 ### 7. Бүртгэх ба асаах
 
-`backend/apps/apps.go`-д нэг мөр:
+Хоёр газар нэг нэг мөр:
 
 ```go
-nexus.Register(<нэр>.New())
+// backend/apps/apps.go — бинарид орох модулиуд
+func All() []nexus.Module { return []nexus.Module{ devices.New(), <нэр>.New() } }
+```
+```json
+// frontend/modules.json — portal-д орох UI
+{ "short_id": "<нэр>", "ui": "../backend/apps/<нэр>/ui" }
 ```
 
-`make migrate && make serve` — модуль чинь store-д гарч ирнэ.
+`make migrate && make serve` (+ `make web`) — модуль чинь store-д гарч ирнэ.
 
 ### 8. Store-д нийтлэх
 
-`catalog/apps.json`-д бүртгэлээ нэмээд PR илгээнэ (үе 2-т төв registry +
-`nexus-mini add` CLI ирнэ — тэр үед go_module замаар тань шууд татна).
+Энэ репогийн (nexus.*.com) store-д оруулах бол `catalog/apps.json`-д
+бүртгэлээ нэмээд PR илгээнэ. Өөрийн store-той бол өөрийн каталог/регистр
+(доор). Үе 2-т төв registry + `nexus-mini add` CLI ирнэ — тэр үед
+`go_module` замаар тань шууд татна.
+
+## Өөрийн дистрибуц — цөмийг fork хийхгүй
+
+Та өөрийн компанид nexus-mini ашиглаж, өөрийн модулиудтай, өөрийн store-той,
+өөрийн харилцагчидтай (tenant) платформ ажиллуулж болно. **Цөмийн репог
+хуулбарлаж (fork) засахгүй** — хамаарал болгон ашиглана. Ингэж байж цөмийн
+шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.
+
+Хоёр репо хангалттай:
+
+```
+your-company/nexus-inventory        ← модуль (энэ гарын авлагын дагуу)
+  go.mod:  require github.com/gerege-systems/nexus-mini/backend v1.x.y
+  module.go · handlers.go · migrations/ · ui/
+
+your-company/nexus-dist             ← дистрибуц (цөм + сонгосон модулиуд)
+  backend/
+    go.mod:  require nexus-mini/backend v1.x.y, nexus-inventory v0.4.0
+    main.go
+  frontend/                         ← цөмийн frontend-ийн хуулбар + modules.json
+  nexus-mini.env · makefile · deploy/
+```
+
+`backend/main.go` бүхэлдээ:
+
+```go
+package main
+
+import (
+	"github.com/gerege-systems/nexus-mini/backend/core"
+	"your-company/nexus-inventory"
+)
+
+func main() { core.Main(inventory.New()) }
+```
+
+`core.Main` нь migrate/serve коммандууд, env файл, миграц, анхны админ,
+permission sync, сервер — бүгдийг агуулна; та модулиудаа л өгнө. Цөмийн
+`apps/devices`-ийг хүсвэл мөн импортолж нэмнэ, хүсэхгүй бол үгүй.
+
+`frontend/modules.json`-д модулийнхаа `ui/` замыг заана. Модуль Go-гийн
+cache-д байгаа бол замыг нь `cd backend && go list -m -f '{{.Dir}}'
+your-company/nexus-inventory` гэж олно (үе 2-ын `nexus-mini add` үүнийг
+автоматаар хийнэ).
+
+**Цөмийг шинэчлэх:**
+
+```bash
+cd backend && go get github.com/gerege-systems/nexus-mini/backend@v1.5.0 && go mod tidy
+cd ../frontend && git subtree pull --prefix frontend https://github.com/gerege-systems/nexus-mini main --squash
+make check && make build
+```
+
+Backend — merge байхгүй, зөвхөн хувилбар. Frontend — цөмийн файлд та гар
+хүрээгүй (модулийн UI `ui/`-д, толь `ui/i18n.ts`-д) тул subtree pull
+мөргөлдөхгүй. Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR.
+
+**SDK-ийн амлалт:** `pkg/nexus` (Module interface, Deps, RequirePermission,
+Scope, web helpers) болон `core.Main` нь semver — `v1.x` дотор эвдэхгүй.
+Цөмийн `internal/*` хэдийд ч өөрчлөгдөж болно; модуль түүнээс юу ч
+импортолж чадахгүй (`make check` барина) тул танд хамаагүй.
+
+**Таны харилцагчид:** таны instance дээр tenant болж бүртгүүлнэ, таны
+store-оос суулгана; та платформ админ (`ADMIN_*` env) — түдгэлзүүлэх,
+impersonation, бүх админ хэрэгсэл таных. Харилцагч модуль өөрөө татаж
+чадахгүй (compile-time) — та бинаридаа оруулсан л бол гарч ирнэ.
 
 ## Тест
 

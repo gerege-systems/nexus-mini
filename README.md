@@ -50,12 +50,14 @@ Postgres (role-ууд автомат), миграц + админ, API, вэб б
 
 ```
 backend/
-  cmd/nexus-mini/    CLI: migrate · serve
+  cmd/nexus-mini/    энэ репогийн дистрибуц: core.Main(apps.All()...) — 1 мөр
+  core/              цөм САН хэлбэрээр (Main: migrate · serve) — дистрибуц импортолно
   db/migrations/     цөмийн SQL миграцууд
-  pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна
-  internal/core/     цөм: tenant, auth, rbac, audit, appstore, handlers
-  apps/              модулиуд (devices + таны модуль; apps.go-д бүртгэнэ)
-frontend/            Next.js — landing + portal
+  pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна (semver)
+  internal/core/     цөмийн дотоод: tenant, auth, rbac, audit, appstore, bus
+  apps/              модулиуд (devices, organisation; apps.go All()-д нэг мөр)
+    <нэр>/ui/        модулийн portal хуудас + толь → build үед portal руу хуулагдана
+frontend/            Next.js — landing + portal (modules.json: ямар UI орох)
 admin/               Next.js — платформын админ (тусдаа апп, тусдаа домэйн)
 catalog/             локал каталог (registry-гүй үеийн fallback)
 docs/                шийдвэр, архитектур, модуль хөгжүүлэх гарын авлага
@@ -68,6 +70,14 @@ Permission-оо тунхаглаж, цэсээ зарлаад, урьдчила�
 route-уудаа бүртгэнэ — үлдсэнийг (tenant тусгаарлалт, auth, суулгалт, RBAC
 оноолт, audit) платформ хийнэ. Дэлгэрэнгүй:
 [docs/03-module-guide.md](docs/03-module-guide.md).
+
+### Өөрийн компанид — fork хийхгүй
+
+Цөмийг хамаарал болгоод өөрийн дистрибуц үүсгэнэ: `go.mod`-д
+`github.com/gerege-systems/nexus-mini/backend` + модулиуд, `main.go` нь
+`core.Main(inventory.New())`. Цөмийн шинэчлэлт = `go get ...@v1.x` — merge
+байхгүй. Өөрийн store, өөрийн харилцагчид (tenant), өөрийн платформ админ.
+Дэлгэрэнгүй: [docs/03-module-guide.md → «Өөрийн дистрибуц»](docs/03-module-guide.md#өөрийн-дистрибуц--цөмийг-fork-хийхгүй).
 
 ## Баримт бичиг
 

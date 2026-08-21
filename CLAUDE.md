@@ -9,7 +9,10 @@
 - `backend/pkg/nexus/` — модулийн SDK (Module interface, Register, Scope, DB/web туслахууд)
 - `backend/internal/core/{auth,rbac,audit,appstore,identity,db,config,handlers,...}` — цөм (handlers нь тусдаа subpackage — import cycle-ээс сэргийлэх)
 - `backend/apps/devices/` — жишээ модуль (өөрийн migrations/ FS-тэй); модулиуд internal БИШ — гадны репо импортолж болно
-- `backend/apps/apps.go` — `RegisterAll()`: бинарид орох модулиудын жагсаалт, нэг мөр = нэг модуль
+- `backend/core` — цөм САН (`core.Main(modules...)`: migrate/serve CLI бүхэлдээ); `cmd/nexus-mini/main.go` = `core.Main(apps.All()...)`. Гадны дистрибуц яг ийм main бичнэ — цөмийг fork хийдэггүй, `go get`-ээр шинэчилнэ.
+- `backend/apps/apps.go` — `All()`: бинарид орох модулиуд, нэг мөр = нэг модуль
+- Модулийн UI: `backend/apps/<нэр>/ui/{pages,i18n.ts}` → `frontend/scripts/sync-modules.mjs` (prebuild/predev) `app/(portal)/<нэр>/` + `lib/i18n.modules.ts` үүсгэнэ (git-д ордоггүй). Модуль цөмийн frontend файлд гар хүрэхгүй; `frontend/modules.json` жагсаалт.
+- **SDK semver**: `pkg/nexus` + `core.Main` гэрээг v1.x дотор эвдэхгүй (tag `backend/v1.0.0`-ээс). Эвдэх өөрчлөлт = major; `internal/*` чөлөөтэй.
 - `frontend/` — landing + tenant portal (:3020) · `admin/` — платформын админ, ТУСДАА апп (:3021) · API :8084
 - `catalog/apps.json` — локал app store каталог (registry-гүй үеийн fallback, `CATALOG_PATH`)
 - `deploy/` — `01-roles.sql` (DB role-ууд), `deploy.sh`, 3 systemd unit, `nginx-nexus-mini.conf`

@@ -12,7 +12,10 @@ import (
 
 // RegisterAll — cmd/nexus-mini дуудна (миграц нь модулиудын
 // өөрсдийн migration FS-ийг мэдэх ёстой).
-func RegisterAll() {
-	nexus.Register(devices.New())
-	nexus.Register(organisation.New())
+// All — энэ репогийн дистрибуцид орох модулиуд. Шинэ модуль = нэг мөр.
+func All() []nexus.Module {
+	return []nexus.Module{
+		devices.New(),
+		organisation.New(),
+	}
 }

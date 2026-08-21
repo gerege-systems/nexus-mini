@@ -1,76 +1,11 @@
-// nexus-mini — платформын командын хэрэгсэл.
-//
-// Зөвхөн Makefile-аар дуудагдана (make migrate / make serve); бинарийг шууд
-// ажиллуулахгүй.
-//
-//	migrate   миграц + (env-д ADMIN_* байвал) анхны админ
-//	serve     API сервер асаах
+// nexus-mini — энэ репогийн өөрийн дистрибуц: цөм + backend/apps доторх
+// модулиуд. Гадны компани өөрийн дистрибуцдаа яг ийм main бичнэ
+// (docs/03-module-guide.md «Өөрийн дистрибуц»).
 package main
 
 import (
-	"fmt"
-	"os"
-
-	appsreg "github.com/gerege-systems/nexus-mini/backend/apps"
-	"github.com/gerege-systems/nexus-mini/backend/internal/core/envfile"
+	"github.com/gerege-systems/nexus-mini/backend/apps"
+	"github.com/gerege-systems/nexus-mini/backend/core"
 )
 
-const usage = `nexus-mini — платформын командын хэрэгсэл
-
-Хэрэглээ (репогийн язгуураас, зөвхөн Makefile-аар):
-  make migrate   Цөм + модулиудын миграцыг ажиллуулна; env-д
-                 ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
-                 платформын админ хараахан байхгүй бол үүсгэнэ
-  make serve     API серверийг асаана
-
-Тохиргоо: backend/nexus-mini.env (эсвэл ENV_FILE=<зам>) файлыг уншина;
-орчны хувьсагч файлаас дээгүүр үйлчилнэ. Загвар нь репогийн .env.example —
-хуулж бөглөөд л болно.
-`
-
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Print(usage)
-		os.Exit(1)
-	}
-	cmd, args := os.Args[1], os.Args[2:]
-
-	// Модулиуд бүх коммандад хэрэгтэй (миграц, permission sync).
-	appsreg.RegisterAll()
-
-	var err error
-	switch cmd {
-	case "migrate":
-		err = withEnv(args, cmdMigrate)
-	case "serve":
-		err = withEnv(args, cmdServe)
-	case "help", "--help", "-h":
-		fmt.Print(usage)
-	default:
-		fmt.Fprintf(os.Stderr, "үл мэдэх комманд: %s\n\n%s", cmd, usage)
-		os.Exit(1)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "алдаа: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-// withEnv — --env флагийг (default: ./nexus-mini.env) уншиж орчинд
-// ачаалаад коммандаа ажиллуулна.
-func withEnv(args []string, fn func(args []string) error) error {
-	path := "nexus-mini.env"
-	rest := make([]string, 0, len(args))
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--env" && i+1 < len(args) {
-			path = args[i+1]
-			i++
-			continue
-		}
-		rest = append(rest, args[i])
-	}
-	if err := envfile.Load(path); err != nil {
-		return fmt.Errorf("%s уншиж чадсангүй: %w", path, err)
-	}
-	return fn(rest)
-}
+func main() { core.Main(apps.All()...) }

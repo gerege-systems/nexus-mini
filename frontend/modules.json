@@ -1,0 +1,10 @@
+[
+  {
+    "short_id": "devices",
+    "ui": "../backend/apps/devices/ui"
+  },
+  {
+    "short_id": "organisation",
+    "ui": "../backend/apps/organisation/ui"
+  }
+]
