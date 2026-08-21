@@ -174,17 +174,24 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenantID := nexus.TenantID(r.Context())
-	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+	// Эрх дээшлүүлэхээс хамгаална: оноож буй хүн тухайн permission-ийг
+	// өөрөө (хүссэн scope-оороо) эзэмшсэн байх ёстой.
+	mine, err := h.Perms.UserGrants(r.Context(), tenantID, nexus.UserID(r.Context()))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "grants lookup failed")
+		return
+	}
+	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		// Role энэ tenant-ийнх мөн үү — RLS хамгаална, гэхдээ ил шалгавал
 		// 404 ба 500-г ялгаж чадна.
-		var ok bool
+		var roleCode string
 		if err := tx.QueryRow(r.Context(),
-			`SELECT EXISTS (SELECT 1 FROM roles WHERE id = $1::uuid AND tenant_id = $2::uuid)`,
-			roleID, tenantID).Scan(&ok); err != nil {
+			`SELECT code FROM roles WHERE id = $1::uuid AND tenant_id = $2::uuid`,
+			roleID, tenantID).Scan(&roleCode); err != nil {
 			return err
 		}
-		if !ok {
-			return pgx.ErrNoRows
+		if roleCode == "admin" {
+			return grantError{"admin role-ийн оноолт автомат — гараар засахгүй"}
 		}
 		if _, err := tx.Exec(r.Context(),
 			`DELETE FROM role_permissions WHERE role_id = $1::uuid`, roleID); err != nil {
@@ -193,6 +200,23 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 		for code, scope := range in.Grants {
 			if scope != "own" {
 				scope = "all"
+			}
+			g, ok := mine[code]
+			if !ok || !g.Allowed || (scope == "all" && g.Scope != nexus.ScopeAll) {
+				return grantError{"өөрт байхгүй эрх оноох боломжгүй: " + code}
+			}
+			if scope == "own" {
+				// Каталог own_scope зарлаагүй permission-д "own" өгвөл модуль
+				// шүүдэггүй тул чимээгүй бүрэн эрх болно — хориглоно.
+				var ownScope bool
+				if err := tx.QueryRow(r.Context(),
+					`SELECT own_scope FROM permissions WHERE code = $1::varchar(128)`,
+					code).Scan(&ownScope); err != nil {
+					return err
+				}
+				if !ownScope {
+					return grantError{"энэ permission own scope дэмждэггүй: " + code}
+				}
 			}
 			if _, err := tx.Exec(r.Context(),
 				`INSERT INTO role_permissions (role_id, permission_code, scope)
@@ -203,8 +227,13 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
-	if err == pgx.ErrNoRows {
+	var ge grantError
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "role олдсонгүй")
+		return
+	}
+	if errors.As(err, &ge) {
+		httpx.Error(w, http.StatusBadRequest, ge.msg)
 		return
 	}
 	if err != nil {
@@ -215,6 +244,11 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 	h.Audit.Record(r.Context(), "role.grants", roleID, map[string]any{"count": len(in.Grants)})
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// grantError — оноолтын дүрмийн зөрчил (клиентэд харуулж болох мессеж).
+type grantError struct{ msg string }
+
+func (e grantError) Error() string { return e.msg }
 
 // tenantHasAdmin — өөрчлөлтийн ДАРАА tenant-д admin role-тэй гишүүн
 // үлдсэн эсэх (tenant lockout-оос сэргийлнэ, аудитын #4).

@@ -67,7 +67,7 @@ func (s *Store) UserGrants(ctx context.Context, tenantID, userID string) (map[st
 		  SELECT r.id, r.code, r.implies, 0 AS depth
 		    FROM memberships m
 		    JOIN membership_roles mr ON mr.membership_id = m.id
-		    JOIN roles r ON r.id = mr.role_id AND r.active
+		    JOIN roles r ON r.id = mr.role_id AND r.tenant_id = $1::uuid AND r.active
 		   WHERE m.tenant_id = $1::uuid AND m.user_id = $2::uuid
 		  UNION ALL
 		  SELECT r.id, r.code, r.implies, c.depth + 1

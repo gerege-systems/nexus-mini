@@ -90,3 +90,16 @@ membership_roles(membership_id, role_id)
 
 Эрхийн шийдвэр: membership → membership_roles → (roles implied гинж) →
 role_permissions → `map[code]scope`, 30 секунд кэш.
+
+### 7. Runtime хамгаалалт (2026-08-21, OGN-тэй дахин харьцуулсны дараа)
+
+Тунхаглалын үеийн шалгалтууд (`Register` panic) runtime-д ч давхар байна:
+
+- **Оноолт өөрийн эрхээс хэтрэхгүй.** `PUT /api/roles/{id}/grants` — оноож буй хүн тухайн permission-ийг өөрөө эзэмшсэн байх ёстой; `all` өгөхөд өөрийнх нь scope ч `all` байх. `core.roles.manage`-тэй хүн өөртөө `core.*` нэмж чадахгүй.
+- **`own` зөвхөн `own_scope` permission-д.** Каталогт `own_scope=false` бол 400 — үгүй бол шүүдэггүй модульд «own» чимээгүй бүрэн эрх болно.
+- **admin role-ийн оноолт автомат** — гараар засах API 400 (UI аль хэдийн түгжсэн байсан).
+- **Шинэ permission backfill.** Boot-ийн `Sync` анх удаа орж буй кодыг (`RETURNING xmax = 0`) тэмдэглээд, тухайн модулийг суулгасан tenant бүрт (core бол бүх tenant) зөвхөн тэр кодуудын default оноолтыг хийнэ. Байгаа кодод хүрэхгүй — гараар хассан оноолт сэргэхгүй.
+- **`membership_roles` tenant триггер** (00007) — өөр tenant-ийн role оноохыг DB давхаргад хориглоно; grants CTE-ийн суурь гишүүн ч `r.tenant_id = $1` шалгана.
+- **`own` унших талдаа ч үйлчилнэ** — devices `list` `ownFilter` хэрэглэнэ (жишээ модуль тул загвар болно).
+
+Нээлттэй: cross-process cache invalidation (олон процесс бол ≤30s хоцролт — үе 4 resilience-тэй хамт), `RevokeOnUninstall` дуудах uninstall зам.

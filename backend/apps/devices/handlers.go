@@ -18,14 +18,17 @@ type handler struct{ deps nexus.Deps }
 // GET / — жагсаалт (q хайлттай).
 func (h *handler) list(w http.ResponseWriter, r *http.Request) {
 	q := "%" + strings.TrimSpace(r.URL.Query().Get("q")) + "%"
+	own, ownArgs := ownFilter(r, 3) // ScopeOwn: зөвхөн өөрийн бүртгэсэн мөрүүд
+	args := append([]any{nexus.TenantID(r.Context()), q}, ownArgs...)
 	rows, err := h.deps.DB.Query(r.Context(), `
 		SELECT d.id, d.name, d.kind, d.serial, d.status, d.note,
 		       d.created_by::text, coalesce(u.name, ''), d.created_at::text
 		  FROM devices d LEFT JOIN users u ON u.id = d.created_by
 		 WHERE d.tenant_id = $1::uuid
-		   AND (d.name ILIKE $2::text OR d.serial ILIKE $2::text OR d.kind ILIKE $2::text)
+		   AND (d.name ILIKE $2::text OR d.serial ILIKE $2::text OR d.kind ILIKE $2::text)`+
+		strings.ReplaceAll(own, "created_by", "d.created_by")+`
 		 ORDER BY d.created_at DESC LIMIT 200`,
-		nexus.TenantID(r.Context()), q)
+		args...)
 	if err != nil {
 		nexus.Error(w, http.StatusInternalServerError, "devices query failed")
 		return

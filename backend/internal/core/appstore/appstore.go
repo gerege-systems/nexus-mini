@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -33,20 +34,69 @@ type catalogFile struct {
 	Apps []CatalogEntry `json:"apps"`
 }
 
+// backfillGrants — шинээр гарч ирсэн permission-уудын default оноолтыг
+// тухайн модулийг суулгасан (core бол бүх) tenant-д хийнэ. Admin pool
+// (nexus_platform) RLS-ийг давдаг тул tenant ctx шаардлагагүй.
+func backfillGrants(ctx context.Context, admin *pgxpool.Pool, newPerms map[string][]nexus.PermissionDefinition) error {
+	for moduleID, perms := range newPerms {
+		q := `SELECT tenant_id FROM app_installations WHERE app_id = $1::varchar(128) AND status = 'enabled'`
+		if moduleID == "core" {
+			q = `SELECT id FROM tenants WHERE $1::varchar(128) = 'core'`
+		}
+		rows, err := admin.Query(ctx, q, moduleID)
+		if err != nil {
+			return fmt.Errorf("backfill tenants %s: %w", moduleID, err)
+		}
+		tenants, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return fmt.Errorf("backfill tenants %s: %w", moduleID, err)
+		}
+		for _, tid := range tenants {
+			tx, err := admin.Begin(ctx)
+			if err != nil {
+				return err
+			}
+			if err := rbac.GrantOnInstall(ctx, tx, tid, perms); err != nil {
+				_ = tx.Rollback(ctx)
+				return fmt.Errorf("backfill %s → %s: %w", moduleID, tid, err)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+		}
+		if len(tenants) > 0 {
+			log.Printf("permission backfill: %s — %d шинэ код, %d tenant", moduleID, len(perms), len(tenants))
+		}
+	}
+	return nil
+}
+
 // Sync — бинари асахад нэг удаа: компиллогдсон модулиудын permission ба
 // апп мөрүүдийг admin pool-оор (nexus_platform эрхтэй) каталогт тулгана.
 func Sync(ctx context.Context, admin *pgxpool.Pool, catalogPath string) error {
+	// Модуль шинэчлэгдэж ШИНЭ permission нэмэгдвэл GrantOnInstall дахин
+	// ажилладаггүй тул энд: анх удаа орж буй кодыг (xmax = 0) тэмдэглээд,
+	// тухайн модулийг суулгасан tenant бүрт зөвхөн тэр кодуудын default
+	// оноолтыг хийнэ. Байгаа кодод хүрэхгүй — tenant-ийн гараар хассан
+	// оноолт сэргэхгүй.
+	newPerms := map[string][]nexus.PermissionDefinition{} // moduleID → шинэ
+
 	// Платформын core permission-ууд.
 	for _, p := range rbac.CorePermissions() {
 		dr, _ := json.Marshal(p.DefaultRoles)
-		if _, err := admin.Exec(ctx, `
+		var inserted bool
+		if err := admin.QueryRow(ctx, `
 			INSERT INTO permissions (code, module_id, name, description, own_scope, default_roles)
 			VALUES ($1::varchar(128), 'core', $2::varchar(160), $3::varchar(500), $4::boolean, $5::jsonb)
 			ON CONFLICT (code) DO UPDATE SET
 			  name = excluded.name, description = excluded.description,
-			  own_scope = excluded.own_scope, default_roles = excluded.default_roles`,
-			p.Code, p.Name, p.Description, p.OwnScope, dr); err != nil {
+			  own_scope = excluded.own_scope, default_roles = excluded.default_roles
+			RETURNING (xmax = 0)`,
+			p.Code, p.Name, p.Description, p.OwnScope, dr).Scan(&inserted); err != nil {
 			return fmt.Errorf("core permission sync %s: %w", p.Code, err)
+		}
+		if inserted {
+			newPerms["core"] = append(newPerms["core"], p)
 		}
 	}
 
@@ -65,18 +115,26 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, catalogPath string) error {
 		}
 		for _, p := range m.Permissions() {
 			dr, _ := json.Marshal(p.DefaultRoles)
-			_, err := admin.Exec(ctx, `
+			var inserted bool
+			err := admin.QueryRow(ctx, `
 				INSERT INTO permissions (code, module_id, name, description, own_scope, default_roles)
 				VALUES ($1::varchar(128), $2::varchar(128), $3::varchar(160), $4::varchar(500), $5::boolean, $6::jsonb)
 				ON CONFLICT (code) DO UPDATE SET
 				  module_id = excluded.module_id, name = excluded.name,
 				  description = excluded.description, own_scope = excluded.own_scope,
-				  default_roles = excluded.default_roles`,
-				p.Code, m.ID(), p.Name, p.Description, p.OwnScope, dr)
+				  default_roles = excluded.default_roles
+				RETURNING (xmax = 0)`,
+				p.Code, m.ID(), p.Name, p.Description, p.OwnScope, dr).Scan(&inserted)
 			if err != nil {
 				return fmt.Errorf("permission sync %s: %w", p.Code, err)
 			}
+			if inserted {
+				newPerms[m.ID()] = append(newPerms[m.ID()], p)
+			}
 		}
+	}
+	if err := backfillGrants(ctx, admin, newPerms); err != nil {
+		return err
 	}
 
 	// Каталог файл: компиллогдоогүй аппууд store-д "татаж авах боломжтой"

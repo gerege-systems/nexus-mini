@@ -87,6 +87,17 @@ func TestUserGrantsIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// 00007 триггер: өөр tenant-ийн role оноохыг DB хориглоно (owner ч гэсэн).
+	var foreignRole string
+	must(oc.QueryRow(ctx,
+		`INSERT INTO roles (tenant_id, code, name) VALUES ($1, 'user', 'user') RETURNING id`,
+		t2).Scan(&foreignRole))
+	if _, err := oc.Exec(ctx,
+		`INSERT INTO membership_roles (membership_id, role_id) VALUES ($1, $2)`,
+		memberID, foreignRole); err == nil {
+		t.Fatal("өөр tenant-ийн role оноолт амжилттай болсон — триггер ажиллаагүй")
+	}
+
 	pool, err := pgxpool.New(ctx, appURL)
 	if err != nil {
 		t.Fatal(err)
