@@ -117,7 +117,8 @@ func Register(m Module) {
 	}
 	// Платформын нөөцөлсөн нэрс — permission prefix/URL зам булаахгүй.
 	switch m.ShortID() {
-	case "core", "api", "admin", "platform", "store":
+	case "core", "api", "admin", "platform", "store",
+		"apps", "developers", "login", "signup", "dashboard", "members", "roles", "audit", "settings", "org":
 		panic(fmt.Sprintf("nexus: ShortID %q нь платформын нөөцөлсөн нэр", m.ShortID()))
 	}
 	for _, r := range registry {

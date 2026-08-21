@@ -13,14 +13,10 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
+// Нийтийн хуудас (landing /, /apps, /developers, /login, /signup), API,
+// Next-ийн дотоод зам, статик файлаас БУСАД бүгд хамгаалалттай — модулийн
+// шинэ route нэмэгдэхэд энд гар хүрэх шаардлагагүй. (Модулийн ShortID нь
+// эдгээр нийтийн нэртэй давхцахыг Register хориглоно.)
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/store/:path*",
-    "/devices/:path*",
-    "/members/:path*",
-    "/roles/:path*",
-    "/audit/:path*",
-    "/org/:path*",
-  ],
+  matcher: ["/((?!api|_next|login|signup|apps|developers|favicon\\.ico|$).*)"],
 };
