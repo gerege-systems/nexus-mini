@@ -95,11 +95,11 @@ role_permissions → `map[code]scope`, 30 секунд кэш.
 
 Тунхаглалын үеийн шалгалтууд (`Register` panic) runtime-д ч давхар байна:
 
-- **Оноолт өөрийн эрхээс хэтрэхгүй.** `PUT /api/roles/{id}/grants` — оноож буй хүн тухайн permission-ийг өөрөө эзэмшсэн байх ёстой; `all` өгөхөд өөрийнх нь scope ч `all` байх. `core.roles.manage`-тэй хүн өөртөө `core.*` нэмж чадахгүй.
+- **Оноолт өөрийн эрхээс хэтрэхгүй — гурван хаалга бүгд.** (a) `PUT /api/roles/{id}/grants`: шинэ/өргөссөн оноолт бүрийг оноож буй хүн өөрөө эзэмшсэн байх ёстой (байсан оноолтыг хэвээр үлдээх/нарийсгахад шаардахгүй); (b) role оноох (`POST /api/members`, `PUT /api/members/{id}/roles`): role-ийн implies гинжтэйгээ олгодог бүх permission оноож буй хүнд багтах ёстой — `core.members.manage`-тэй хүн өөрийгөө `admin` болгож чадахгүй; (c) `POST /api/roles` `implies`: өвлөх role мөн (b) дүрмээр.
 - **`own` зөвхөн `own_scope` permission-д.** Каталогт `own_scope=false` бол 400 — үгүй бол шүүдэггүй модульд «own» чимээгүй бүрэн эрх болно.
 - **admin role-ийн оноолт автомат** — гараар засах API 400 (UI аль хэдийн түгжсэн байсан).
-- **Шинэ permission backfill.** Boot-ийн `Sync` анх удаа орж буй кодыг (`RETURNING xmax = 0`) тэмдэглээд, тухайн модулийг суулгасан tenant бүрт (core бол бүх tenant) зөвхөн тэр кодуудын default оноолтыг хийнэ. Байгаа кодод хүрэхгүй — гараар хассан оноолт сэргэхгүй.
+- **Шинэ permission backfill.** Boot-ийн `Sync` permission бүрийг **нэг tx-д** upsert + (анх удаа орж байвал, `RETURNING xmax = 0`) тухайн модулийг суулгасан tenant бүрт (core бол бүх tenant) default оноолт хийнэ — алдвал бүхэлдээ буцаж дараагийн асалтад дахин оролдоно (хагас төлөв үлдэхгүй). Байгаа кодод хүрэхгүй — гараар хассан оноолт сэргэхгүй.
 - **`membership_roles` tenant триггер** (00007) — өөр tenant-ийн role оноохыг DB давхаргад хориглоно; grants CTE-ийн суурь гишүүн ч `r.tenant_id = $1` шалгана.
-- **`own` унших талдаа ч үйлчилнэ** — devices `list` `ownFilter` хэрэглэнэ (жишээ модуль тул загвар болно).
+- **`own` унших талдаа ч үйлчилнэ** — `devices.read` `OwnScope: true`, `list` `ownFilter` хэрэглэнэ (жишээ модуль тул загвар болно).
 
-Нээлттэй: cross-process cache invalidation (олон процесс бол ≤30s хоцролт — үе 4 resilience-тэй хамт), `RevokeOnUninstall` дуудах uninstall зам.
+Нээлттэй: cross-process cache invalidation — олон процесс бол ≤30s хоцролт; энэ үед нэг процесс дээр хасагдсан эрхийг нөгөө дээр cache-ээс уншиж role-д бичих боломж онолын хувьд бий (нэг процесс = асуудалгүй; үе 4-т bus-тэй хамт шийднэ). `RevokeOnUninstall` дуудах uninstall зам.

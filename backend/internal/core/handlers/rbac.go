@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,12 +24,18 @@ var (
 
 // assignRoles — гишүүнчлэлд role-уудыг оноож, үл мэдэх код байвал алдаа
 // (өмнө нь чимээгүй алгасаад 201 буцдаг байсан).
-func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, codes []string) error {
+// mine — оноож буй хүний grants: role (implies гинжтэйгээ) олгодог бүх
+// permission түүнд багтаагүй бол татгалзана (members.manage-тэй хүн өөрийгөө
+// admin болгох зэрэг дээшлүүлэлтээс хамгаална).
+func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, codes []string, mine map[string]nexus.Grant) error {
 	if _, err := tx.Exec(r.Context(),
 		`DELETE FROM membership_roles WHERE membership_id = $1::uuid`, membershipID); err != nil {
 		return err
 	}
 	for _, code := range codes {
+		if err := roleWithinGrants(r.Context(), tx, tenantID, code, mine); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(r.Context(), `
 			INSERT INTO membership_roles (membership_id, role_id)
 			SELECT $1::uuid, r.id FROM roles r
@@ -42,6 +49,42 @@ func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, code
 		}
 	}
 	return nil
+}
+
+// roleWithinGrants — role (implies гинжээр өвлөгдсөнийг оруулаад) олгодог
+// permission бүр `mine`-д (хүссэн scope-оор) байгаа эсэх.
+func roleWithinGrants(ctx context.Context, tx pgx.Tx, tenantID, roleCode string, mine map[string]nexus.Grant) error {
+	rows, err := tx.Query(ctx, `
+		WITH RECURSIVE chain AS (
+		  SELECT id, implies, 0 AS depth FROM roles
+		   WHERE tenant_id = $1::uuid AND code = $2::varchar(64)
+		  UNION ALL
+		  SELECT r.id, r.implies, c.depth + 1 FROM chain c
+		    JOIN roles r ON r.tenant_id = $1::uuid AND r.code = c.implies
+		   WHERE c.depth < 5)
+		SELECT rp.permission_code, rp.scope
+		  FROM (SELECT DISTINCT id FROM chain) c
+		  JOIN role_permissions rp ON rp.role_id = c.id`, tenantID, roleCode)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var code, scope string
+		if err := rows.Scan(&code, &scope); err != nil {
+			return err
+		}
+		if !grantCovers(mine, code, scope) {
+			return grantError{"өөрт байхгүй эрх олгодог role оноох боломжгүй: " + roleCode + " (" + code + ")"}
+		}
+	}
+	return rows.Err()
+}
+
+// grantCovers — mine нь code-ийг хүссэн scope-оор эзэмшиж байна уу.
+func grantCovers(mine map[string]nexus.Grant, code, scope string) bool {
+	g, ok := mine[code]
+	return ok && g.Allowed && (scope != "all" || g.Scope == nexus.ScopeAll)
 }
 
 // RBACH — role, гишүүдийн удирдлага. core.* permission-ууд платформынх
@@ -147,10 +190,27 @@ func (h *RBACH) CreateRole(w http.ResponseWriter, r *http.Request) {
 	}
 	tenantID := nexus.TenantID(r.Context())
 	var id string
-	err := h.DB.QueryRow(r.Context(),
-		`INSERT INTO roles (tenant_id, code, name, implies)
-		 VALUES ($1::uuid, $2::varchar(64), $3::varchar(120), $4::varchar(64)) RETURNING id`,
-		tenantID, in.Code, in.Name, implies).Scan(&id)
+	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+		if in.Implies != "" {
+			// implies:"admin" гэх мэтээр өвлөлтөөр эрх дээшлүүлэхээс хамгаална.
+			mine, err := h.Perms.UserGrants(r.Context(), tenantID, nexus.UserID(r.Context()))
+			if err != nil {
+				return err
+			}
+			if err := roleWithinGrants(r.Context(), tx, tenantID, in.Implies, mine); err != nil {
+				return err
+			}
+		}
+		return tx.QueryRow(r.Context(),
+			`INSERT INTO roles (tenant_id, code, name, implies)
+			 VALUES ($1::uuid, $2::varchar(64), $3::varchar(120), $4::varchar(64)) RETURNING id`,
+			tenantID, in.Code, in.Name, implies).Scan(&id)
+	})
+	var ge grantError
+	if errors.As(err, &ge) {
+		httpx.Error(w, http.StatusBadRequest, ge.msg)
+		return
+	}
 	if nexus.IsFKViolation(err) {
 		httpx.Error(w, http.StatusBadRequest, "өвлөх role олдсонгүй")
 		return
@@ -193,6 +253,26 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 		if roleCode == "admin" {
 			return grantError{"admin role-ийн оноолт автомат — гараар засахгүй"}
 		}
+		// Байсан оноолтыг (тэр хэвээр нь эсвэл нарийсгаж) үлдээхэд өөрийн
+		// эрх шаардахгүй — зөвхөн ШИНЭ/өргөссөн оноолтод л шаардана.
+		existing := map[string]string{}
+		erows, err := tx.Query(r.Context(),
+			`SELECT permission_code, scope FROM role_permissions WHERE role_id = $1::uuid`, roleID)
+		if err != nil {
+			return err
+		}
+		for erows.Next() {
+			var c, sc string
+			if err := erows.Scan(&c, &sc); err != nil {
+				erows.Close()
+				return err
+			}
+			existing[c] = sc
+		}
+		erows.Close()
+		if err := erows.Err(); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(r.Context(),
 			`DELETE FROM role_permissions WHERE role_id = $1::uuid`, roleID); err != nil {
 			return err
@@ -201,8 +281,8 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 			if scope != "own" {
 				scope = "all"
 			}
-			g, ok := mine[code]
-			if !ok || !g.Allowed || (scope == "all" && g.Scope != nexus.ScopeAll) {
+			kept := existing[code] == "all" || existing[code] == scope
+			if !kept && !grantCovers(mine, code, scope) {
 				return grantError{"өөрт байхгүй эрх оноох боломжгүй: " + code}
 			}
 			if scope == "own" {
@@ -390,6 +470,11 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tenantID := nexus.TenantID(r.Context())
+	mine, err := h.Perms.UserGrants(r.Context(), tenantID, nexus.UserID(r.Context()))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "grants lookup failed")
+		return
+	}
 	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		var memberID string
 		if err := tx.QueryRow(r.Context(),
@@ -398,8 +483,13 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 			 RETURNING id`, tenantID, userID).Scan(&memberID); err != nil {
 			return err
 		}
-		return assignRoles(r, tx, memberID, tenantID, in.Roles)
+		return assignRoles(r, tx, memberID, tenantID, in.Roles, mine)
 	})
+	var ge grantError
+	if errors.As(err, &ge) {
+		httpx.Error(w, http.StatusBadRequest, ge.msg)
+		return
+	}
 	if errors.Is(err, errUnknownRole) {
 		httpx.Error(w, http.StatusBadRequest, "үл мэдэх role код байна")
 		return
@@ -423,7 +513,12 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenantID := nexus.TenantID(r.Context())
-	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+	mine, err := h.Perms.UserGrants(r.Context(), tenantID, nexus.UserID(r.Context()))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "grants lookup failed")
+		return
+	}
+	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		var ok bool
 		if err := tx.QueryRow(r.Context(),
 			`SELECT EXISTS (SELECT 1 FROM memberships WHERE id = $1::uuid AND tenant_id = $2::uuid)`,
@@ -433,7 +528,7 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return pgx.ErrNoRows
 		}
-		if err := assignRoles(r, tx, membershipID, tenantID, in.Roles); err != nil {
+		if err := assignRoles(r, tx, membershipID, tenantID, in.Roles, mine); err != nil {
 			return err
 		}
 		ok, err := tenantHasAdmin(r, tx, tenantID)
@@ -447,6 +542,11 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 	})
 	if err == errLastAdmin {
 		httpx.Error(w, http.StatusConflict, "байгууллагад дор хаяж нэг админ үлдэх ёстой")
+		return
+	}
+	var ge grantError
+	if errors.As(err, &ge) {
+		httpx.Error(w, http.StatusBadRequest, ge.msg)
 		return
 	}
 	if errors.Is(err, errUnknownRole) {

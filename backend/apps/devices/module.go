@@ -39,6 +39,7 @@ func (m *Module) Permissions() []nexus.PermissionDefinition {
 			Name:         "Төхөөрөмж харах",
 			Description:  "Байгууллагын төхөөрөмжийн жагсаалтыг харах",
 			DefaultRoles: []string{"manager", "user"},
+			OwnScope:     true, // "own" өгвөл зөвхөн өөрийн бүртгэсэн мөрүүд
 		},
 		{
 			Code:         "devices.manage",
