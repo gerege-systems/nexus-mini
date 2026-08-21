@@ -92,8 +92,8 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 
 | Хэсэг | Хаяг | Порт |
 |---|---|---|
-| Portal + API (/api/* → Go) | nexus-mini.runestonetechnologies.com | 3020 / 8084 |
-| Платформын админ | nexus-mini-admin.runestonetechnologies.com | 3021 |
-| Registry (үе 2) | nexus-mini-registry.runestonetechnologies.com | 8085 |
+| Portal + API (/api/* → Go) | nexus.runestonetechnologies.com | 3020 / 8084 |
+| Платформын админ | nexus-admin.runestonetechnologies.com | 3021 |
+| Registry (үе 2) | nexus-registry.runestonetechnologies.com | 8085 |
 
 Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.
