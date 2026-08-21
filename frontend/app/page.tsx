@@ -13,17 +13,37 @@ export default function Landing() {
     <div className="mkt">
       <MktHeader />
 
-      <section className="mkt-hero">
-        <div className="mkt-eyebrow">
-          <span className="dot" /> NEXUS-MINI — {t("НЭЭЛТТЭЙ ЭХ")}
+      <section className="hero2">
+        <div className="hero2__left">
+          <div className="hero2__badge"><span className="dot" /> v1.0 · Apache 2.0</div>
+          <h1>{t("Үйл ажиллагааны нэгдсэн дижитал платформ")}</h1>
+          <p>
+            {t("Байгууллагын үйлчилгээ, үйл ажиллагаа, систем, өгөгдлийг нэг дор холбодог модульт платформ — цөм нь суурийг, апп дэлгүүр нь боломжуудыг өгнө.")}
+          </p>
+          <div className="cta">
+            <Link href="/signup" className="btn">{t("Байгууллагаа бүртгүүлэх")}</Link>
+            <Link href="/developers" className="btn btn--ghost hero2__mono-btn">$ docker compose up</Link>
+          </div>
         </div>
-        <h1>{t("Үйл ажиллагааны нэгдсэн дижитал платформ")}</h1>
-        <p>
-          {t("Байгууллагын үйлчилгээ, үйл ажиллагаа, систем, өгөгдлийг нэг дор холбодог модульт платформ — цөм нь суурийг, апп дэлгүүр нь боломжуудыг өгнө.")}
-        </p>
-        <div className="cta">
-          <Link href="/signup" className="btn">{t("Байгууллагаа бүртгүүлэх")}</Link>
-          <Link href="/developers" className="btn btn--ghost">{t("Модуль хөгжүүлэх")}</Link>
+        <div className="term" aria-hidden="true">
+          <div className="term__bar">
+            <span className="term__dot" style={{ background: "#f87171" }} />
+            <span className="term__dot" style={{ background: "#fbbf24" }} />
+            <span className="term__dot" style={{ background: "#34d399" }} />
+            <span className="term__title">nexus-mini — zsh</span>
+          </div>
+          <div className="term__body">
+            <div><span className="term__p">$</span> git clone gerege-systems/nexus-mini</div>
+            <div><span className="term__p">$</span> nexus-mini migrate</div>
+            <div className="term__out">{t("миграц: цөм ok · devices ok")}</div>
+            <div className="term__out">✓ {t("платформын админ үүслээ")}</div>
+            <div><span className="term__p">$</span> nexus-mini serve</div>
+            <div className="term__out">nexus-mini API :8084 (1 {t("модуль")})</div>
+            <div><span className="term__p">$</span> <span className="term__cursor">&nbsp;</span></div>
+          </div>
+          <div className="term__foot">
+            <span>Go 1.25</span><span>PostgreSQL 16 · RLS</span><span>Next.js</span><span>{t("нэг бинари")}</span>
+          </div>
         </div>
       </section>
 
