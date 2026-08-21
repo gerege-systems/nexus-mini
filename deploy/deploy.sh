@@ -14,18 +14,11 @@ main() {
 
   export PATH=/usr/local/go/bin:$PATH
 
-  echo "== backend build =="
+  echo "== backend build + migrate (Makefile) =="
+  # Атом солилт Makefile-ийн build-д; env-ийг export хийхгүй (#8: ADMIN_*
+  # гэх мэт нууц child process бүрт задрах ёсгүй) — ENV_FILE флагаар уншина.
+  make migrate ENV_FILE=/home/bay/secrets/nexus-mini.env
   cd backend
-  # Атом солилт: шинийг тусад нь build хийж, ажиллаж буй binary-г mv-ээр
-  # (rename нь атом) дарна; өмнөхийг rollback-д үлдээнэ.
-  go build -o bin/nexus-mini.new ./cmd/nexus-mini
-  [ -f bin/nexus-mini ] && cp bin/nexus-mini bin/nexus-mini.prev
-  mv -f bin/nexus-mini.new bin/nexus-mini
-
-  echo "== migrate =="
-  # Env-ийг export хийхгүй (#8: ADMIN_* гэх мэт нууц child process бүрт
-  # задрах ёсгүй) — migrate --env флагаараа өөрөө уншина.
-  ./bin/nexus-mini migrate --env /home/bay/secrets/nexus-mini.env
 
   # Next build-ийг амьд .next дээр биш тусдаа хавтаст хийж, дуусмагц
   # атомоор солино (mid-build 500/404-өөс сэргийлнэ).

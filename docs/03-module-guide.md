@@ -169,7 +169,7 @@ export default function NamePage() {
 nexus.Register(<нэр>.New())
 ```
 
-`make migrate && make api` — модуль чинь store-д гарч ирнэ.
+`make migrate && make serve` — модуль чинь store-д гарч ирнэ.
 
 ### 8. Store-д нийтлэх
 

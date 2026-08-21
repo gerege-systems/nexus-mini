@@ -1,7 +1,10 @@
 // nexus-mini — платформын командын хэрэгсэл.
 //
-//	nexus-mini migrate   миграц + (env-д ADMIN_* байвал) анхны админ
-//	nexus-mini serve     API сервер асаах
+// Зөвхөн Makefile-аар дуудагдана (make migrate / make serve); бинарийг шууд
+// ажиллуулахгүй.
+//
+//	migrate   миграц + (env-д ADMIN_* байвал) анхны админ
+//	serve     API сервер асаах
 package main
 
 import (
@@ -14,15 +17,15 @@ import (
 
 const usage = `nexus-mini — платформын командын хэрэгсэл
 
-Хэрэглээ:
-  nexus-mini migrate   Цөм + модулиудын миграцыг ажиллуулна; env-д
-                       ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
-                       платформын админ хараахан байхгүй бол үүсгэнэ
-  nexus-mini serve     API серверийг асаана
+Хэрэглээ (репогийн язгуураас, зөвхөн Makefile-аар):
+  make migrate   Цөм + модулиудын миграцыг ажиллуулна; env-д
+                 ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
+                 платформын админ хараахан байхгүй бол үүсгэнэ
+  make serve     API серверийг асаана
 
-Тохиргоо: коммандууд ажлын хавтаснаас nexus-mini.env (эсвэл --env <зам>)
-файлыг уншина; орчны хувьсагч файлаас дээгүүр үйлчилнэ. Загвар нь
-репогийн .env.example — хуулж бөглөөд л болно.
+Тохиргоо: backend/nexus-mini.env (эсвэл ENV_FILE=<зам>) файлыг уншина;
+орчны хувьсагч файлаас дээгүүр үйлчилнэ. Загвар нь репогийн .env.example —
+хуулж бөглөөд л болно.
 `
 
 func main() {

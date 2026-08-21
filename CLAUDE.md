@@ -17,7 +17,7 @@
 
 ## Коммандууд
 - `make migrate` — миграц + env-д ADMIN_* байгаа бөгөөд админ огт байхгүй бол анхны платформ админ үүсгэнэ
-- `make api` / `make web` — API :8084 / portal dev :3020; админ: `cd admin && pnpm dev` (:3021)
+- `make serve` / `make web` / `make admin` — API :8084 / portal dev :3020 / админ dev :3021. **Бүх команд зөвхөн Makefile-аар** — `go run`/бинарийг шууд дуудахгүй (systemd unit + Docker image л үл хамаарна). `ENV_FILE=` өөр env файл.
 - `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`apps/` → `backend/internal/*` импорт байвал унана)
 - `make push` — check амжилттай бол л `git push`
 - Integration тестүүд (`db/rls_test.go`, `rbac/rbac_integration_test.go`) `NEXUS_TEST_DATABASE_URL` + `NEXUS_TEST_DATABASE_URL_OWNER` шаардана, байхгүй бол Skip

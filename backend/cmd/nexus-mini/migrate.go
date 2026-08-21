@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// cmdMigrate — nexus-mini migrate: миграц + env-ээс анхны админ.
+// cmdMigrate — make migrate: миграц + env-ээс анхны админ.
 func cmdMigrate(_ []string) error {
 	ownerURL := os.Getenv("DATABASE_URL_OWNER")
 	if ownerURL == "" {

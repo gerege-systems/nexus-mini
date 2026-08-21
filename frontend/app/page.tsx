@@ -34,10 +34,10 @@ export default function Landing() {
           </div>
           <div className="term__body">
             <div><span className="term__p">$</span> git clone gerege-systems/nexus-mini</div>
-            <div><span className="term__p">$</span> nexus-mini migrate</div>
+            <div><span className="term__p">$</span> make migrate</div>
             <div className="term__out">{t("миграц: цөм ok · devices ok")}</div>
             <div className="term__out">✓ {t("платформын админ үүслээ")}</div>
-            <div><span className="term__p">$</span> nexus-mini serve</div>
+            <div><span className="term__p">$</span> make serve</div>
             <div className="term__out">nexus-mini API :8084 (1 {t("модуль")})</div>
             <div><span className="term__p">$</span> <span className="term__cursor">&nbsp;</span></div>
           </div>
@@ -92,8 +92,8 @@ export default function Landing() {
           <div style={{ flex: 1, minWidth: 240 }}>
             <b>{t("Өөрөө ажиллуулж үзэх үү?")}</b>
             <div style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
-              <code>git clone</code> → {t("env-ээ бөглөөд")} <code>nexus-mini migrate</code> →{" "}
-              <code>serve</code>. {t("Эсвэл")} <code>docker compose up</code>.
+              <code>git clone</code> → {t("env-ээ бөглөөд")} <code>make migrate</code> →{" "}
+              <code>make serve</code>. {t("Эсвэл")} <code>docker compose up</code>.
             </div>
           </div>
           <Link href="/signup" className="btn">{t("Эсвэл эндээ бүртгүүлэх")}</Link>

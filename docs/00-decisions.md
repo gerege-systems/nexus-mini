@@ -46,9 +46,12 @@ Runtime plugin/WASM хийхгүй — ойлгомжтой байдал нь mi
 
 1. **Эхний ажиллуулалт: бүх тохиргоо env файлд** — DB холболтууд +
    `ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD`-оо `nexus-mini.env`-д бичээд
-   `nexus-mini migrate` (миграц + админ байхгүй бол env-ээс үүсгэнэ) →
-   `nexus-mini serve`. CLI = migrate + serve хоёрхон комманд; тусдаа
-   setup/admin комманд байхгүй. Вэб талд setup wizard БАЙХГҮЙ, landing
+   `make migrate` (миграц + админ байхгүй бол env-ээс үүсгэнэ) →
+   `make serve`. CLI = migrate + serve хоёрхон комманд; тусдаа
+   setup/admin комманд байхгүй. **Бүх команд зөвхөн Makefile-аар**
+   (2026-08-21) — бинарийг шууд дуудахгүй; deploy.sh ч `make build` /
+   `make migrate ENV_FILE=…` ашиглана. Гагцхүү systemd unit (ExecStart)
+   болон Docker image (make байхгүй) бинарийг шууд дуудна. Вэб талд setup wizard БАЙХГҮЙ, landing
    төлөв шалгадаггүй. Түүх: вэб wizard → CLI setup → бүгдийг env-д
    (хэрэглэгчийн шаардлагаар алхам алхмаар хялбарчилсан, 2026-08-20).
 2. **Админ панель** — платформын админд хэрэгтэй бүх тохиргоо нэг дор

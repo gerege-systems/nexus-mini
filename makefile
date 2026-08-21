@@ -1,18 +1,40 @@
-# nexus-mini
-# Локал хөгжүүлэлт: deploy/01-roles.sql (нэг удаа) → .env бөглөх → make migrate → make api
+# nexus-mini — бүх командыг зөвхөн Makefile-аар ажиллуулна; бинарийг шууд дуудахгүй.
+# Эхний ажиллуулалт: deploy/01-roles.sql (нэг удаа) → cp .env.example backend/nexus-mini.env
+#                    → make migrate → make serve → make web
+#
+# ENV_FILE=/зам/nexus-mini.env  — өөр газрын env (сервер дээр secrets/); өгөхгүй бол
+#                                 backend/nexus-mini.env-г уншина.
 
-# Тохиргоо backend/nexus-mini.env-д амьдарна — .env.example-г хуулж бөглөнө.
+ENV_FLAG := $(if $(ENV_FILE),--env $(ENV_FILE),)
 
-.PHONY: migrate api web check push
+.PHONY: help build migrate serve web admin check push
 
-migrate:
-	cd backend && go run ./cmd/nexus-mini migrate
+help:
+	@echo "make migrate   миграц + (env-д ADMIN_* байвал) анхны платформ админ"
+	@echo "make serve     API сервер :8084"
+	@echo "make web       portal dev :3020      make admin   админ панель dev :3021"
+	@echo "make build     бинари (backend/bin/nexus-mini, атом солилт)"
+	@echo "make check     linux build + vet + test + SDK-ийн хил    make push   check → git push"
+	@echo "ENV_FILE=...   env файлын зам (default backend/nexus-mini.env)"
 
-api:
-	cd backend && go run ./cmd/nexus-mini serve
+# Атом солилт: шинийг тусад нь build хийж mv-ээр (rename атом) дарна; өмнөхийг
+# rollback-д үлдээнэ — ажиллаж буй процессын бинарийг хагас бичихгүй.
+build:
+	cd backend && go build -o bin/nexus-mini.new ./cmd/nexus-mini \
+	  && { [ -f bin/nexus-mini ] && cp bin/nexus-mini bin/nexus-mini.prev || true; } \
+	  && mv -f bin/nexus-mini.new bin/nexus-mini
+
+migrate: build
+	cd backend && ./bin/nexus-mini migrate $(ENV_FLAG)
+
+serve: build
+	cd backend && ./bin/nexus-mini serve $(ENV_FLAG)
 
 web:
 	cd frontend && pnpm dev
+
+admin:
+	cd admin && pnpm dev
 
 # push бүрийн өмнө заавал (docs/01-lessons.md #4): linux build + vet + test
 # + SDK-ийн хил: модуль (apps/) internal/*-ээс юу ч импортлохгүй байх ёстой

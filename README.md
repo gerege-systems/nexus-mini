@@ -25,16 +25,16 @@ psql -v owner_pw='...' -v app_pw='...' -v admin_pw='...' -f deploy/01-roles.sql
 # 2. Тохиргоо:
 cp .env.example backend/nexus-mini.env   # DB URL + ADMIN_* бөглөнө
 
-# 3. Миграц + анхны админ, дараа нь сервер:
-cd backend
-go run ./cmd/nexus-mini migrate
-go run ./cmd/nexus-mini serve            # API :8084
-
-cd ../frontend && pnpm install && pnpm dev   # вэб :3020
+# 3. Миграц + анхны админ, дараа нь сервер (бүгд Makefile-аар):
+make migrate
+make serve                               # API :8084
+make web                                 # portal :3020 (эхлээд cd frontend && pnpm install)
 ```
 
-CLI коммандууд: `migrate` (миграц + env-ээс анхны админ), `serve`.
-Тохиргоо `nexus-mini.env` файлд амьдарна; орчны хувьсагч түүнээс дээгүүр.
+Бүх команд зөвхөн Makefile-аар: `make migrate` (миграц + env-ээс анхны админ),
+`make serve`, `make web`, `make admin`, `make check`. Бинарийг шууд дуудахгүй.
+Тохиргоо `backend/nexus-mini.env` файлд амьдарна (`ENV_FILE=/зам` гэж өөр файл
+зааж болно); орчны хувьсагч файлаас дээгүүр.
 
 ### Docker Compose
 

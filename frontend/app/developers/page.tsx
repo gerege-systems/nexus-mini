@@ -155,7 +155,7 @@ export default function DevelopersPage() {
           <div><span className="c">{t("// backend/apps/apps.go — нэг мөр:")}</span></div>
           <div>nexus.Register(name.New())</div>
           <div>&nbsp;</div>
-          <div><span className="c">$</span> make migrate &amp;&amp; make api&nbsp;&nbsp;<span className="c">{t("# модуль store-д гарч ирнэ")}</span></div>
+          <div><span className="c">$</span> make migrate &amp;&amp; make serve&nbsp;&nbsp;<span className="c">{t("# модуль store-д гарч ирнэ")}</span></div>
         </Code>
 
         <h3>{t("8. Store-д нийтлэх")}</h3>

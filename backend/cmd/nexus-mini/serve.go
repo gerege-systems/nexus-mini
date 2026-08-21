@@ -22,7 +22,7 @@ import (
 	"github.com/go-chi/httprate"
 )
 
-// cmdServe — nexus-mini serve
+// cmdServe — make serve
 func cmdServe(_ []string) error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -50,7 +50,7 @@ func cmdServe(_ []string) error {
 	_ = pools.Admin.QueryRow(context.Background(),
 		`SELECT EXISTS (SELECT 1 FROM users WHERE platform_admin)`).Scan(&hasAdmin)
 	if !hasAdmin {
-		log.Println("АНХААР: платформын админ алга — env-д ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD өгөөд `nexus-mini migrate` ажиллуул")
+		log.Println("АНХААР: платформын админ алга — env-д ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD өгөөд `make migrate` ажиллуул")
 	}
 
 	tdb := db.NewTenantDB(pools.App)
