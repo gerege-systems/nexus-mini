@@ -15,6 +15,18 @@ export default function MembersPage() {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ email: "", name: "", password: "", roles: ["user"] });
   const [err, setErr] = useState("");
+  // Имэйлээр хайлт: null = хараахан хайгаагүй/хүчингүй имэйл
+  const [lookup, setLookup] = useState<{ exists: boolean; name?: string; member?: boolean } | null>(null);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+  useEffect(() => {
+    if (!adding || !emailOk) { setLookup(null); return; }
+    const id = setTimeout(() => {
+      api.get<{ exists: boolean; name?: string; member?: boolean }>(
+        `/api/members/lookup?email=${encodeURIComponent(form.email.trim())}`
+      ).then(setLookup).catch(() => setLookup(null));
+    }, 350);
+    return () => clearTimeout(id);
+  }, [form.email, adding, emailOk]);
 
   const load = useCallback(async () => {
     const [m, r] = await Promise.all([
@@ -133,19 +145,37 @@ export default function MembersPage() {
             {err && <div className="alert alert--danger">{t(err)}</div>}
             <div className="field">
               <label>{t("Имэйл")}</label>
-              <input value={form.email} autoFocus
+              <input type="email" value={form.email} autoFocus
                 onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <div className="hint">{t("Бүртгэлтэй имэйл бол шууд нэгдэнэ, нэр/нууц үг хэрэггүй")}</div>
+              <div className="hint">
+                {!emailOk
+                  ? t("Имэйлээр хайна: бүртгэлтэй бол нэр нь гарна, үгүй бол шинээр үүсгэнэ")
+                  : lookup === null
+                    ? t("Хайж байна…")
+                    : lookup.exists
+                      ? lookup.member ? t("Аль хэдийн энэ байгууллагын гишүүн") : t("Бүртгэлтэй хэрэглэгч — role өгөөд нэмнэ")
+                      : t("Бүртгэлгүй — нэр, түр нууц үг өгч шинээр үүсгэнэ")}
+              </div>
             </div>
-            <div className="field">
-              <label>{t("Нэр (шинэ хэрэглэгчид)")}</label>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div className="field">
-              <label>{t("Түр нууц үг (шинэ хэрэглэгчид, 8+)")}</label>
-              <input type="password" value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            </div>
+            {lookup?.exists && (
+              <div className="field">
+                <label>{t("Нэр")}</label>
+                <input value={lookup.name ?? ""} readOnly disabled />
+              </div>
+            )}
+            {lookup && !lookup.exists && (
+              <>
+                <div className="field">
+                  <label>{t("Нэр")}</label>
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>{t("Түр нууц үг (8+)")}</label>
+                  <input type="password" value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </div>
+              </>
+            )}
             <div className="field">
               <label>Role</label>
               <span style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
@@ -167,7 +197,7 @@ export default function MembersPage() {
             </div>
             <div className="modal__actions">
               <button className="btn btn--ghost" onClick={() => setAdding(false)}>{t("Болих")}</button>
-              <button className="btn" onClick={add}>{t("Нэмэх")}</button>
+              <button className="btn" onClick={add} disabled={!lookup || lookup.member}>{t("Нэмэх")}</button>
             </div>
           </div>
         </div>

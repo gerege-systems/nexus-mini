@@ -115,6 +115,7 @@ func cmdServe(_ []string) error {
 		g.With(nexus.RequirePermission(perms, "core.roles.manage")).Put("/api/roles/{id}/grants", rbacH.SetGrants)
 
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members", rbacH.Members)
+		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members/lookup", rbacH.LookupMember)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Post("/api/members", rbacH.AddMember)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Put("/api/members/{id}/roles", rbacH.SetMemberRoles)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Delete("/api/members/{id}", rbacH.RemoveMember)

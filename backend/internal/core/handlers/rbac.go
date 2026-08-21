@@ -269,6 +269,38 @@ func (h *RBACH) Members(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"members": out})
 }
 
+// GET /api/members/lookup?email= — имэйл бүртгэлтэй эсэх, нэр, энэ
+// tenant-ийн гишүүн эсэх. Зөвхөн core.members.manage эрхтэйд нээлттэй тул
+// имэйл тоолох (enumeration) эрсдэл tenant админаар хязгаарлагдана.
+func (h *RBACH) LookupMember(w http.ResponseWriter, r *http.Request) {
+	email := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("email")))
+	if !emailRe.MatchString(email) {
+		httpx.Error(w, http.StatusBadRequest, "зөв имэйл шаардлагатай")
+		return
+	}
+	var userID, hash, name string
+	var isAdmin bool
+	err := h.Pool.QueryRow(r.Context(),
+		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`,
+		email).Scan(&userID, &hash, &name, &isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.JSON(w, http.StatusOK, map[string]any{"exists": false})
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	var member bool
+	if err := h.Pool.QueryRow(r.Context(),
+		`SELECT EXISTS (SELECT 1 FROM memberships WHERE tenant_id = $1::uuid AND user_id = $2::uuid)`,
+		nexus.TenantID(r.Context()), userID).Scan(&member); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"exists": true, "name": name, "member": member})
+}
+
 // POST /api/members — гишүүн нэмнэ. Имэйл нь бүртгэлтэй бол шууд
 // гишүүнчлэл үүсгэнэ; үгүй бол түр нууц үгтэй хэрэглэгч үүсгэнэ (үе 1 —
 // имэйл илгээлт üе 3-т).
