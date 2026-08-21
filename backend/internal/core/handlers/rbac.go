@@ -291,10 +291,12 @@ func (h *RBACH) LookupMember(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "lookup failed")
 		return
 	}
+	// memberships RLS-тэй тул tenant GUC тавьдаг h.DB-ээр (h.Pool-оор бол
+	// мөр харагдахгүй, үргэлж false гарна).
 	var member bool
-	if err := h.Pool.QueryRow(r.Context(),
-		`SELECT EXISTS (SELECT 1 FROM memberships WHERE tenant_id = $1::uuid AND user_id = $2::uuid)`,
-		nexus.TenantID(r.Context()), userID).Scan(&member); err != nil {
+	if err := h.DB.QueryRow(r.Context(),
+		`SELECT EXISTS (SELECT 1 FROM memberships WHERE user_id = $1::uuid)`,
+		userID).Scan(&member); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "lookup failed")
 		return
 	}
