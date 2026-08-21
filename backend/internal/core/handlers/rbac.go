@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
@@ -12,22 +14,45 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/password"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
-	errLastAdmin   = errors.New("last admin")
-	errUnknownRole = errors.New("unknown role")
+	errLastAdmin     = errors.New("last admin")
+	errUnknownRole   = errors.New("unknown role")
+	errAlreadyMember = errors.New("already member")
 )
+
+var roleCodeRe = regexp.MustCompile(`^[a-z][a-z0-9_]{1,63}$`)
 
 // assignRoles — гишүүнчлэлд role-уудыг оноож, үл мэдэх код байвал алдаа
 // (өмнө нь чимээгүй алгасаад 201 буцдаг байсан).
 // mine — оноож буй хүний grants: role (implies гинжтэйгээ) олгодог бүх
 // permission түүнд багтаагүй бол татгалзана (members.manage-тэй хүн өөрийгөө
 // admin болгох зэрэг дээшлүүлэлтээс хамгаална).
+// Хасагдаж буй role-д мөн үйлчилнэ: өөрөө олгож чадахгүй role-оо бусдаас
+// хасаж чадахгүй (members.manage-тэй хүн админыг буулгахаас хамгаална).
 func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, codes []string, mine map[string]nexus.Grant) error {
+	if len(codes) > 32 {
+		return grantError{"нэг удаад 32-оос олон role оноохгүй"}
+	}
+	codes = dedupe(codes)
+	existing, err := memberRoleCodes(r.Context(), tx, membershipID)
+	if err != nil {
+		return err
+	}
+	keep := map[string]bool{}
+	for _, c := range codes {
+		keep[c] = true
+	}
+	for _, c := range existing {
+		if !keep[c] {
+			if err := roleWithinGrants(r.Context(), tx, tenantID, c, mine); err != nil {
+				return grantError{"өөрт байхгүй эрх олгодог role-ийг хасах боломжгүй: " + c}
+			}
+		}
+	}
 	if _, err := tx.Exec(r.Context(),
 		`DELETE FROM membership_roles WHERE membership_id = $1::uuid`, membershipID); err != nil {
 		return err
@@ -49,6 +74,29 @@ func assignRoles(r *http.Request, tx pgx.Tx, membershipID, tenantID string, code
 		}
 	}
 	return nil
+}
+
+// memberRoleCodes — гишүүнчлэлийн одоогийн role кодууд.
+func memberRoleCodes(ctx context.Context, tx pgx.Tx, membershipID string) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT r.code FROM membership_roles mr JOIN roles r ON r.id = mr.role_id
+		 WHERE mr.membership_id = $1::uuid`, membershipID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
+func dedupe(in []string) []string {
+	seen := map[string]bool{}
+	out := in[:0]
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // roleWithinGrants — role (implies гинжээр өвлөгдсөнийг оруулаад) олгодог
@@ -180,8 +228,8 @@ func (h *RBACH) CreateRole(w http.ResponseWriter, r *http.Request) {
 	}
 	in.Code = strings.ToLower(strings.TrimSpace(in.Code))
 	in.Name = strings.TrimSpace(in.Name)
-	if in.Code == "" || in.Name == "" {
-		httpx.Error(w, http.StatusBadRequest, "code ба нэр шаардлагатай")
+	if !roleCodeRe.MatchString(in.Code) || in.Name == "" || len(in.Name) > 120 || len(in.Implies) > 64 {
+		httpx.Error(w, http.StatusBadRequest, "code ([a-z][a-z0-9_]{1,63}) ба нэр (≤120) шаардлагатай")
 		return
 	}
 	var implies any
@@ -226,11 +274,18 @@ func (h *RBACH) CreateRole(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/roles/{id}/grants — role-ийн оноолтыг бүхэлд нь солино.
 func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
-	roleID := chi.URLParam(r, "id")
+	roleID, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	var in struct {
 		Grants map[string]string `json:"grants"` // code → "all"|"own"
 	}
 	if !httpx.Decode(w, r, &in) {
+		return
+	}
+	if len(in.Grants) > 256 {
+		httpx.Error(w, http.StatusBadRequest, "хэт олон оноолт")
 		return
 	}
 	tenantID := nexus.TenantID(r.Context())
@@ -277,6 +332,17 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 			`DELETE FROM role_permissions WHERE role_id = $1::uuid`, roleID); err != nil {
 			return err
 		}
+		// Хасагдсан / нарийссан оноолт: өөрөө эзэмшдэггүй эрхийг бусдаас
+		// авч чадахгүй (role-ийг хоослоод өөртөө оноох тоглоомоос хамгаална).
+		for code, old := range existing {
+			nw, has := in.Grants[code]
+			if nw != "own" {
+				nw = "all"
+			}
+			if (!has || (old == "all" && nw == "own")) && !grantCovers(mine, code, old) {
+				return grantError{"өөрт байхгүй эрхийг хасах боломжгүй: " + code}
+			}
+		}
 		for code, scope := range in.Grants {
 			if scope != "own" {
 				scope = "all"
@@ -292,6 +358,9 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 				if err := tx.QueryRow(r.Context(),
 					`SELECT own_scope FROM permissions WHERE code = $1::varchar(128)`,
 					code).Scan(&ownScope); err != nil {
+					if errors.Is(err, pgx.ErrNoRows) {
+						return grantError{"permission код олдсонгүй: " + code}
+					}
 					return err
 				}
 				if !ownScope {
@@ -317,11 +386,12 @@ func (h *RBACH) SetGrants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		log.Printf("role grants %s: %v", roleID, err)
 		httpx.Error(w, http.StatusBadRequest, "оноолт хадгалагдсангүй (permission код зөв үү?)")
 		return
 	}
 	h.Perms.Invalidate(tenantID)
-	h.Audit.Record(r.Context(), "role.grants", roleID, map[string]any{"count": len(in.Grants)})
+	h.Audit.Record(r.Context(), "role.grants", roleID, map[string]any{"grants": in.Grants})
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -409,8 +479,8 @@ func (h *RBACH) LookupMember(w http.ResponseWriter, r *http.Request) {
 	// мөр харагдахгүй, үргэлж false гарна).
 	var member bool
 	if err := h.DB.QueryRow(r.Context(),
-		`SELECT EXISTS (SELECT 1 FROM memberships WHERE user_id = $1::uuid)`,
-		userID).Scan(&member); err != nil {
+		`SELECT EXISTS (SELECT 1 FROM memberships WHERE user_id = $1::uuid AND tenant_id = $2::uuid)`,
+		userID, nexus.TenantID(r.Context())).Scan(&member); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "lookup failed")
 		return
 	}
@@ -431,8 +501,8 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
-	if !emailRe.MatchString(in.Email) {
-		httpx.Error(w, http.StatusBadRequest, "зөв имэйл шаардлагатай")
+	if !emailRe.MatchString(in.Email) || len(in.Email) > 255 || len(in.Name) > 120 {
+		httpx.Error(w, http.StatusBadRequest, "зөв имэйл (≤255), нэр (≤120) шаардлагатай")
 		return
 	}
 	if len(in.Roles) == 0 {
@@ -477,14 +547,24 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		var memberID string
+		var inserted bool
 		if err := tx.QueryRow(r.Context(),
 			`INSERT INTO memberships (tenant_id, user_id) VALUES ($1::uuid, $2::uuid)
 			 ON CONFLICT (tenant_id, user_id) DO UPDATE SET user_id = excluded.user_id
-			 RETURNING id`, tenantID, userID).Scan(&memberID); err != nil {
+			 RETURNING id, (xmax = 0)`, tenantID, userID).Scan(&memberID, &inserted); err != nil {
 			return err
+		}
+		if !inserted {
+			// Байгаа гишүүний role-ийг энд дарж бичихгүй (сүүлчийн админыг
+			// чимээгүй буулгах замыг хаана) — PUT /api/members/{id}/roles.
+			return errAlreadyMember
 		}
 		return assignRoles(r, tx, memberID, tenantID, in.Roles, mine)
 	})
+	if errors.Is(err, errAlreadyMember) {
+		httpx.Error(w, http.StatusConflict, "аль хэдийн гишүүн — role-ийг гишүүдийн жагсаалтаас өөрчилнө")
+		return
+	}
 	var ge grantError
 	if errors.As(err, &ge) {
 		httpx.Error(w, http.StatusBadRequest, ge.msg)
@@ -505,7 +585,10 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/members/{id}/roles — гишүүний role-уудыг солино.
 func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
-	membershipID := chi.URLParam(r, "id")
+	membershipID, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	var in struct {
 		Roles []string `json:"roles"`
 	}
@@ -568,10 +651,34 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/members/{id}
 func (h *RBACH) RemoveMember(w http.ResponseWriter, r *http.Request) {
-	membershipID := chi.URLParam(r, "id")
+	membershipID, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	tenantID := nexus.TenantID(r.Context())
+	mine, err := h.Perms.UserGrants(r.Context(), tenantID, nexus.UserID(r.Context()))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "grants lookup failed")
+		return
+	}
 	var removed bool
-	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+	var removedEmail string
+	var removedRoles []string
+	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
+		// Өөрөө олгож чадахгүй role-тэй хүнийг хасаж чадахгүй.
+		roles, err := memberRoleCodes(r.Context(), tx, membershipID)
+		if err != nil {
+			return err
+		}
+		for _, c := range roles {
+			if err := roleWithinGrants(r.Context(), tx, tenantID, c, mine); err != nil {
+				return grantError{"өөрт байхгүй эрхтэй гишүүнийг хасах боломжгүй: " + c}
+			}
+		}
+		removedRoles = roles
+		_ = tx.QueryRow(r.Context(),
+			`SELECT u.email FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.id = $1::uuid`,
+			membershipID).Scan(&removedEmail)
 		tag, err := tx.Exec(r.Context(),
 			`DELETE FROM memberships WHERE id = $1::uuid AND tenant_id = $2::uuid AND user_id <> $3::uuid`,
 			membershipID, tenantID, nexus.UserID(r.Context()))
@@ -595,6 +702,11 @@ func (h *RBACH) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusConflict, "байгууллагад дор хаяж нэг админ үлдэх ёстой")
 		return
 	}
+	var ge grantError
+	if errors.As(err, &ge) {
+		httpx.Error(w, http.StatusBadRequest, ge.msg)
+		return
+	}
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "remove failed")
 		return
@@ -604,6 +716,6 @@ func (h *RBACH) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Perms.Invalidate(tenantID)
-	h.Audit.Record(r.Context(), "member.remove", membershipID, nil)
+	h.Audit.Record(r.Context(), "member.remove", membershipID, map[string]any{"email": removedEmail, "roles": removedRoles})
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

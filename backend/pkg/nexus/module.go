@@ -121,6 +121,11 @@ func Register(m Module) {
 		"apps", "developers", "login", "signup", "dashboard", "members", "roles", "audit", "settings", "org":
 		panic(fmt.Sprintf("nexus: ShortID %q нь платформын нөөцөлсөн нэр", m.ShortID()))
 	}
+	for _, mn := range m.Menus() {
+		if !strings.HasPrefix(mn.Path, "/"+m.ShortID()+"/") && mn.Path != "/"+m.ShortID() {
+			panic(fmt.Sprintf("nexus: модуль %q-ийн цэс %q нь /%s/... замтай байх ёстой", m.ID(), mn.Path, m.ShortID()))
+		}
+	}
 	for _, r := range registry {
 		if r.ID() == m.ID() || r.ShortID() == m.ShortID() {
 			panic(fmt.Sprintf("nexus: %q модуль давхардаж бүртгэгдэв", m.ID()))

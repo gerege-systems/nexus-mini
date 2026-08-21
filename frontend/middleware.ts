@@ -18,5 +18,5 @@ export function middleware(req: NextRequest) {
 // шинэ route нэмэгдэхэд энд гар хүрэх шаардлагагүй. (Модулийн ShortID нь
 // эдгээр нийтийн нэртэй давхцахыг Register хориглоно.)
 export const config = {
-  matcher: ["/((?!api|_next|login|signup|apps|developers|favicon\\.ico|$).*)"],
+  matcher: ["/((?!(?:api|_next|login|signup|apps|developers)(?:/|$)|.*\\..*|$).*)"],
 };

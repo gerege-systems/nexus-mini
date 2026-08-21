@@ -170,26 +170,37 @@ func (s *Service) CreateHandover(ctx context.Context, adminID, userID, tenantID 
 
 // ConsumeHandover — token-ийг нэг удаа хэрэглэж impersonated session
 // эхлүүлнэ (cookie тавина). Хүчингүй/дууссан бол ok=false.
-func (s *Service) ConsumeHandover(ctx context.Context, w http.ResponseWriter, handoverPlain string) (bool, error) {
+//
+// DB талд хэрэглэх мөчид дахин шалгана (админ platform_admin хэвээр, бай
+// platform_admin биш, гишүүнчлэл хэвээр — 00011). Буцаах: tenant, user, admin
+// (audit бичихэд).
+type Handover struct{ TenantID, UserID, AdminID string }
+
+func (s *Service) ConsumeHandover(ctx context.Context, w http.ResponseWriter, handoverPlain string) (*Handover, error) {
 	plain, th, err := newToken()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	var sid *string
-	if err := s.pool.QueryRow(ctx,
-		`SELECT auth_handover_consume($1::char(64), $2::char(64), $3::timestamptz)`,
-		hashToken(handoverPlain), th, time.Now().Add(ImpersonationTTL)).Scan(&sid); err != nil {
-		return false, err
+	rows, err := s.pool.Query(ctx,
+		`SELECT tenant_id, user_id, admin_id FROM auth_handover_consume($1::char(64), $2::char(64), $3::timestamptz)`,
+		hashToken(handoverPlain), th, time.Now().Add(ImpersonationTTL))
+	if err != nil {
+		return nil, err
 	}
-	if sid == nil {
-		return false, nil
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
+	var h Handover
+	if err := rows.Scan(&h.TenantID, &h.UserID, &h.AdminID); err != nil {
+		return nil, err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: CookieName, Value: plain, Path: "/", HttpOnly: true,
 		Secure: s.secure, SameSite: http.SameSiteLaxMode,
 		MaxAge: int(ImpersonationTTL.Seconds()),
 	})
-	return true, nil
+	return &h, nil
 }
 
 // SetTenant нь session-ий идэвхтэй tenant-ийг сольж, гишүүнчлэлийг DB

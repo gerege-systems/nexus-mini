@@ -186,11 +186,11 @@ export default function DevelopersPage() {
           <div>&nbsp;</div>
           <div><span className="c">{t("// Цөмийг шинэчлэх — merge байхгүй, зөвхөн хувилбар:")}</span></div>
           <div><span className="c">$</span> go get github.com/gerege-systems/nexus-mini/backend@v1.5.0</div>
-          <div><span className="c">$</span> git subtree pull --prefix frontend https://github.com/gerege-systems/nexus-mini main --squash</div>
+          <div><span className="c">$</span> git fetch upstream --tags &amp;&amp; git checkout backend/v1.5.0 -- frontend</div>
         </Code>
         <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
           <li><code>core.Main</code> {t("— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө")}</li>
-          <li>{t("Frontend: цөмийн frontend-ийн хуулбар +")} <code>modules.json</code>. {t("Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул subtree pull мөргөлдөхгүй")}</li>
+          <li>{t("Frontend: цөмийн frontend-ийн хуулбар +")} <code>modules.json</code>. {t("Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул цөмийн frontend-ийг tag-аас хуулж дарахад мөргөлдөхгүй")}</li>
           <li>{t("SDK амлалт:")} <code>pkg/nexus</code> + <code>core.Main</code> {t("v1.x дотор эвдэхгүй (semver); internal/* чөлөөтэй өөрчлөгдөнө — модуль түүнээс импортолж чадахгүй")}</li>
           <li>{t("Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR. Харилцагч тань таны instance дээр tenant болно; та платформ админ")}</li>
         </ul>

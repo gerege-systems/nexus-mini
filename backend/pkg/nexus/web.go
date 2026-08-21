@@ -3,8 +3,10 @@ package nexus
 import (
 	"encoding/json"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -38,6 +40,23 @@ func Decode(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 
 // IsUniqueViolation — Postgres 23505 (давхардсан түлхүүр) эсэх.
+var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// IsUUID — зам/бие дэх id-г DB-д хүргэхээс өмнө шалгана (буруу бол 22P02 →
+// 500 биш, 400).
+func IsUUID(s string) bool { return uuidRe.MatchString(s) }
+
+// UUIDParam — chi зам параметрийг uuid гэж шалгана; буруу бол 400 бичээд
+// ok=false.
+func UUIDParam(w http.ResponseWriter, r *http.Request, name string) (string, bool) {
+	v := chi.URLParam(r, name)
+	if !IsUUID(v) {
+		Error(w, http.StatusBadRequest, "буруу id: "+name)
+		return "", false
+	}
+	return v, true
+}
+
 func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

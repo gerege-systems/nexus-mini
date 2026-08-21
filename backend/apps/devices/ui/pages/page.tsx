@@ -68,9 +68,13 @@ export default function DevicesPage() {
 
   const remove = async (d: Device) => {
     if (!confirm(`"${d.name}" ${t("төхөөрөмжийг устгах уу?")}`)) return;
-    await api.del(`/api/apps/devices/${d.id}`);
-    toast(t("Устгагдлаа"));
-    await load(q);
+    try {
+      await api.del(`/api/apps/devices/${d.id}`);
+      toast(t("Устгагдлаа"));
+      await load(q);
+    } catch (e) {
+      toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа"));
+    }
   };
 
   return (
@@ -94,7 +98,9 @@ export default function DevicesPage() {
       </div>
 
       <div className="card">
-        {devices && devices.length === 0 ? (
+        {devices === null ? (
+          <div className="empty">{t("Уншиж байна…")}</div>
+        ) : devices.length === 0 ? (
           <div className="empty">
             <MonitorSmartphone size={36} strokeWidth={1.4} />
             <b>{t("Бүртгэл хоосон")}</b>
@@ -116,7 +122,7 @@ export default function DevicesPage() {
                   </td>
                   <td>{d.kind || "—"}</td>
                   <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.84rem" }}>{d.serial}</td>
-                  <td><span className={`badge ${statusMn[d.status].cls}`}>{t(statusMn[d.status].label)}</span></td>
+                  <td><span className={`badge ${statusMn[d.status]?.cls ?? "badge--muted"}`}>{t(statusMn[d.status]?.label ?? d.status)}</span></td>
                   <td style={{ color: "var(--text-2)" }}>{d.owner_name}</td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     {canEdit(d) && (

@@ -36,6 +36,9 @@ func (in *departmentInput) valid() bool {
 	if in.ManagerID != nil && *in.ManagerID == "" {
 		in.ManagerID = nil
 	}
+	if (in.ParentID != nil && !nexus.IsUUID(*in.ParentID)) || (in.ManagerID != nil && !nexus.IsUUID(*in.ManagerID)) {
+		return false
+	}
 	return in.Code != "" && len(in.Code) <= 32 && in.Name != "" && len(in.Name) <= 120
 }
 
@@ -43,7 +46,6 @@ type personRow struct {
 	MembershipID   string  `json:"membership_id"`
 	UserID         string  `json:"user_id"`
 	Name           string  `json:"name"`
-	Email          string  `json:"email"`
 	DepartmentID   *string `json:"department_id"`
 	DepartmentName string  `json:"department_name"`
 	JobTitle       string  `json:"job_title"`
@@ -58,6 +60,9 @@ func (in *positionInput) valid() bool {
 	in.JobTitle = strings.TrimSpace(in.JobTitle)
 	if in.DepartmentID != nil && *in.DepartmentID == "" {
 		in.DepartmentID = nil
+	}
+	if in.DepartmentID != nil && !nexus.IsUUID(*in.DepartmentID) {
+		return false
 	}
 	return len(in.JobTitle) <= 120
 }

@@ -62,8 +62,10 @@ export default function DepartmentsPage() {
   };
   const remove = async (d: Dept) => {
     if (!confirm(`"${d.name}" ${t("хэлтсийг устгах уу? Харьяа нэгжүүд дээд түвшингүй болно.")}`)) return;
-    await api.del(`/api/apps/organisation/departments/${d.id}`);
-    toast(t("Устгагдлаа")); await load();
+    try {
+      await api.del(`/api/apps/organisation/departments/${d.id}`);
+      toast(t("Устгагдлаа")); await load();
+    } catch (e) { toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа")); }
   };
 
   return (
@@ -78,7 +80,9 @@ export default function DepartmentsPage() {
       </div>
 
       <div className="card">
-        {depts && depts.length === 0 ? (
+        {depts === null ? (
+          <div className="empty">{t("Уншиж байна…")}</div>
+        ) : depts.length === 0 ? (
           <div className="empty">
             <Building2 size={36} strokeWidth={1.4} />
             <b>{t("Нэгж байхгүй")}</b>

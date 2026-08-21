@@ -21,9 +21,11 @@ import (
 type Pools struct {
 	App   *pgxpool.Pool
 	Admin *pgxpool.Pool
+	// Auth — nexus_auth: зөвхөн pre-auth definer функцууд (00010 H2).
+	Auth *pgxpool.Pool
 }
 
-func Connect(ctx context.Context, appURL, adminURL string) (*Pools, error) {
+func Connect(ctx context.Context, appURL, adminURL, authURL string) (*Pools, error) {
 	app, err := pgxpool.New(ctx, appURL)
 	if err != nil {
 		return nil, fmt.Errorf("app pool: %w", err)
@@ -38,10 +40,23 @@ func Connect(ctx context.Context, appURL, adminURL string) (*Pools, error) {
 		admin.Close()
 		return nil, fmt.Errorf("app ping: %w", err)
 	}
-	return &Pools{App: app, Admin: admin}, nil
+	authPool, err := pgxpool.New(ctx, authURL)
+	if err != nil {
+		app.Close()
+		admin.Close()
+		return nil, fmt.Errorf("auth pool: %w", err)
+	}
+	if err := authPool.Ping(ctx); err != nil {
+		app.Close()
+		admin.Close()
+		authPool.Close()
+		return nil, fmt.Errorf("auth pool ping: %w", err)
+	}
+	return &Pools{App: app, Admin: admin, Auth: authPool}, nil
 }
 
 func (p *Pools) Close() {
+	p.Auth.Close()
 	p.App.Close()
 	p.Admin.Close()
 }

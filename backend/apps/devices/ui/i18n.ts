@@ -3,6 +3,7 @@
 // цөмийн толинд нэгтгэнэ; цөмийн файлд гар хүрэхгүй.
 const i18n: Record<string, Record<string, string>> = {
   en: {
+    "Уншиж байна…": "Loading…",
     "Алдаа гарлаа": "Something went wrong",
     "Алдагдсан": "Lost",
     "Ашиглагдаж байгаа": "In use",

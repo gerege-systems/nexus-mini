@@ -33,7 +33,7 @@ func (p *tenantProfile) clean() bool {
 	if p.Email != "" && !emailRe.MatchString(p.Email) {
 		return false
 	}
-	return p.Name != "" && len(p.Name) <= 120 && len(p.LegalName) <= 200 &&
+	return p.Name != "" && len(p.Name) <= 160 && len(p.LegalName) <= 200 &&
 		len(p.RegistrationNumber) <= 32 && len(p.TaxNumber) <= 32 && len(p.Address) <= 500 &&
 		len(p.Phone) <= 32 && len(p.Email) <= 255 && len(p.Website) <= 255
 }
@@ -68,7 +68,7 @@ func (h *Auth) UpdateTenantProfile(w http.ResponseWriter, r *http.Request) {
 	tenantID := nexus.TenantID(r.Context())
 	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		if _, err := tx.Exec(r.Context(),
-			`UPDATE tenants SET name = $2::varchar(120) WHERE id = $1::uuid`, tenantID, p.Name); err != nil {
+			`UPDATE tenants SET name = $2::varchar(160) WHERE id = $1::uuid`, tenantID, p.Name); err != nil {
 			return err
 		}
 		_, err := tx.Exec(r.Context(), `

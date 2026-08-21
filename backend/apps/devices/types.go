@@ -36,5 +36,6 @@ func (in *deviceInput) valid() bool {
 	default:
 		return false
 	}
-	return in.Name != "" && in.Serial != ""
+	return in.Name != "" && len(in.Name) <= 120 && in.Serial != "" && len(in.Serial) <= 120 &&
+		len(in.Kind) <= 64 && len(in.Note) <= 500
 }

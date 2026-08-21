@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -75,7 +74,7 @@ func (h *handler) createDepartment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !in.valid() {
-		nexus.Error(w, http.StatusBadRequest, "код (≤32), нэр (≤120) шаардлагатай")
+		nexus.Error(w, http.StatusBadRequest, "код (≤32), нэр (≤120), parent/manager uuid шаардлагатай")
 		return
 	}
 	var id string
@@ -96,7 +95,10 @@ func (h *handler) createDepartment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) updateDepartment(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	var in departmentInput
 	if !nexus.Decode(w, r, &in) {
 		return
@@ -157,7 +159,10 @@ func (h *handler) deptErr(w http.ResponseWriter, err error) bool {
 // DELETE /departments/{id} — харьяа нэгжүүд дээд түвшингүй болно
 // (ON DELETE SET NULL), ажилтнууд хэлтэсгүй болно.
 func (h *handler) deleteDepartment(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	tag, err := h.deps.DB.Exec(r.Context(),
 		`DELETE FROM org_departments WHERE id = $1::uuid AND tenant_id = $2::uuid`,
 		id, nexus.TenantID(r.Context()))

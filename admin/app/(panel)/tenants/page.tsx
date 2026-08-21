@@ -18,6 +18,12 @@ export default function TenantsPage() {
   const [state, setState] = useState<{ row: Row; suspended: boolean; reason: string; read_only: boolean } | null>(null);
   const loadRows = () => api.get<{ tenants: Row[] }>("/api/admin/tenants").then((r) => setRows(r.tenants));
   useEffect(() => { void loadRows(); }, []);
+  // Escape — modal-ууд focus-гүй div тул document түвшинд сонсоно.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setState(null); setOpen(null); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const saveState = async () => {
     if (!state) return;
@@ -43,8 +49,13 @@ export default function TenantsPage() {
     if (!open) return;
     if (!confirm(`${m.name} (${m.email}) — ${t("нэрийн өмнөөс нэвтрэх үү? Үйлдэл бүр audit-д таны нэрээр тэмдэглэгдэнэ.")}`)) return;
     try {
-      const r = await api.post<{ url: string }>("/api/admin/impersonate", { tenant_id: open.id, user_id: m.id });
-      window.open(r.url, "_blank", "noopener");
+      const r = await api.post<{ url: string; token: string }>("/api/admin/impersonate", { tenant_id: open.id, user_id: m.id });
+      // Token-ийг URL-д биш POST биед — access log/түүхэнд үлдэхгүй.
+      const f = document.createElement("form");
+      f.method = "POST"; f.action = r.url; f.target = "_blank"; f.rel = "noopener";
+      const i = document.createElement("input");
+      i.type = "hidden"; i.name = "token"; i.value = r.token;
+      f.appendChild(i); document.body.appendChild(f); f.submit(); f.remove();
       toast(t("Handover холбоос нээгдлээ (60 секунд хүчинтэй)"));
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));

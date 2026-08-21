@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -10,7 +10,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
-	"github.com/go-chi/chi/v5"
+	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -86,6 +86,10 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/admin/tenants/{id}/members — impersonation сонголтод.
 func (h *Admin) TenantMembers(w http.ResponseWriter, r *http.Request) {
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT u.id, u.name, u.email, u.platform_admin,
 		       coalesce(array_agg(ro.code ORDER BY ro.code) FILTER (WHERE ro.code IS NOT NULL), '{}')
@@ -94,7 +98,7 @@ func (h *Admin) TenantMembers(w http.ResponseWriter, r *http.Request) {
 		  LEFT JOIN membership_roles mr ON mr.membership_id = m.id
 		  LEFT JOIN roles ro ON ro.id = mr.role_id
 		 WHERE m.tenant_id = $1::uuid
-		 GROUP BY u.id ORDER BY u.name`, chi.URLParam(r, "id"))
+		 GROUP BY u.id ORDER BY u.name`, id)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "members query failed")
 		return
@@ -139,15 +143,22 @@ func (h *Admin) Impersonate(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "tenant_id, user_id шаардлагатай")
 		return
 	}
+	if !nexus.IsUUID(in.TenantID) || !nexus.IsUUID(in.UserID) {
+		httpx.Error(w, http.StatusBadRequest, "tenant_id, user_id uuid байх ёстой")
+		return
+	}
 	token, err := h.Svc.CreateHandover(r.Context(), p.UserID, in.UserID, in.TenantID)
 	if err != nil {
+		log.Printf("impersonate %s → %s/%s: %v", p.UserID, in.TenantID, in.UserID, err)
 		httpx.Error(w, http.StatusBadRequest, "impersonation боломжгүй (гишүүн биш эсвэл платформ админ)")
 		return
 	}
 	h.Rec.RecordAs(r.Context(), in.TenantID, p.UserID, "platform.impersonate", in.UserID,
 		map[string]any{"admin_email": p.Email})
+	// UI нь POST form-оор (target=_blank) илгээнэ — token URL-д орохгүй.
 	httpx.JSON(w, http.StatusOK, map[string]string{
-		"url": strings.TrimRight(h.PortalURL, "/") + "/api/auth/handover?token=" + url.QueryEscape(token),
+		"url":   strings.TrimRight(h.PortalURL, "/") + "/api/auth/handover",
+		"token": token,
 	})
 }
 
@@ -155,7 +166,10 @@ func (h *Admin) Impersonate(w http.ResponseWriter, r *http.Request) {
 // түдгэлзүүлэх / зөвхөн-унших. Admin pool (column grant app role-д байхгүй).
 func (h *Admin) SetTenantState(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.PrincipalFrom(r.Context())
-	id := chi.URLParam(r, "id")
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	var in struct {
 		Suspended bool   `json:"suspended"`
 		Reason    string `json:"reason"`

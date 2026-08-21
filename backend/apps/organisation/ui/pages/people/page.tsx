@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n";
 
 type Person = {
-  membership_id: string; user_id: string; name: string; email: string;
+  membership_id: string; user_id: string; name: string;
   department_id: string | null; department_name: string; job_title: string;
 };
 type Dept = { id: string; name: string; active: boolean };
@@ -51,16 +51,17 @@ export default function PeoplePage() {
         </div>
       </div>
       <div className="card">
-        {people && people.length === 0 ? (
+        {people === null ? (
+          <div className="empty">{t("Уншиж байна…")}</div>
+        ) : people.length === 0 ? (
           <div className="empty"><Users size={36} strokeWidth={1.4} /><b>{t("Гишүүн байхгүй")}</b></div>
         ) : (
           <table className="table">
-            <thead><tr><th>{t("Нэр")}</th><th>{t("Имэйл")}</th><th>{t("Хэлтэс")}</th><th>{t("Албан тушаал")}</th><th></th></tr></thead>
+            <thead><tr><th>{t("Нэр")}</th><th>{t("Хэлтэс")}</th><th>{t("Албан тушаал")}</th><th></th></tr></thead>
             <tbody>
               {people?.map((p) => (
                 <tr key={p.membership_id}>
                   <td><b style={{ fontWeight: 600 }}>{p.name}</b></td>
-                  <td style={{ color: "var(--text-2)" }}>{p.email}</td>
                   <td>{p.department_name || "—"}</td>
                   <td>{p.job_title || "—"}</td>
                   <td style={{ textAlign: "right" }}>

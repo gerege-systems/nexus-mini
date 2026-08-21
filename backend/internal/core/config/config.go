@@ -12,8 +12,11 @@ type Config struct {
 	// DatabaseURLAdmin — nexus_admin role (nexus_platform гишүүн). Boot sync
 	// ба платформын админ API.
 	DatabaseURLAdmin string
-	Port             string
-	Env              string // development | production
+	// DatabaseURLAuth — nexus_auth role: зөвхөн pre-auth definer функцууд
+	// (session, signup, handover). Апп/модулийн SQL энэ pool-д хүрдэггүй.
+	DatabaseURLAuth string
+	Port            string
+	Env             string // development | production
 	// CatalogPath — локал каталог файл (registry fallback).
 	CatalogPath string
 	// RegistryURL — төв app store registry (үе 2; хоосон бол локал каталог).
@@ -29,6 +32,7 @@ func Load() (Config, error) {
 	c := Config{
 		DatabaseURL:      os.Getenv("DATABASE_URL"),
 		DatabaseURLAdmin: os.Getenv("DATABASE_URL_ADMIN"),
+		DatabaseURLAuth:  os.Getenv("DATABASE_URL_AUTH"),
 		Port:             getenv("PORT", "8084"),
 		Env:              getenv("ENVIRONMENT", "development"),
 		CatalogPath:      getenv("CATALOG_PATH", "catalog/apps.json"),
@@ -41,6 +45,9 @@ func Load() (Config, error) {
 	}
 	if c.DatabaseURLAdmin == "" {
 		return c, fmt.Errorf("DATABASE_URL_ADMIN тохируулаагүй байна")
+	}
+	if c.DatabaseURLAuth == "" {
+		return c, fmt.Errorf("DATABASE_URL_AUTH тохируулаагүй байна (nexus_auth role — deploy/01-roles.sql, .env.example)")
 	}
 	return c, nil
 }

@@ -173,24 +173,37 @@ func (h *Auth) CreateTenant(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusCreated, map[string]string{"tenant_id": tenantID})
 }
 
-// GET /api/auth/handover?token= — админ панелийн impersonation token-ийг
-// portal домэйн дээр session болгоно (нэг удаа, 60с). Дараа нь dashboard.
+// POST /api/auth/handover (form: token) — админ панелийн impersonation
+// token-ийг portal домэйн дээр session болгоно (нэг удаа, 60с). POST бие —
+// token URL/access log-д үлдэхгүй. sameOriginOnly-оос чөлөөлөгдсөн (өөр
+// домэйнээс ирнэ; token өөрөө CSRF-ийн хамгаалалт). Дараа нь dashboard.
 func (h *Auth) Handover(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
+	token := r.FormValue("token")
+	if token == "" || len(token) > 128 {
 		httpx.Error(w, http.StatusBadRequest, "token шаардлагатай")
 		return
 	}
-	ok, err := h.Svc.ConsumeHandover(r.Context(), w, token)
+	hv, err := h.Svc.ConsumeHandover(r.Context(), w, token)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "handover failed")
 		return
 	}
-	if !ok {
+	if hv == nil {
 		httpx.Error(w, http.StatusUnauthorized, "handover token хүчингүй эсвэл хугацаа дууссан")
 		return
 	}
+	h.Audit.RecordAs(r.Context(), hv.TenantID, hv.AdminID, "platform.impersonate.start", hv.UserID, nil)
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+}
+
+// tenantWritable — түдгэлзүүлсэн байгууллагын audit гинжид RequireTenant-ийн
+// гадна (logout, байгууллага сонгох) ч бичихгүй.
+func (h *Auth) tenantWritable(r *http.Request, tenantID string) bool {
+	if h.State == nil {
+		return true
+	}
+	st, err := h.State.Get(r.Context(), tenantID)
+	return err == nil && !st.Suspended
 }
 
 // POST /api/login
@@ -224,7 +237,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/logout
 func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
-	if p, ok := h.Svc.Resolve(r.Context(), r); ok && p.TenantID != "" {
+	if p, ok := h.Svc.Resolve(r.Context(), r); ok && p.TenantID != "" && h.tenantWritable(r, p.TenantID) {
 		h.Audit.RecordAs(r.Context(), p.TenantID, p.UserID, "auth.logout", p.Email, nil)
 	}
 	h.Svc.EndSession(r.Context(), w, r)
@@ -318,7 +331,9 @@ func (h *Auth) SelectTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.TenantID != "" && in.TenantID != p.TenantID {
 		// Байгууллагад нэвтэрсэн үйлдлийг тухайн байгууллагын гинжид бичнэ.
-		h.Audit.RecordAs(r.Context(), in.TenantID, p.UserID, "auth.login", p.Email, nil)
+		if h.tenantWritable(r, in.TenantID) {
+			h.Audit.RecordAs(r.Context(), in.TenantID, p.UserID, "auth.login", p.Email, nil)
+		}
 	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

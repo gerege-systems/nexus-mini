@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/go-chi/chi/v5"
 )
 
 type handler struct{ deps nexus.Deps }
@@ -88,7 +87,10 @@ func ownFilter(r *http.Request, n int) (string, []any) {
 
 // PUT /{id} — засах (own scope-той бол зөвхөн өөрийн мөр).
 func (h *handler) update(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	var in deviceInput
 	if !nexus.Decode(w, r, &in) {
 		return
@@ -119,7 +121,10 @@ func (h *handler) update(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /{id} — устгах (own scope-той бол зөвхөн өөрийн мөр).
 func (h *handler) remove(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
 	extra, extraArgs := ownFilter(r, 3)
 	tag, err := h.deps.DB.Exec(r.Context(),
 		`DELETE FROM devices WHERE id = $1::uuid AND tenant_id = $2::uuid`+extra,

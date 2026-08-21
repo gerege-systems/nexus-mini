@@ -4,7 +4,7 @@
 
 nexus-mini нь [Gerege Nexus](https://github.com/gerege-systems/open-gerege-nexus)-аас
 санаа авсан, жижигрүүлж ойлгомжтой болгосон нээлттэй эхийн multi-tenant
-платформ юм. Цөм нь tenant, RBAC, audit, OIDC/SSO federation, resilience-ийг
+платформ юм. Цөм нь tenant, RBAC, audit-ыг (OIDC/SSO federation — үе 3, resilience — үе 4)
 өгнө; бизнесийн боломж бүр **модуль** болж app store-оор ирнэ.
 
 - **Go** (chi + pgx) · **PostgreSQL 16** (Row-Level Security) · **Next.js**

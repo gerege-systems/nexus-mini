@@ -168,7 +168,7 @@ const en: Record<string, string> = {
   "// Цөмийг шинэчлэх — merge байхгүй, зөвхөн хувилбар:": "// Updating the core — no merge, just a version:",
   "— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө": "— migrate/serve commands, env, migrations, first admin, permission sync, server: all in the core; you just pass your modules",
   "Frontend: цөмийн frontend-ийн хуулбар +": "Frontend: a copy of the core frontend +",
-  "Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул subtree pull мөргөлдөхгүй": "You never touch core files (UI in ui/, dictionary in ui/i18n.ts), so subtree pull never conflicts",
+  "Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул цөмийн frontend-ийг tag-аас хуулж дарахад мөргөлдөхгүй": "You never touch core files (UI in ui/, dictionary in ui/i18n.ts), so overwriting the core frontend from a tag never conflicts",
   "SDK амлалт:": "SDK promise:",
   "v1.x дотор эвдэхгүй (semver); internal/* чөлөөтэй өөрчлөгдөнө — модуль түүнээс импортолж чадахгүй": "won't break within v1.x (semver); internal/* changes freely — modules can't import it anyway",
   "Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR. Харилцагч тань таны instance дээр tenant болно; та платформ админ": "Found a core bug? Don't patch it locally — send a PR upstream. Your customers become tenants on your instance; you are the platform admin",
@@ -376,7 +376,8 @@ import modules from "./i18n.modules";
 
 const dicts: Record<Locale, Record<string, string>> = {
   mn: {},
-  en: { ...en, ...(modules.en ?? {}) },
+  // Модуль цөмийн орчуулгыг дарахгүй — цөм сүүлд.
+  en: { ...(modules.en ?? {}), ...en },
 };
 
 export function useT() {

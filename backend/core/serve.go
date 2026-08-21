@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,7 +34,7 @@ func cmdServe(_ []string) error {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	pools, err := db.Connect(ctx, cfg.DatabaseURL, cfg.DatabaseURLAdmin)
+	pools, err := db.Connect(ctx, cfg.DatabaseURL, cfg.DatabaseURLAdmin, cfg.DatabaseURLAuth)
 	cancel()
 	if err != nil {
 		return err
@@ -57,21 +58,21 @@ func cmdServe(_ []string) error {
 	}
 
 	tdb := db.NewTenantDB(pools.App)
-	authSvc := auth.NewService(pools.App, cfg.CookieSecure)
+	authSvc := auth.NewService(pools.Auth, cfg.CookieSecure)
 	perms := rbac.NewStore(tdb)
 	rec := audit.NewRecorder(tdb)
 	installer := appstore.NewInstaller(tdb, perms)
 	gate := appstore.NewGate(tdb)
 	deps := nexus.Deps{DB: tdb, Perms: perms, Audit: rec}
 
-	tstate := tenantstate.New(pools.App)
+	tstate := tenantstate.New(pools.Auth)
 	authSvc.SetTenantState(func(ctx context.Context, tid string) (bool, bool, error) {
 		st, err := tstate.Get(ctx, tid)
 		return st.Suspended, st.ReadOnly, err
 	})
-	authH := &handlers.Auth{Pool: pools.App, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms, State: tstate}
+	authH := &handlers.Auth{Pool: pools.Auth, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms, State: tstate}
 	storeH := &handlers.Store{DB: tdb, Installer: installer, Gate: gate, Audit: rec}
-	rbacH := &handlers.RBACH{DB: tdb, Pool: pools.App, Perms: perms, Audit: rec}
+	rbacH := &handlers.RBACH{DB: tdb, Pool: pools.Auth, Perms: perms, Audit: rec}
 	miscH := &handlers.Misc{DB: tdb, Perms: perms}
 	adminH := &handlers.Admin{Pool: pools.Admin, Svc: authSvc, Rec: rec, State: tstate, PortalURL: cfg.PortalURL}
 
@@ -99,7 +100,7 @@ func cmdServe(_ []string) error {
 	go b.Run(busCtx)
 
 	r := chi.NewRouter()
-	r.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	r.Use(clientIP, middleware.Logger, middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
 	// CSRF (#5): SameSite=Lax нь same-site (*.домэйн) хоорондын хүсэлтээс
 	// хамгаалдаггүй — бичих хүсэлт бүрд Origin-ийг хостой тулгана.
@@ -114,8 +115,8 @@ func cmdServe(_ []string) error {
 	authLimit := httprate.LimitByIP(10, time.Minute)
 	r.With(httprate.LimitByIP(5, time.Minute)).Post("/api/signup", authH.Signup)
 	r.With(authLimit).Post("/api/login", authH.Login)
-	r.With(authLimit).Get("/api/auth/handover", authH.Handover)
-	r.Post("/api/logout", authH.Logout)
+	r.With(authLimit).Post("/api/auth/handover", authH.Handover)
+	r.With(httprate.LimitByIP(30, time.Minute)).Post("/api/logout", authH.Logout)
 	r.Get("/api/catalog", storeH.Catalog)
 
 	// Нэвтэрсэн (tenant сонгоогүй байж болно).
@@ -208,7 +209,7 @@ func cmdServe(_ []string) error {
 				return
 			case <-t.C:
 				var n int
-				if err := pools.App.QueryRow(context.Background(),
+				if err := pools.Auth.QueryRow(context.Background(),
 					`SELECT auth_sessions_purge()`).Scan(&n); err != nil {
 					log.Printf("session purge: %v", err)
 				} else if n > 0 {
@@ -242,9 +243,29 @@ func cmdServe(_ []string) error {
 // солигддог (Docker compose: api:8084) тул X-Forwarded-Host-ийг мөн
 // хүлээн зөвшөөрнө — түүнийг эцсийн proxy (Next/nginx) тавьдаг, гаднаас
 // шууд ирсэн хүсэлтэд nginx хүчээр дарж бичдэг тул хуурч болохгүй.
+// clientIP — rate limit/лог-ийн IP. chi-ийн RealIP нь True-Client-IP,
+// X-Forwarded-For зэрэг клиентийн тавьж болох толгойг итгэдэг (GHSA-3fxj-6jh8-hvhx)
+// тул хэрэглэхгүй. Зөвхөн шууд холбогч нь loopback/private (манай nginx)
+// үед л nginx-ийн өөрөө тавьдаг X-Real-IP-г авна; өөр тохиолдолд RemoteAddr.
+func clientIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err == nil {
+			if ip := net.ParseIP(host); ip != nil && (ip.IsLoopback() || ip.IsPrivate()) {
+				if real := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); real != nil {
+					r.RemoteAddr = net.JoinHostPort(real.String(), "0")
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func sameOriginOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// Handover нь админ панелийн (өөр домэйн) form POST — token өөрөө
+		// нэг удаагийн CSRF-ийн хамгаалалт.
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.URL.Path != "/api/auth/handover" {
 			if origin := r.Header.Get("Origin"); origin != "" {
 				ok := origin == "https://"+r.Host || origin == "http://"+r.Host
 				if fh := r.Header.Get("X-Forwarded-Host"); !ok && fh != "" {

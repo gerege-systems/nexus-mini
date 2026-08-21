@@ -244,14 +244,18 @@ your-company/nexus-inventory` гэж олно (үе 2-ын `nexus-mini add` үү
 **Цөмийг шинэчлэх:**
 
 ```bash
-cd backend && go get github.com/gerege-systems/nexus-mini/backend@v1.5.0 && go mod tidy
-cd ../frontend && git subtree pull --prefix frontend https://github.com/gerege-systems/nexus-mini main --squash
+# backend — зөвхөн хувилбар
+cd backend && go get github.com/gerege-systems/nexus-mini/backend@v1.5.0 && go mod tidy && cd ..
+# frontend — цөмийн frontend-ийг upstream-аас хуулж дарна; таны modules.json хэвээр
+git remote add upstream https://github.com/gerege-systems/nexus-mini   # нэг удаа
+git fetch upstream --tags
+git checkout backend/v1.5.0 -- frontend && git checkout HEAD -- frontend/modules.json
 make check && make build
 ```
 
-Backend — merge байхгүй, зөвхөн хувилбар. Frontend — цөмийн файлд та гар
-хүрээгүй (модулийн UI `ui/`-д, толь `ui/i18n.ts`-д) тул subtree pull
-мөргөлдөхгүй. Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR.
+Backend — merge байхгүй. Frontend — цөмийн файлд та гар хүрээгүй (модулийн
+UI `ui/`-д, толь `ui/i18n.ts`-д; хуулагдсан хавтсууд өөрийн `.gitignore`-той)
+тул `git checkout <tag> -- frontend` нь цэвэр дарж бичилт, мөргөлдөхгүй. Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR.
 
 **SDK-ийн амлалт:** `pkg/nexus` (Module interface, Deps, RequirePermission,
 Scope, web helpers) болон `core.Main` нь semver — `v1.x` дотор эвдэхгүй.
@@ -266,4 +270,5 @@ impersonation, бүх админ хэрэгсэл таных. Харилцагч
 ## Тест
 
 SQL parse/encode бүх логикт unit тест бичнэ. `make check` нь linux
-cross-build + vet + test — push бүрийн өмнө заавал.
+cross-build + vet + test + SDK-ийн хил (модуль `internal/*` импортолбол
+унадаг) — push бүрийн өмнө заавал.

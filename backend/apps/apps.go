@@ -10,7 +10,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 )
 
-// RegisterAll — cmd/nexus-mini дуудна (миграц нь модулиудын
+// All — cmd/nexus-mini (core.Main) дуудна (миграц нь модулиудын
 // өөрсдийн migration FS-ийг мэдэх ёстой).
 // All — энэ репогийн дистрибуцид орох модулиуд. Шинэ модуль = нэг мөр.
 func All() []nexus.Module {

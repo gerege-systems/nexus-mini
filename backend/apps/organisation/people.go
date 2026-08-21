@@ -4,14 +4,13 @@ import (
 	"net/http"
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 )
 
 // GET /people — байгууллагын бүх гишүүн, байршилтайгаа (байхгүй бол хоосон).
 func (h *handler) listPeople(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.deps.DB.Query(r.Context(), `
-		SELECT m.id, u.id, u.name, u.email, p.department_id::text, coalesce(d.name, ''), coalesce(p.job_title, '')
+		SELECT m.id, u.id, u.name, p.department_id::text, coalesce(d.name, ''), coalesce(p.job_title, '')
 		  FROM memberships m
 		  JOIN users u ON u.id = m.user_id
 		  LEFT JOIN org_positions p ON p.membership_id = m.id
@@ -24,7 +23,7 @@ func (h *handler) listPeople(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (personRow, error) {
 		var p personRow
-		err := row.Scan(&p.MembershipID, &p.UserID, &p.Name, &p.Email, &p.DepartmentID, &p.DepartmentName, &p.JobTitle)
+		err := row.Scan(&p.MembershipID, &p.UserID, &p.Name, &p.DepartmentID, &p.DepartmentName, &p.JobTitle)
 		return p, err
 	})
 	if err != nil {
@@ -40,7 +39,10 @@ func (h *handler) listPeople(w http.ResponseWriter, r *http.Request) {
 // PUT /people/{membership_id} — хэлтэс + албан тушаал (upsert). Гишүүнчлэл
 // энэ tenant-ийнх мөн эсэхийг INSERT…SELECT-ээр шалгана (RLS давхар).
 func (h *handler) updatePosition(w http.ResponseWriter, r *http.Request) {
-	mid := chi.URLParam(r, "membership_id")
+	mid, ok := nexus.UUIDParam(w, r, "membership_id")
+	if !ok {
+		return
+	}
 	var in positionInput
 	if !nexus.Decode(w, r, &in) {
 		return
