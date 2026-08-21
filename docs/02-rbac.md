@@ -102,4 +102,7 @@ role_permissions → `map[code]scope`, 30 секунд кэш.
 - **`membership_roles` tenant триггер** (00007) — өөр tenant-ийн role оноохыг DB давхаргад хориглоно; grants CTE-ийн суурь гишүүн ч `r.tenant_id = $1` шалгана.
 - **`own` унших талдаа ч үйлчилнэ** — `devices.read` `OwnScope: true`, `list` `ownFilter` хэрэглэнэ (жишээ модуль тул загвар болно).
 
-Нээлттэй: cross-process cache invalidation — олон процесс бол ≤30s хоцролт; энэ үед нэг процесс дээр хасагдсан эрхийг нөгөө дээр cache-ээс уншиж role-д бичих боломж онолын хувьд бий (нэг процесс = асуудалгүй; үе 4-т bus-тэй хамт шийднэ). `RevokeOnUninstall` дуудах uninstall зам.
+- **Cross-process cache invalidation** — `internal/core/bus`: Postgres `LISTEN/NOTIFY` (`nexus_invalidate` суваг, `grants:<tenant>` / `gate:<tenant>`). Redis хэрэггүй — DB аль хэдийн бий. At-most-once тул 30с TTL хэвээр (bus нь хоцролтыг ~0 болгоно, зөв байдлын суурь биш).
+- **Impersonation (платформ админ → tenant-ийн хэрэглэгч)** — админ панель тусдаа домэйн тул cookie шууд тавьж чадахгүй: `POST /api/admin/impersonate` → DB талын шалгалттай (админ мөн, бай platform_admin биш, гишүүнчлэл бий) нэг удаагийн 60с handover token → portal `GET /api/auth/handover?token=` → 30 мин-ын `sessions.impersonated_by` тэмдэгтэй session. Тухайн session-ий audit бүртгэл бүрд `impersonated_by` хавсарна, `platform.impersonate` үйлдэл tenant-ийн гинжид бичигдэнэ, профайл/нууц үг солих 403, portal-д сануулах banner. `handover_tokens` policy-гүй RLS — зөвхөн definer функцээр.
+
+Нээлттэй: `RevokeOnUninstall` дуудах uninstall зам.

@@ -23,10 +23,14 @@ type cacheEntry struct {
 }
 
 type Store struct {
-	db    nexus.DB // TenantDB — RLS context-оо өөрөө тохируулдаг
-	mu    sync.Mutex
-	cache map[string]cacheEntry
+	db     nexus.DB // TenantDB — RLS context-оо өөрөө тохируулдаг
+	mu     sync.Mutex
+	cache  map[string]cacheEntry
+	notify func(tenantID string) // бусад процесст мэдэгдэх (bus); nil бол зөвхөн локал
 }
+
+// SetNotifier — Invalidate бүрд дуудагдах cross-process мэдэгдэгч.
+func (s *Store) SetNotifier(fn func(tenantID string)) { s.notify = fn }
 
 func NewStore(db nexus.DB) *Store {
 	return &Store{db: db, cache: make(map[string]cacheEntry)}
@@ -34,8 +38,17 @@ func NewStore(db nexus.DB) *Store {
 
 var _ nexus.PermissionStore = (*Store)(nil)
 
-// Invalidate — tenant-ийн бүх кэшийг унагаана (role/оноолт өөрчлөгдөхөд).
+// Invalidate — tenant-ийн бүх кэшийг унагаана (role/оноолт өөрчлөгдөхөд)
+// ба бусад процесст мэдэгдэнэ.
 func (s *Store) Invalidate(tenantID string) {
+	s.InvalidateLocal(tenantID)
+	if s.notify != nil {
+		s.notify(tenantID)
+	}
+}
+
+// InvalidateLocal — зөвхөн энэ процессын кэш (bus-аас ирсэн мэдэгдэлд).
+func (s *Store) InvalidateLocal(tenantID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for k := range s.cache {

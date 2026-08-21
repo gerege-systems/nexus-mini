@@ -2,9 +2,14 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -12,7 +17,10 @@ import (
 // nexus_platform гишүүн)-оор ажилладаг тул RLS бодлогууд платформ гэж
 // таньж бүх tenant-ийг харуулна. Route-ууд RequirePlatformAdmin-ий цаана.
 type Admin struct {
-	Pool *pgxpool.Pool // admin pool
+	Pool      *pgxpool.Pool // admin pool
+	Svc       *auth.Service
+	Rec       *audit.Recorder
+	PortalURL string
 }
 
 // GET /api/admin/overview — тоон үзүүлэлтүүд.
@@ -68,6 +76,73 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"tenants": out})
+}
+
+// GET /api/admin/tenants/{id}/members — impersonation сонголтод.
+func (h *Admin) TenantMembers(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT u.id, u.name, u.email, u.platform_admin,
+		       coalesce(array_agg(ro.code ORDER BY ro.code) FILTER (WHERE ro.code IS NOT NULL), '{}')
+		  FROM memberships m
+		  JOIN users u ON u.id = m.user_id
+		  LEFT JOIN membership_roles mr ON mr.membership_id = m.id
+		  LEFT JOIN roles ro ON ro.id = mr.role_id
+		 WHERE m.tenant_id = $1::uuid
+		 GROUP BY u.id ORDER BY u.name`, chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "members query failed")
+		return
+	}
+	defer rows.Close()
+	type row struct {
+		ID            string   `json:"id"`
+		Name          string   `json:"name"`
+		Email         string   `json:"email"`
+		PlatformAdmin bool     `json:"platform_admin"`
+		Roles         []string `json:"roles"`
+	}
+	out := []row{}
+	for rows.Next() {
+		var x row
+		if err := rows.Scan(&x.ID, &x.Name, &x.Email, &x.PlatformAdmin, &x.Roles); err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "scan failed")
+			return
+		}
+		out = append(out, x)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "members query failed")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"members": out})
+}
+
+// POST /api/admin/impersonate {tenant_id, user_id} — нэг удаагийн handover
+// URL буцаана; шалгалтууд (гишүүнчлэл, бай platform_admin биш) DB талд.
+// Audit: тухайн tenant-ийн гинжид "platform.impersonate" (админ = actor).
+func (h *Admin) Impersonate(w http.ResponseWriter, r *http.Request) {
+	p, _ := auth.PrincipalFrom(r.Context())
+	var in struct {
+		TenantID string `json:"tenant_id"`
+		UserID   string `json:"user_id"`
+	}
+	if !httpx.Decode(w, r, &in) {
+		return
+	}
+	if in.TenantID == "" || in.UserID == "" {
+		httpx.Error(w, http.StatusBadRequest, "tenant_id, user_id шаардлагатай")
+		return
+	}
+	token, err := h.Svc.CreateHandover(r.Context(), p.UserID, in.UserID, in.TenantID)
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "impersonation боломжгүй (гишүүн биш эсвэл платформ админ)")
+		return
+	}
+	h.Rec.RecordAs(r.Context(), in.TenantID, p.UserID, "platform.impersonate", in.UserID,
+		map[string]any{"admin_email": p.Email})
+	httpx.JSON(w, http.StatusOK, map[string]string{
+		"url": strings.TrimRight(h.PortalURL, "/") + "/api/auth/handover?token=" + url.QueryEscape(token),
+	})
 }
 
 // GET /api/admin/users

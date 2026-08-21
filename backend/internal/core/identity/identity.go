@@ -14,7 +14,19 @@ type ctxKey int
 const (
 	keyTenant ctxKey = iota
 	keyUser
+	keyImpersonator
 )
+
+// WithImpersonator — платформын админ хэрэглэгчийн нэрийн өмнөөс орсон
+// session (handover). Audit бүртгэл бүрд impersonated_by хавсарна.
+func WithImpersonator(ctx context.Context, adminID string) context.Context {
+	return context.WithValue(ctx, keyImpersonator, adminID)
+}
+
+func Impersonator(ctx context.Context) string {
+	s, _ := ctx.Value(keyImpersonator).(string)
+	return s
+}
 
 // With — auth middleware болон платформын дотоод урсгалууд л дуудна.
 func With(ctx context.Context, tenantID, userID string) context.Context {

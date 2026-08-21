@@ -32,6 +32,9 @@ type Principal struct {
 	Name          string
 	Email         string
 	PlatformAdmin bool
+	// ImpersonatedBy — платформын админ энэ хэрэглэгчийн нэрийн өмнөөс
+	// орсон бол админы id (хоосон = энгийн session).
+	ImpersonatedBy string
 }
 
 type principalKey struct{}
@@ -115,20 +118,71 @@ func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool
 			continue
 		}
 		var p Principal
-		var tenantID *string
+		var tenantID, imp *string
 		err := s.pool.QueryRow(ctx,
-			`SELECT session_id, user_id, tenant_id, platform_admin, name, email
+			`SELECT session_id, user_id, tenant_id, platform_admin, name, email, impersonated_by
 			   FROM auth_session_lookup($1::char(64))`, hashToken(c.Value)).
-			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email)
+			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email, &imp)
 		if err != nil {
 			continue // хуучирсан/танигдахгүй token — дараагийнхыг үзнэ
 		}
 		if tenantID != nil {
 			p.TenantID = *tenantID
 		}
+		if imp != nil {
+			p.ImpersonatedBy = *imp
+		}
 		return p, true
 	}
 	return Principal{}, false
+}
+
+// Impersonation (платформын админ → tenant-ийн хэрэглэгч). Админ панель
+// тусдаа домэйн тул cookie шууд тавьж чадахгүй: админ нэг удаагийн богино
+// (60с) handover token авч, portal-ийн /api/auth/handover руу шилжүүлэхэд
+// тэнд 30 минутын, impersonated_by тэмдэгтэй session үүснэ.
+const (
+	HandoverTTL      = time.Minute
+	ImpersonationTTL = 30 * time.Minute
+)
+
+// CreateHandover — DB талд шалгалттай (админ мөн үү, бай platform_admin
+// биш үү, гишүүнчлэл бий юу) token үүсгэж ил утгыг нь буцаана.
+func (s *Service) CreateHandover(ctx context.Context, adminID, userID, tenantID string) (string, error) {
+	plain, th, err := newToken()
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.pool.Exec(ctx,
+		`SELECT auth_handover_create($1::char(64), $2::uuid, $3::uuid, $4::uuid, $5::timestamptz)`,
+		th, userID, tenantID, adminID, time.Now().Add(HandoverTTL)); err != nil {
+		return "", err
+	}
+	return plain, nil
+}
+
+// ConsumeHandover — token-ийг нэг удаа хэрэглэж impersonated session
+// эхлүүлнэ (cookie тавина). Хүчингүй/дууссан бол ok=false.
+func (s *Service) ConsumeHandover(ctx context.Context, w http.ResponseWriter, handoverPlain string) (bool, error) {
+	plain, th, err := newToken()
+	if err != nil {
+		return false, err
+	}
+	var sid *string
+	if err := s.pool.QueryRow(ctx,
+		`SELECT auth_handover_consume($1::char(64), $2::char(64), $3::timestamptz)`,
+		hashToken(handoverPlain), th, time.Now().Add(ImpersonationTTL)).Scan(&sid); err != nil {
+		return false, err
+	}
+	if sid == nil {
+		return false, nil
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: CookieName, Value: plain, Path: "/", HttpOnly: true,
+		Secure: s.secure, SameSite: http.SameSiteLaxMode,
+		MaxAge: int(ImpersonationTTL.Seconds()),
+	})
+	return true, nil
 }
 
 // SetTenant нь session-ий идэвхтэй tenant-ийг сольж, гишүүнчлэлийг DB
@@ -156,6 +210,9 @@ func (s *Service) RequireUser(next http.Handler) http.Handler {
 		// identity нь DB-ийн RLS context (дотоод), nexus нь модулиудын
 		// зөвхөн-унших хувилбар.
 		ctx = identity.With(ctx, p.TenantID, p.UserID)
+		if p.ImpersonatedBy != "" {
+			ctx = identity.WithImpersonator(ctx, p.ImpersonatedBy)
+		}
 		ctx = nexus.WithIdentity(ctx, p.TenantID, p.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

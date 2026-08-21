@@ -171,6 +171,26 @@ func (h *Auth) CreateTenant(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusCreated, map[string]string{"tenant_id": tenantID})
 }
 
+// GET /api/auth/handover?token= — админ панелийн impersonation token-ийг
+// portal домэйн дээр session болгоно (нэг удаа, 60с). Дараа нь dashboard.
+func (h *Auth) Handover(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		httpx.Error(w, http.StatusBadRequest, "token шаардлагатай")
+		return
+	}
+	ok, err := h.Svc.ConsumeHandover(r.Context(), w, token)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "handover failed")
+		return
+	}
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "handover token хүчингүй эсвэл хугацаа дууссан")
+		return
+	}
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+}
+
 // POST /api/login
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -257,6 +277,7 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, map[string]any{
+		"impersonated_by": p.ImpersonatedBy,
 		"user": map[string]any{
 			"id": p.UserID, "name": p.Name, "email": p.Email,
 			"platform_admin": p.PlatformAdmin,

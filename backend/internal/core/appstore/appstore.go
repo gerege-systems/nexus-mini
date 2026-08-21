@@ -308,10 +308,14 @@ func (i *Installer) SetStatus(ctx context.Context, appID, status string) error {
 // ─── Gate: "энэ tenant-д апп идэвхтэй юу" ───────────────────────────────
 
 type Gate struct {
-	db    nexus.DB
-	mu    sync.Mutex
-	cache map[string]gateEntry
+	db     nexus.DB
+	mu     sync.Mutex
+	cache  map[string]gateEntry
+	notify func(tenantID string)
 }
+
+// SetNotifier — Invalidate бүрд дуудагдах cross-process мэдэгдэгч.
+func (g *Gate) SetNotifier(fn func(tenantID string)) { g.notify = fn }
 
 type gateEntry struct {
 	enabled bool
@@ -349,6 +353,14 @@ func (g *Gate) enabled(ctx context.Context, tenantID, appID string) (bool, error
 
 // Invalidate — суулгалтын төлөв өөрчлөгдөхөд tenant-ийн gate кэшийг унагаана.
 func (g *Gate) Invalidate(tenantID string) {
+	g.InvalidateLocal(tenantID)
+	if g.notify != nil {
+		g.notify(tenantID)
+	}
+}
+
+// InvalidateLocal — зөвхөн энэ процессын кэш (bus-аас ирсэн мэдэгдэлд).
+func (g *Gate) InvalidateLocal(tenantID string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for k := range g.cache {

@@ -155,6 +155,8 @@ const en: Record<string, string> = {
   "Бүртгэлтэй хэрэглэгч — role өгөөд нэмнэ": "Registered user — pick a role and add",
   "Бүртгэлгүй — нэр, түр нууц үг өгч шинээр үүсгэнэ": "Not registered — give a name and a temporary password to create the account",
   "Түр нууц үг (8+)": "Temporary password (8+)",
+  "Платформын админ энэ хэрэглэгчийн нэрийн өмнөөс нэвтэрсэн байна — бүх үйлдэл audit-д тэмдэглэгдэнэ (30 минутын session).":
+    "A platform admin is signed in on behalf of this user — every action is recorded in the audit log (30-minute session).",
   "Нэмэх": "Add",
   "Гишүүн нэмэгдлээ": "Member added",
   "Role шинэчлэгдлээ": "Roles updated",

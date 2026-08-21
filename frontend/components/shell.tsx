@@ -132,7 +132,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
         )}
       </nav>
 
-      <main className="main">{children}</main>
+      <main className="main">
+        {me.impersonated_by && (
+          <div className="alert alert--warn" style={{ marginBottom: "1rem" }}>
+            {t("Платформын админ энэ хэрэглэгчийн нэрийн өмнөөс нэвтэрсэн байна — бүх үйлдэл audit-д тэмдэглэгдэнэ (30 минутын session).")}
+          </div>
+        )}
+        {children}
+      </main>
     </ShellCtx.Provider>
   );
 }

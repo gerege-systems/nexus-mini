@@ -45,6 +45,7 @@ export const api = {
 
 export type Me = {
   user: { id: string; name: string; email: string; platform_admin: boolean };
+  impersonated_by?: string;
   tenant_id: string;
   tenants: { id: string; slug: string; name: string }[];
   permissions: Record<string, "all" | "own">;

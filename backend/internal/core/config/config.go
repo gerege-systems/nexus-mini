@@ -20,6 +20,9 @@ type Config struct {
 	RegistryURL string
 	// CookieSecure — production дээр true.
 	CookieSecure bool
+	// PortalURL — portal-ийн гадаад URL (админ панелээс impersonation
+	// handover холбоос үүсгэхэд). Админ панель тусдаа домэйн дээр байдаг.
+	PortalURL string
 }
 
 func Load() (Config, error) {
@@ -30,6 +33,7 @@ func Load() (Config, error) {
 		Env:              getenv("ENVIRONMENT", "development"),
 		CatalogPath:      getenv("CATALOG_PATH", "catalog/apps.json"),
 		RegistryURL:      os.Getenv("REGISTRY_URL"),
+		PortalURL:        getenv("PORTAL_URL", "http://localhost:3020"),
 	}
 	c.CookieSecure = c.Env == "production"
 	if c.DatabaseURL == "" {

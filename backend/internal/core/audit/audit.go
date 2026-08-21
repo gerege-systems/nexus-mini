@@ -38,6 +38,9 @@ func (r *Recorder) RecordAs(ctx context.Context, tenantID, userID, action, objec
 	if details == nil {
 		details = map[string]any{}
 	}
+	if imp := identity.Impersonator(ctx); imp != "" {
+		details["impersonated_by"] = imp
+	}
 	dj, err := json.Marshal(details)
 	if err != nil {
 		log.Printf("audit: details marshal: %v", err)

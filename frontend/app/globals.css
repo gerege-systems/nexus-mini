@@ -274,6 +274,8 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   padding: 0.7rem 1rem; border-radius: var(--radius-s); font-size: 0.9rem;
   margin-bottom: 1rem;
 }
+.alert--warn { background: #fff4e0; color: #8a4b00; border: 1px solid #f5c97a; }
+[data-theme="dark"] .alert--warn { background: #3a2a10; color: #fbd38d; border-color: #6b4b14; }
 .alert--danger { background: var(--danger-soft); color: var(--danger); }
 .alert--ok { background: var(--ok-soft); color: var(--ok); }
 

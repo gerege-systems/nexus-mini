@@ -13,6 +13,10 @@ import (
 // PUT /api/me — өөрийн нэрээ солино.
 func (h *Auth) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.PrincipalFrom(r.Context())
+	if p.ImpersonatedBy != "" {
+		httpx.Error(w, http.StatusForbidden, "нэрийн өмнөөс орсон session-д профайл өөрчлөхгүй")
+		return
+	}
 	var in struct {
 		Name string `json:"name"`
 	}
@@ -37,6 +41,10 @@ func (h *Auth) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 // бусад төхөөрөмжийн session-уудыг хүчингүй болгоно.
 func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.PrincipalFrom(r.Context())
+	if p.ImpersonatedBy != "" {
+		httpx.Error(w, http.StatusForbidden, "нэрийн өмнөөс орсон session-д профайл өөрчлөхгүй")
+		return
+	}
 	var in struct {
 		Current string `json:"current_password"`
 		New     string `json:"new_password"`

@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/appstore"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/bus"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/config"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/handlers"
@@ -65,7 +67,27 @@ func cmdServe(_ []string) error {
 	storeH := &handlers.Store{DB: tdb, Installer: installer, Gate: gate, Audit: rec}
 	rbacH := &handlers.RBACH{DB: tdb, Pool: pools.App, Perms: perms, Audit: rec}
 	miscH := &handlers.Misc{DB: tdb, Perms: perms}
-	adminH := &handlers.Admin{Pool: pools.Admin}
+	adminH := &handlers.Admin{Pool: pools.Admin, Svc: authSvc, Rec: rec, PortalURL: cfg.PortalURL}
+
+	// Процесс хоорондын cache invalidation — Postgres LISTEN/NOTIFY.
+	b := bus.New(pools.App)
+	perms.SetNotifier(func(t string) { b.Publish("grants:" + t) })
+	gate.SetNotifier(func(t string) { b.Publish("gate:" + t) })
+	b.Subscribe(func(payload string) {
+		kind, tid, ok := strings.Cut(payload, ":")
+		if !ok {
+			return
+		}
+		switch kind {
+		case "grants":
+			perms.InvalidateLocal(tid)
+		case "gate":
+			gate.InvalidateLocal(tid)
+		}
+	})
+	busCtx, busCancel := context.WithCancel(context.Background())
+	defer busCancel()
+	go b.Run(busCtx)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -83,6 +105,7 @@ func cmdServe(_ []string) error {
 	authLimit := httprate.LimitByIP(10, time.Minute)
 	r.With(httprate.LimitByIP(5, time.Minute)).Post("/api/signup", authH.Signup)
 	r.With(authLimit).Post("/api/login", authH.Login)
+	r.With(authLimit).Get("/api/auth/handover", authH.Handover)
 	r.Post("/api/logout", authH.Logout)
 	r.Get("/api/catalog", storeH.Catalog)
 
@@ -132,6 +155,8 @@ func cmdServe(_ []string) error {
 		g.Get("/api/admin/users", adminH.Users)
 		g.Get("/api/admin/apps", adminH.Apps)
 		g.Get("/api/admin/audit", adminH.Audit)
+		g.Get("/api/admin/tenants/{id}/members", adminH.TenantMembers)
+		g.Post("/api/admin/impersonate", adminH.Impersonate)
 	})
 
 	// Модулиуд: урьдчилан хамгаалагдсан router (docs/02-rbac.md #5) —
