@@ -350,6 +350,7 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
 .mkt-sect > h2 { font-size: 1.5rem; margin: 0 0 0.4rem; }
 .mkt-sect > .lead { color: var(--text-2); margin: 0 0 1.6rem; max-width: 640px; }
 .mkt-num { color: var(--accent); font-weight: 800; font-size: 0.85rem; letter-spacing: 0.08em; }
+.mkt-grid3 > .card + .card { margin-top: 0; }
 .mkt-grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
 .mkt-feature { padding: 1.3rem 1.4rem; }
 .mkt-feature h3 { margin: 0.6rem 0 0.4rem; font-size: 1rem; }
