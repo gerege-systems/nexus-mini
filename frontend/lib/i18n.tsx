@@ -154,6 +154,7 @@ const en: Record<string, string> = {
   "Бүртгэлтэй хэрэглэгч — role өгөөд нэмнэ": "Registered user — pick a role and add",
   "Бүртгэлгүй — нэр, түр нууц үг өгч шинээр үүсгэнэ": "Not registered — give a name and a temporary password to create the account",
   "Түр нууц үг (8+)": "Temporary password (8+)",
+  "Хөгжүүлэгчид": "Developers",
   "Хөгжүүлэгчийн гарын авлага": "Developer guide",
   "Локал ажиллуулахаас эхлээд модуль, UI, өөрийн дистрибуц, registry, гадны системтэй OIDC-ээр холбох, цөмд хувь нэмэр оруулах хүртэл — нэг хуудсанд.": "From running locally to modules, UI, your own distribution, the registry, connecting external systems via OIDC and contributing to the core — on one page.",
   "Агуулга": "Contents",

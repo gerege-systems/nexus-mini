@@ -95,7 +95,7 @@ export function MktHeader() {
       <nav>
         <Link href="/" style={on("/")}>{t("Нүүр")}</Link>
         <Link href="/apps" style={on("/apps")}>{t("Апп дэлгүүр")}</Link>
-        <Link href="/developers" style={on("/developers")}>{t("Модуль хөгжүүлэх")}</Link>
+        <Link href="/developers" style={on("/developers")}>{t("Хөгжүүлэгчид")}</Link>
       </nav>
       <span className="spacer" />
       <LangMenu />
