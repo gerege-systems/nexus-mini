@@ -14,6 +14,8 @@
 | Route-уудаа бүртгэнэ | Суулгалт, хамаарлын шийдэл |
 | Өөрийн хүснэгт, миграц | RBAC default оноолт, шалгалт |
 | Бизнес логик | Audit гинж, app store |
+| Хувилбар + манифест (`make manifest`) | Registry, гарын үсэг, `nexus add/upgrade` |
+| — | Түдгэлзүүлэлт / зөвхөн-унших, impersonation, lockout |
 
 ## Файлын бүтэц
 
@@ -56,7 +58,15 @@ func (m *Module) ID() string      { return "mn.танай.<нэр>" } // reverse
 func (m *Module) ShortID() string { return "<нэр>" }          // permission prefix + URL зам
 func (m *Module) Name() string    { return "Хүний нэр" }
 func (m *Module) Version() string { return "1.0.0" }
+
+// Заавал биш — store/registry-ийн тайлбар кодоос (make manifest авдаг):
+func (m *Module) Description() string { return "Юу хийдэг вэ…" }
+func (m *Module) Publisher() string   { return "танай-байгууллага" }
 ```
+
+`Version` нь semver; registry-д нийтлэх tag нь `v<Version>`. Permission
+нэмсэн/өргөсгөсөн бол minor-оо өсгө — дистрибуц `nexus upgrade` хийхэд
+`-approve` асуух шалтгаан нь энэ.
 
 ### 2. Permission тунхаглах
 
@@ -77,6 +87,14 @@ func (m *Module) Permissions() []nexus.PermissionDefinition {
   шид байхгүй): `admin` үргэлж бүгдийг авна, жагсаалтад бичсэн нь нэмж авна,
   `"user:own"` нь тухайн role-д зөвхөн өөрийн мөрийн эрх өгнө
 - `DefaultRoles` хоосон = зөвхөн admin (аюулгүй default)
+- `"role:own"` бичихийн тулд permission `OwnScope: true` байх ёстой — үгүй
+  бол Register panic. Runtime-д ч: `own_scope=false` permission-д хэн ч «own»
+  өгч чадахгүй (модуль шүүдэггүй тул чимээгүй бүрэн эрх болох байсан)
+- Нөөцөлсөн ShortID: `core api admin platform store apps developers login
+  signup dashboard members roles audit settings org`
+- Шинэ хувилбарт permission нэмбэл цөм асахдаа суусан tenant бүрийн
+  `admin`-д (+`DefaultRoles`) автоматаар оноодог (backfill); байгаа кодод
+  хүрэхгүй — tenant-ийн гараар хассан оноолт сэргэхгүй
 
 ### 3. Миграц
 
@@ -94,7 +112,14 @@ func (m *Module) Migrations() fs.FS { return migrations }
   devices-ээс хуул
 - `OwnScope` ашиглах бол `created_by uuid` багана заавал
 - Бүх string баганад урттай хязгаар (varchar(n)) — задгай text хориотой
-- Төгсгөлд нь `GRANT ... TO nexus_app, nexus_admin`
+- Төгсгөлд нь `GRANT ... ON <хүснэгт> TO nexus_app, nexus_admin` (функцэд
+  автомат GRANT байхгүй — хэрэгтэй бол ил бич)
+- Өөр хүснэгт рүү FK (`memberships`, өөрийн мод) заавал **same-tenant
+  trigger**-тэй — FK шалгалт RLS-ийг давдаг тул uuid таамаглаж өөр
+  tenant-ийн мөр холбож болдог. Загвар: `apps/organisation/migrations/00002_same_tenant.sql`
+- Temp хүснэгт үүсгэх эрх апп role-д байхгүй (definer функц хамгаалалт);
+  `users.password_hash` харагдахгүй; `auth_*` функцууд дуудагдахгүй — энэ
+  бол зориуд
 
 Модуль бүр өөрийн goose хүснэгттэй (`goose_<shortid>`) тул цөм болон бусад
 модультай мөргөлдөхгүй.
@@ -122,7 +147,13 @@ Handler дотор:
   `tenant_id = $1` гэж бас бичиж бай: RLS хамгаална, WHERE нь индекс
   ашиглуулна
 - `deps.Audit.Record(ctx, "<нэр>.үйлдэл", объект, details)` — чухал
-  үйлдлээ audit гинжид бич
+  үйлдлээ audit гинжид бич (impersonated session бол `impersonated_by`
+  автоматаар хавсарна)
+- `nexus.UUIDParam(w, r, "id")` / `nexus.IsUUID` — зам/биеийн id-г DB-д
+  хүргэхээс өмнө (буруу бол 400, 500 биш); бүх string талбарын уртыг
+  `valid()`-даа шалга
+- Түдгэлзүүлсэн байгууллага → 403, зөвхөн-унших → бичих хүсэлт 503: платформ
+  `RequireTenant`-д хийнэ, модуль юу ч мэдэх шаардлагагүй
 
 ### 5. Цэс
 
@@ -135,6 +166,10 @@ func (m *Module) Menus() []nexus.MenuDefinition {
     }}
 }
 ```
+
+`Path` заавал `/<ShortID>` эсвэл `/<ShortID>/...` — өөр зам Register panic
+(portal-ийн middleware нийтийн замаас бусдыг хамгаалдаг, модуль түүнийг
+тойрч чадахгүй). Icon нэр: `frontend/components/icons.tsx`-ийн map.
 
 ### 6. UI хуудас (portal)
 

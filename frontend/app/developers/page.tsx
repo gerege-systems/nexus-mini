@@ -23,7 +23,9 @@ export default function DevelopersPage() {
           {t("Модуль бол")} <code>pkg/nexus.Module</code> {t("interface-ийг хэрэгжүүлсэн Go package.")}{" "}
           {t("Tenant тусгаарлалт, нэвтрэлт, суулгалт, RBAC оноолт, audit — платформ хийнэ; та бизнес логикоо л бичнэ. Хамгийн сайн заавар бол ажиллаж байгаа жишээ —")}{" "}
           <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/devices"
-            style={{ color: "var(--accent)", fontWeight: 600 }}>backend/apps/devices</a>.
+            style={{ color: "var(--accent)", fontWeight: 600 }}>apps/devices</a> ({t("нэг resource")}),{" "}
+          <a href="https://github.com/gerege-systems/nexus-mini/tree/main/backend/apps/organisation"
+            style={{ color: "var(--accent)", fontWeight: 600 }}>apps/organisation</a> ({t("олон resource, олон хуудас")}).
         </p>
       </section>
 
@@ -38,6 +40,8 @@ export default function DevelopersPage() {
               <tr><td>{t("Route-уудаа бүртгэнэ")}</td><td>{t("Суулгалт, хамаарлын шийдэл")}</td></tr>
               <tr><td>{t("Өөрийн хүснэгт, миграц")}</td><td>{t("RBAC default оноолт, шалгалт")}</td></tr>
               <tr><td>{t("Бизнес логик")}</td><td>{t("Audit гинж, app store")}</td></tr>
+              <tr><td>{t("Хувилбар + манифест (make manifest)")}</td><td>{t("Registry, гарын үсэг, nexus add/upgrade")}</td></tr>
+              <tr><td>—</td><td>{t("Түдгэлзүүлэлт / зөвхөн-унших, impersonation, lockout")}</td></tr>
             </tbody>
           </table>
         </div>
@@ -50,7 +54,10 @@ export default function DevelopersPage() {
           <div>&nbsp;&nbsp;types.go&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">{t("хүсэлт/хариултын struct + validation")}</span></div>
           <div>&nbsp;&nbsp;handlers.go&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">{t("HTTP handler-ууд (нэг resource = нэг файл)")}</span></div>
           <div>&nbsp;&nbsp;migrations/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">{t("модулийн goose миграцууд")}</span></div>
+          <div>&nbsp;&nbsp;ui/pages/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">{t("portal хуудсууд → build үед app/(portal)/<нэр>/ руу хуулагдана")}</span></div>
+          <div>&nbsp;&nbsp;ui/i18n.ts&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c">{t("модулийн толь (en: {...}) — цөмийн толинд нэгдэнэ")}</span></div>
         </Code>
+        <p style={{ color: "var(--text-2)" }}>{t("Олон resource-тэй бол handler файлыг resource тус бүрээр салгана (organisation: departments.go, people.go; ui/pages/departments/, ui/pages/people/).")}</p>
 
         <h2><Rocket size={19} style={{ verticalAlign: "-3px" }} /> {t("Алхамууд")}</h2>
 
@@ -60,7 +67,12 @@ export default function DevelopersPage() {
           <div><span className="k">func</span> (m *Module) ShortID() <span className="k">string</span> {"{"} <span className="k">return</span> <span className="s">&quot;name&quot;</span> {"}"}          <span className="c">{t("// permission prefix + URL зам")}</span></div>
           <div><span className="k">func</span> (m *Module) Name() <span className="k">string</span>    {"{"} <span className="k">return</span> <span className="s">&quot;{t("Хүний нэр")}&quot;</span> {"}"}</div>
           <div><span className="k">func</span> (m *Module) Version() <span className="k">string</span> {"{"} <span className="k">return</span> <span className="s">&quot;1.0.0&quot;</span> {"}"}</div>
+          <div>&nbsp;</div>
+          <div><span className="c">{t("// заавал биш — store/registry-ийн тайлбар кодоос (make manifest авдаг):")}</span></div>
+          <div><span className="k">func</span> (m *Module) Description() <span className="k">string</span> {"{"} <span className="k">return</span> <span className="s">&quot;{t("Юу хийдэг вэ…")}&quot;</span> {"}"}</div>
+          <div><span className="k">func</span> (m *Module) Publisher() <span className="k">string</span>   {"{"} <span className="k">return</span> <span className="s">&quot;your-org&quot;</span> {"}"}</div>
         </Code>
+        <p style={{ color: "var(--text-2)" }}>{t("Version нь semver; registry-д нийтлэх git tag нь v<Version>. Permission нэмсэн/өргөсгөсөн бол minor-оо өсгө — дистрибуц nexus upgrade хийхэд -approve асуух шалтгаан нь энэ.")}</p>
 
         <h3>{t("2. Permission тунхаглах")}</h3>
         <Code>
@@ -76,7 +88,9 @@ export default function DevelopersPage() {
           <li>{t("Код заавал")} <code>&lt;ShortID&gt;.</code>{t("-ээр эхэлнэ — өөр модулийн эрхийг булааж чадахгүй")}</li>
           <li><code>DefaultRoles</code> {t("нь суулгах үед хэн авахыг тунхагладаг:")} <code>admin</code> {t("үргэлж бүгдийг авна, жагсаалтад бичсэн нь нэмж авна,")} <code>&quot;user:own&quot;</code> {t("нь зөвхөн өөрийн мөрийн эрх")}</li>
           <li><code>DefaultRoles</code> {t("хоосон = зөвхөн admin (аюулгүй default)")}</li>
-          <li><code>core</code>, <code>api</code>, <code>admin</code> {t("зэрэг нэрс нөөцлөгдсөн")}</li>
+          <li><code>&quot;role:own&quot;</code> {t("бичихийн тулд permission")} <code>OwnScope: true</code> {t("байх ёстой (үгүй бол panic). Runtime-д ч own_scope=false permission-д хэн ч «own» өгч чадахгүй")}</li>
+          <li>{t("Нөөцөлсөн ShortID:")} <code>core api admin platform store apps developers login signup dashboard members roles audit settings org</code></li>
+          <li>{t("Шинэ хувилбарт permission нэмбэл цөм асахдаа суусан tenant бүрийн admin-д (+DefaultRoles) автоматаар оноодог (backfill); байгаа кодод хүрэхгүй")}</li>
         </ul>
 
         <h3>{t("3. Миграц")}</h3>
@@ -89,7 +103,9 @@ export default function DevelopersPage() {
           <li><code>tenant_id uuid NOT NULL</code> + {t("RLS policy")} (<code>app_tenant_id()</code>) — {t("жишээг devices-ээс хуул")}</li>
           <li><code>OwnScope</code> {t("ашиглах бол")} <code>created_by uuid</code> {t("багана заавал")}</li>
           <li>{t("Бүх string баганад урттай хязгаар (varchar(n)) — задгай text хориотой")}</li>
-          <li>{t("Төгсгөлд нь")} <code>GRANT ... TO nexus_app, nexus_admin</code></li>
+          <li>{t("Төгсгөлд нь")} <code>GRANT ... ON &lt;хүснэгт&gt; TO nexus_app, nexus_admin</code> {t("(функцэд автомат GRANT байхгүй)")}</li>
+          <li>{t("Өөр хүснэгт рүү FK (memberships, өөрийн мод) заавал same-tenant trigger-тэй — FK шалгалт RLS-ийг давдаг. Загвар:")} <code>apps/organisation/migrations/00002_same_tenant.sql</code></li>
+          <li>{t("Апп role-д temp хүснэгт, users.password_hash, auth_* функцууд хаалттай — зориуд")}</li>
         </ul>
         <p style={{ color: "var(--text-2)" }}>
           {t("Модуль бүр өөрийн goose хүснэгттэй")} (<code>goose_&lt;shortid&gt;</code>) {t("тул цөм болон бусад модультай мөргөлдөхгүй.")}
@@ -113,6 +129,8 @@ export default function DevelopersPage() {
           <li><code>deps.DB</code> — {t("RLS context автоматаар тохирдог холболт; SQL-даа")} <code>tenant_id = $1</code> {t("гэж бас бич")}</li>
           <li><code>deps.Audit.Record(ctx, ...)</code> — {t("чухал үйлдлээ audit гинжид бич")}</li>
           <li><code>nexus.JSON / Decode / Error / DBError</code> — {t("вэб туслахууд")}</li>
+          <li><code>nexus.UUIDParam(w, r, &quot;id&quot;)</code> / <code>nexus.IsUUID</code> — {t("зам/биеийн id-г DB-д хүргэхээс өмнө (буруу бол 400); string талбарын уртыг valid()-даа шалга")}</li>
+          <li>{t("Түдгэлзүүлсэн байгууллага → 403, зөвхөн-унших → бичих 503: платформ RequireTenant-д хийнэ, модуль мэдэх шаардлагагүй; impersonated session-ийн audit-д impersonated_by автоматаар хавсарна")}</li>
         </ul>
 
         <h3>{t("5. Цэс")}</h3>
@@ -124,6 +142,7 @@ export default function DevelopersPage() {
           <div>&nbsp;&nbsp;{"}}"}</div>
           <div>{"}"}</div>
         </Code>
+        <p style={{ color: "var(--text-2)" }}>{t("Path заавал /<ShortID> эсвэл /<ShortID>/… — өөр зам Register panic (portal-ийн middleware нийтийн замаас бусдыг хамгаалдаг, модуль тойрч чадахгүй). Icon нэр: components/icons.tsx.")}</p>
 
         <h3>{t("6. UI хуудас (portal)")}</h3>
         <p style={{ color: "var(--text-2)" }}>
