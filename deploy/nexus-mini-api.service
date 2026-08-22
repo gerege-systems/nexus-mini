@@ -11,6 +11,8 @@ Restart=always
 RestartSec=3
 NoNewPrivileges=true
 ProtectSystem=strict
+# Registry index кэш (ProtectSystem=strict тул /srv бичигдэхгүй) → /var/cache/nexus-mini
+CacheDirectory=nexus-mini
 ReadWritePaths=/tmp
 ProtectHome=read-only
 
