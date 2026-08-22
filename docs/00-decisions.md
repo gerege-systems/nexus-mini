@@ -120,3 +120,11 @@ Tenant/байгууллага/гишүүний загварыг open-gerege-nexu
 5. **Түдгэлзүүлэх → session шууд устгах** (`auth_sessions_revoke_tenant`, audit-д тоо).
 
 Аваагүй: OGN-ийн settings registry (DB→env), Sec-Fetch-Site CSRF нотолгоо — хэрэгцээ гарахад.
+
+## Үе 2 — registry + `nexus` CLI (2026-08-22)
+
+- **Registry = статик, гарын үсэгтэй** (`gerege-systems/nexus-registry`: `manifests/*.json` → `index.json` + Ed25519 `.sig`, raw URL). Сервер код байхгүй; нийтлэх = PR. Private key maintainer-ийн `~/.secrets/`-д, нийтийн түлхүүр цөмд default. Өөрийн registry = репо хуулж `keygen`.
+- **Манифест кодоос** (`make manifest`, `registry.FromModule` reflect-ээр go_module) — drift байхгүй. `Validate()` нь Register-ийн дүрмүүдийн build-гүй хувилбар.
+- **Fetch**: ETag, кэш (offline fallback), хэмжээний хязгаар, `generated_at` replay хамгаалалт; татаж чадахгүй бол boot унагаахгүй, кэш → локал `catalog/index.json`.
+- **`nexus` CLI** (`go run …/cmd/nexus@latest`): `init` (tag tarball-аас frontend + маркертай main.go), `add/upgrade/remove/list`. Модулийн UI-г Go module cache-ээс `frontend/modules/<нэр>/ui` руу **хуулна** (commit хийгдэнэ, дистрибуц доторх зам — sync скриптийн репо-дотор дүрэм хэвээр). `upgrade` permission өргөсвөл `-approve`.
+- Зориуд үгүй: runtime plugin/WASM, registry-д нэвтрэлт, модулийн tarball хостлох (Go proxy хийнэ).

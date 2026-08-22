@@ -35,7 +35,8 @@ services:
       DATABASE_URL: postgres://nexus_app:nexus-dev@db:5432/nexus_mini
       DATABASE_URL_ADMIN: postgres://nexus_admin:nexus-dev@db:5432/nexus_mini
       DATABASE_URL_AUTH: postgres://nexus_auth:nexus-dev@db:5432/nexus_mini
-      CATALOG_PATH: /catalog/apps.json
+      CATALOG_PATH: /catalog/index.json
+      REGISTRY_CACHE_DIR: /tmp/registry-cache
       PORT: "8084"
       PORTAL_URL: http://localhost:3020
       LISTEN_ADDR: 0.0.0.0

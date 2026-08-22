@@ -30,6 +30,12 @@ func (m *Module) ShortID() string { return "devices" }
 func (m *Module) Name() string    { return "Төхөөрөмжийн бүртгэл" }
 func (m *Module) Version() string { return "1.0.0" }
 
+// Describer (registry) — store/каталогийн тайлбар кодоос.
+func (m *Module) Description() string {
+	return "Байгууллагын төхөөрөмжүүдийн бүртгэл: нэр, төрөл, сериал, статус. SDK-г баталдаг жишээ модуль — шинэ модуль бичихдээ эндээс эхэл."
+}
+func (m *Module) Publisher() string { return "gerege-systems" }
+
 func (m *Module) Dependencies() []nexus.Dependency { return nil }
 
 func (m *Module) Permissions() []nexus.PermissionDefinition {

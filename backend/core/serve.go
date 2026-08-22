@@ -43,7 +43,7 @@ func cmdServe(_ []string) error {
 
 	// Boot sync: permission ба апп каталог.
 	syncCtx, syncCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	if err := appstore.Sync(syncCtx, pools.Admin, cfg.CatalogPath); err != nil {
+	if err := appstore.Sync(syncCtx, pools.Admin, appstore.Source{URL: cfg.RegistryURL, Keys: cfg.RegistryKeys, CacheDir: cfg.RegistryCacheDir, FilePath: cfg.CatalogPath}); err != nil {
 		syncCancel()
 		return err
 	}

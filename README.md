@@ -56,10 +56,13 @@ backend/
   pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна (semver)
   internal/core/     цөмийн дотоод: tenant, auth, rbac, audit, appstore, bus
   apps/              модулиуд (devices, organisation; apps.go All()-д нэг мөр)
+  pkg/registry/      app store registry-ийн нийтийн гэрээ (манифест, Ed25519 index)
+  cmd/nexus/         дистрибуцийн CLI: init · add · upgrade · remove · list
+  cmd/nexus-registry/ registry эзэмшигчийн хэрэгсэл: keygen · build · verify
     <нэр>/ui/        модулийн portal хуудас + толь → build үед portal руу хуулагдана
 frontend/            Next.js — landing + portal (modules.json: ямар UI орох)
 admin/               Next.js — платформын админ (тусдаа апп, тусдаа домэйн)
-catalog/             локал каталог (registry-гүй үеийн fallback)
+catalog/             локал index fallback (registry хүрэхгүй үед)
 docs/                шийдвэр, архитектур, модуль хөгжүүлэх гарын авлага
 ```
 
@@ -71,13 +74,21 @@ route-уудаа бүртгэнэ — үлдсэнийг (tenant тусгаар�
 оноолт, audit) платформ хийнэ. Дэлгэрэнгүй:
 [docs/03-module-guide.md](docs/03-module-guide.md).
 
-### Өөрийн компанид — fork хийхгүй
+### Өөрийн компанид — fork хийхгүй, `nexus` CLI
 
-Цөмийг хамаарал болгоод өөрийн дистрибуц үүсгэнэ: `go.mod`-д
-`github.com/gerege-systems/nexus-mini/backend` + модулиуд, `main.go` нь
-`core.Main(inventory.New())`. Цөмийн шинэчлэлт = `go get ...@v1.x` — merge
-байхгүй. Өөрийн store, өөрийн харилцагчид (tenant), өөрийн платформ админ.
-Дэлгэрэнгүй: [docs/03-module-guide.md → «Өөрийн дистрибуц»](docs/03-module-guide.md#өөрийн-дистрибуц--цөмийг-fork-хийхгүй).
+```bash
+go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest init my-dist   # цөм = хамаарал
+cd my-dist && go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest add organisation
+make migrate && make serve
+```
+
+`add` нь гарын үсэгтэй registry-ээс (nexus.*.com, эсвэл өөрийн) модулийн
+манифестийг татаж, `go get` + `main.go` + portal UI-г автоматаар нэмнэ;
+`upgrade` permission өргөссөн бол `-approve` шаардана. Цөмийн шинэчлэлт =
+`go get …/backend@v1.x` — merge байхгүй. Өөрийн store, өөрийн харилцагчид
+(tenant), өөрийн платформ админ. Дэлгэрэнгүй:
+[docs/03-module-guide.md → «Өөрийн дистрибуц»](docs/03-module-guide.md#өөрийн-дистрибуц--цөмийг-fork-хийхгүй),
+registry: [gerege-systems/nexus-registry](https://github.com/gerege-systems/nexus-registry).
 
 ## Баримт бичиг
 

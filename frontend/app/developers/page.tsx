@@ -165,8 +165,9 @@ export default function DevelopersPage() {
 
         <h3>{t("8. Store-д нийтлэх")}</h3>
         <p style={{ color: "var(--text-2)" }}>
-          {t("Энэ сайтын store-д оруулах бол")} <code>catalog/apps.json</code>{t("-д бүртгэлээ нэмээд PR илгээнэ. Өөрийн store-той бол өөрийн каталог (доор). Үе 2-т төв registry +")}{" "}
-          <code>nexus-mini add</code> {t("CLI ирэхэд go_module замаар тань шууд татдаг болно.")}
+          {t("Манифест кодоос үүснэ:")} <code>make manifest MOD=name &gt; manifests/name.json</code> — {t("дараа нь")}{" "}
+          <a href="https://github.com/gerege-systems/nexus-registry" style={{ color: "var(--accent)", fontWeight: 600 }}>nexus-registry</a>{" "}
+          {t("репод PR илгээнэ; maintainer index.json-ийг Ed25519-ээр гарын үсэглэнэ. Код registry-д хадгалагдахгүй — go_module зам + git tag хангалттай. Орсны дараа хэн ч")} <code>nexus add name</code> {t("гэж дистрибуцдаа нэмнэ. Өөрийн registry: репог хуулж, nexus-registry keygen → REGISTRY_URL + REGISTRY_KEYS.")}
         </p>
 
         <h2 style={{ marginTop: "2rem" }}><GitPullRequest size={19} style={{ verticalAlign: "-3px" }} /> {t("Өөрийн дистрибуц — цөмийг fork хийхгүй")}</h2>
@@ -174,15 +175,13 @@ export default function DevelopersPage() {
           {t("Өөрийн компанид nexus-mini ашиглаж, өөрийн модулиуд, өөрийн store, өөрийн харилцагчидтай (tenant) платформ ажиллуулж болно. Цөмийн репог хуулбарлаж засахгүй — хамаарал болгоно. Ингэж байж цөмийн шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.")}
         </p>
         <Code>
-          <div><span className="c">{t("// your-company/nexus-dist/backend/main.go — бүхэлдээ:")}</span></div>
-          <div><span className="k">package</span> main</div>
+          <div><span className="c">{t("// nexus CLI — дистрибуц үүсгэх, модуль нэмэх (цөмийг fork хийхгүй):")}</span></div>
+          <div><span className="c">$</span> go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest init my-dist</div>
+          <div><span className="c">$</span> cd my-dist &amp;&amp; go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest add organisation</div>
+          <div><span className="c">$</span> make migrate &amp;&amp; make serve</div>
           <div>&nbsp;</div>
-          <div><span className="k">import</span> (</div>
-          <div>&nbsp;&nbsp;<span className="s">&quot;github.com/gerege-systems/nexus-mini/backend/core&quot;</span></div>
-          <div>&nbsp;&nbsp;<span className="s">&quot;your-company/nexus-inventory&quot;</span>&nbsp;&nbsp;<span className="c">{t("// таны модуль — тусдаа репо")}</span></div>
-          <div>)</div>
-          <div>&nbsp;</div>
-          <div><span className="k">func</span> main() {"{"} core.Main(inventory.New()) {"}"}</div>
+          <div><span className="c">{t("// backend/main.go (init үүсгэнэ; add маркер хооронд мөр нэмнэ):")}</span></div>
+          <div><span className="k">func</span> main() {"{"} core.Main(modules()...) {"}"}</div>
           <div>&nbsp;</div>
           <div><span className="c">{t("// Цөмийг шинэчлэх — merge байхгүй, зөвхөн хувилбар:")}</span></div>
           <div><span className="c">$</span> go get github.com/gerege-systems/nexus-mini/backend@v1.5.0</div>
@@ -190,6 +189,7 @@ export default function DevelopersPage() {
         </Code>
         <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
           <li><code>core.Main</code> {t("— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө")}</li>
+          <li><code>nexus upgrade</code> {t("— модулийн шинэ хувилбарт permission нэмэгдсэн/өргөссөн бол зогсоож -approve шаардана; модуль чимээгүй эрх авахгүй")}</li>
           <li>{t("Frontend: цөмийн frontend-ийн хуулбар +")} <code>modules.json</code>. {t("Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул цөмийн frontend-ийг tag-аас хуулж дарахад мөргөлдөхгүй")}</li>
           <li>{t("SDK амлалт:")} <code>pkg/nexus</code> + <code>core.Main</code> {t("v1.x дотор эвдэхгүй (semver); internal/* чөлөөтэй өөрчлөгдөнө — модуль түүнээс импортолж чадахгүй")}</li>
           <li>{t("Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR. Харилцагч тань таны instance дээр tenant болно; та платформ админ")}</li>

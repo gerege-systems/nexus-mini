@@ -190,12 +190,25 @@ func All() []nexus.Module { return []nexus.Module{ devices.New(), <нэр>.New()
 
 `make migrate && make serve` (+ `make web`) — модуль чинь store-д гарч ирнэ.
 
-### 8. Store-д нийтлэх
+### 8. Registry-д нийтлэх
 
-Энэ репогийн (nexus.*.com) store-д оруулах бол `catalog/apps.json`-д
-бүртгэлээ нэмээд PR илгээнэ. Өөрийн store-той бол өөрийн каталог/регистр
-(доор). Үе 2-т төв registry + `nexus-mini add` CLI ирнэ — тэр үед
-`go_module` замаар тань шууд татна.
+Манифест **кодоос** үүснэ — гараар бичихгүй:
+
+```bash
+make manifest MOD=<нэр> > manifests/<нэр>.json
+```
+
+(`Description()`/`Publisher()` методыг модульдоо нэмбэл store-ийн тайлбар
+мөн кодоос.) Дараа нь [gerege-systems/nexus-registry](https://github.com/gerege-systems/nexus-registry)
+репод `manifests/<нэр>.json`-оо PR-аар илгээнэ; maintainer `index.json`-ийг
+бүтээж Ed25519-ээр гарын үсэглэнэ. Модулийн код registry-д хадгалагдахгүй —
+`go_module` зам + git tag (`v<version>`) тань байхад л хангалттай. Өөрийн
+registry: репог хуулж, `nexus-registry keygen` → өөрийн URL + нийтийн
+түлхүүрээ дистрибуцуудад `REGISTRY_URL`/`REGISTRY_KEYS`-ээр өгнө.
+
+Registry-д орсон модулийг хэн ч `nexus add <нэр>` гэж дистрибуцдаа нэмнэ
+(доор). Дистрибуцийн store хуудас registry-ийн бүх аппыг харуулж, бинарид
+ороогүйд нь `nexus add` зааварчилгаа гаргана.
 
 ## Өөрийн дистрибуц — цөмийг fork хийхгүй
 
@@ -204,58 +217,52 @@ func All() []nexus.Module { return []nexus.Module{ devices.New(), <нэр>.New()
 хуулбарлаж (fork) засахгүй** — хамаарал болгон ашиглана. Ингэж байж цөмийн
 шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.
 
-Хоёр репо хангалттай:
+`nexus` CLI бүгдийг хийнэ (`go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest …`):
 
-```
-your-company/nexus-inventory        ← модуль (энэ гарын авлагын дагуу)
-  go.mod:  require github.com/gerege-systems/nexus-mini/backend v1.x.y
-  module.go · handlers.go · migrations/ · ui/
-
-your-company/nexus-dist             ← дистрибуц (цөм + сонгосон модулиуд)
-  backend/
-    go.mod:  require nexus-mini/backend v1.x.y, nexus-inventory v0.4.0
-    main.go
-  frontend/                         ← цөмийн frontend-ийн хуулбар + modules.json
-  nexus-mini.env · makefile · deploy/
+```bash
+nexus init my-dist              # backend/{go.mod,main.go}, frontend/ (цөмийн хуулбар), makefile, .env.example, deploy/*.sql
+cd my-dist
+nexus add organisation          # registry → go get + main.go маркер + frontend/modules/organisation/ui + modules.json
+nexus add inventory@0.4.0       # өөрийн модуль (registry-д нийтэлсэн)
+nexus list · nexus upgrade [нэр] [-approve] · nexus remove нэр
+make migrate && make serve && (cd frontend && pnpm install && pnpm build)
 ```
 
-`backend/main.go` бүхэлдээ:
+Үүссэн бүтэц:
 
-```go
-package main
-
-import (
-	"github.com/gerege-systems/nexus-mini/backend/core"
-	"your-company/nexus-inventory"
-)
-
-func main() { core.Main(inventory.New()) }
+```
+my-dist/
+  backend/main.go       core.Main(modules()...) — "// nexus:imports/modules:begin…end" маркер хооронд
+  backend/go.mod        require nexus-mini/backend v1.x + модулиуд
+  frontend/             цөмийн portal хуулбар; modules/<нэр>/{ui,manifest.json} — add хуулна (commit хийнэ)
+  frontend/modules.json add/remove засна
 ```
 
-`core.Main` нь migrate/serve коммандууд, env файл, миграц, анхны админ,
-permission sync, сервер — бүгдийг агуулна; та модулиудаа л өгнө. Цөмийн
-`apps/devices`-ийг хүсвэл мөн импортолж нэмнэ, хүсэхгүй бол үгүй.
+`core.Main` нь migrate/serve/manifest коммандууд, env файл, миграц, анхны
+админ, permission sync, сервер — бүгдийг агуулна. `upgrade` нь хуучин
+манифест (`frontend/modules/<нэр>/manifest.json`) vs registry-ийн шинэ
+манифестийг тулгаж, **permission шинээр нэмэгдсэн/өргөссөн** бол зогсоож
+`-approve` шаардана — модулийн шинэчлэлт чимээгүй эрх авахгүй.
 
-`frontend/modules.json`-д модулийнхаа `ui/` замыг заана. Модуль Go-гийн
-cache-д байгаа бол замыг нь `cd backend && go list -m -f '{{.Dir}}'
-your-company/nexus-inventory` гэж олно (үе 2-ын `nexus-mini add` үүнийг
-автоматаар хийнэ).
+Registry: default nexus.*.com (түлхүүр цөмд); өөрийнх бол `REGISTRY_URL` +
+`REGISTRY_KEYS` env (эсвэл `-registry/-keys` флаг). Бүх дистрибуц registry-д
+байгаа аппуудыг store-доо харуулна; бинарид ороогүйд нь `nexus add` заавар.
 
 **Цөмийг шинэчлэх:**
 
 ```bash
 # backend — зөвхөн хувилбар
 cd backend && go get github.com/gerege-systems/nexus-mini/backend@v1.5.0 && go mod tidy && cd ..
-# frontend — цөмийн frontend-ийг upstream-аас хуулж дарна; таны modules.json хэвээр
+# frontend — цөмийн frontend-ийг tag-аас хуулж дарна; modules.json, modules/ таных хэвээр
 git remote add upstream https://github.com/gerege-systems/nexus-mini   # нэг удаа
 git fetch upstream --tags
-git checkout backend/v1.5.0 -- frontend && git checkout HEAD -- frontend/modules.json
+git checkout backend/v1.5.0 -- frontend && git checkout HEAD -- frontend/modules.json frontend/modules
 make check && make build
 ```
 
 Backend — merge байхгүй. Frontend — цөмийн файлд та гар хүрээгүй (модулийн
-UI `ui/`-д, толь `ui/i18n.ts`-д; хуулагдсан хавтсууд өөрийн `.gitignore`-той)
-тул `git checkout <tag> -- frontend` нь цэвэр дарж бичилт, мөргөлдөхгүй. Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR.
+UI `modules/<нэр>/ui`-д, толь `ui/i18n.ts`-д) тул `git checkout <tag> --
+frontend` нь цэвэр дарж бичилт, мөргөлдөхгүй. Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR.
 
 **SDK-ийн амлалт:** `pkg/nexus` (Module interface, Deps, RequirePermission,
 Scope, web helpers) болон `core.Main` нь semver — `v1.x` дотор эвдэхгүй.

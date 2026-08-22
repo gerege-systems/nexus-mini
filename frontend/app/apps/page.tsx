@@ -70,7 +70,7 @@ export default function PublicAppsPage() {
               <div className="app-card__foot">
                 {a.compiled
                   ? <span className="badge badge--ok">{t("Бэлэн")}</span>
-                  : <span className="badge badge--muted">{t("Каталогт бүртгэлтэй")}</span>}
+                  : <span className="badge badge--muted" title={`nexus add ${a.short_id}`}>{t("Registry-д бүртгэлтэй")} · <code>nexus add {a.short_id}</code></span>}
                 <span className="v">v{a.version}</span>
               </div>
             </div>

@@ -88,8 +88,8 @@ export default function StorePage() {
                     <span className="badge badge--muted">{t("Суулгаагүй")}</span>
                   )
                 ) : (
-                  <span className="badge badge--muted" title={`nexus-mini add ${a.id}`}>
-                    {t("Бинарид ороогүй")}
+                  <span className="badge badge--muted" title={`nexus add ${a.short_id}`}>
+                    {t("Бинарид ороогүй")} · <code>nexus add {a.short_id}</code>
                   </span>
                 )}
                 <span className="v">v{a.version}</span>

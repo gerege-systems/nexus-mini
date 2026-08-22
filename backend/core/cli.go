@@ -10,11 +10,13 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/envfile"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
+	"github.com/gerege-systems/nexus-mini/backend/pkg/registry"
 )
 
 const usage = `nexus-mini — платформын командын хэрэгсэл
@@ -24,6 +26,8 @@ const usage = `nexus-mini — платформын командын хэрэгс
                  ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD байгаа бөгөөд
                  платформын админ хараахан байхгүй бол үүсгэнэ
   make serve     API серверийг асаана
+  make manifest  Бүртгэгдсэн модулиудын registry манифестыг (JSON) хэвлэнэ —
+                 nexus-registry-д нийтлэхэд; гараар бичихгүй
 
 Тохиргоо: backend/nexus-mini.env (эсвэл ENV_FILE=<зам>) файлыг уншина;
 орчны хувьсагч файлаас дээгүүр үйлчилнэ. Загвар нь репогийн .env.example —
@@ -52,6 +56,8 @@ func Main(modules ...nexus.Module) {
 		err = withEnv(args, cmdMigrate)
 	case "serve":
 		err = withEnv(args, cmdServe)
+	case "manifest":
+		err = cmdManifest(args)
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 	default:
@@ -62,6 +68,31 @@ func Main(modules ...nexus.Module) {
 		fmt.Fprintf(os.Stderr, "алдаа: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// cmdManifest — модуль бүрийн манифест (кодоос, drift-гүй). Аргумент: short_id
+// (нэг) эсвэл хоосон (бүгд, JSON массив).
+func cmdManifest(args []string) error {
+	var out []registry.Manifest
+	for _, m := range nexus.Registered() {
+		if len(args) > 0 && m.ShortID() != args[0] {
+			continue
+		}
+		mf := registry.FromModule(m)
+		if err := mf.Validate(); err != nil {
+			return err
+		}
+		out = append(out, mf)
+	}
+	if len(out) == 0 {
+		return fmt.Errorf("модуль олдсонгүй")
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if len(args) > 0 {
+		return enc.Encode(out[0])
+	}
+	return enc.Encode(out)
 }
 
 // withEnv — --env флагийг (default: ./nexus-mini.env) уншиж орчинд

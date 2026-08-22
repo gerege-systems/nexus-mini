@@ -28,6 +28,11 @@ func (m *Module) ShortID() string { return "organisation" }
 func (m *Module) Name() string    { return "Байгууллагын бүтэц" }
 func (m *Module) Version() string { return "1.0.0" }
 
+func (m *Module) Description() string {
+	return "Хэлтэс, нэгжийн мод (дээд нэгж, менежер) болон ажилтан бүрийн хэлтэс, албан тушаал. Байгууллагын дотоод бүтцээ зурах модуль."
+}
+func (m *Module) Publisher() string { return "gerege-systems" }
+
 func (m *Module) Dependencies() []nexus.Dependency { return nil }
 
 func (m *Module) Permissions() []nexus.PermissionDefinition {

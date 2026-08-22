@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-08-22T06:58:26Z",
+  "apps": [
+    {
+      "id": "mn.gerege.nexus_mini.devices",
+      "short_id": "devices",
+      "name": "Төхөөрөмжийн бүртгэл",
+      "version": "1.0.0",
+      "go_module": "github.com/gerege-systems/nexus-mini/backend/apps/devices",
+      "description": "Байгууллагын төхөөрөмжүүдийн бүртгэл: нэр, төрөл, сериал, статус. SDK-г баталдаг жишээ модуль — шинэ модуль бичихдээ эндээс эхэл.",
+      "publisher": "gerege-systems",
+      "min_core": "1.0.0",
+      "permissions": [
+        {
+          "code": "devices.read",
+          "name": "Төхөөрөмж харах",
+          "description": "Байгууллагын төхөөрөмжийн жагсаалтыг харах",
+          "own_scope": true,
+          "default_roles": [
+            "manager",
+            "user"
+          ]
+        },
+        {
+          "code": "devices.manage",
+          "name": "Төхөөрөмж бүртгэх, засах",
+          "description": "Төхөөрөмж нэмэх, засах, устгах",
+          "own_scope": true,
+          "default_roles": [
+            "manager",
+            "user:own"
+          ]
+        }
+      ],
+      "menus": [
+        {
+          "id": "devices.list",
+          "label": "Төхөөрөмжүүд",
+          "path": "/devices",
+          "icon": "device",
+          "order": 10
+        }
+      ]
+    },
+    {
+      "id": "mn.gerege.nexus_mini.organisation",
+      "short_id": "organisation",
+      "name": "Байгууллагын бүтэц",
+      "version": "1.0.0",
+      "go_module": "github.com/gerege-systems/nexus-mini/backend/apps/organisation",
+      "description": "Хэлтэс, нэгжийн мод (дээд нэгж, менежер) болон ажилтан бүрийн хэлтэс, албан тушаал. Байгууллагын дотоод бүтцээ зурах модуль.",
+      "publisher": "gerege-systems",
+      "min_core": "1.0.0",
+      "permissions": [
+        {
+          "code": "organisation.read",
+          "name": "Бүтэц харах",
+          "description": "Хэлтэс, нэгж, ажилтнуудын байршлыг харах",
+          "default_roles": [
+            "manager",
+            "user"
+          ]
+        },
+        {
+          "code": "organisation.manage",
+          "name": "Бүтэц удирдах",
+          "description": "Хэлтэс үүсгэх/засах, ажилтны хэлтэс, албан тушаал тохируулах",
+          "default_roles": [
+            "manager"
+          ]
+        }
+      ],
+      "menus": [
+        {
+          "id": "organisation.departments",
+          "label": "Хэлтэс, нэгж",
+          "path": "/organisation/departments",
+          "icon": "building",
+          "order": 10
+        },
+        {
+          "id": "organisation.people",
+          "label": "Ажилтнууд",
+          "path": "/organisation/people",
+          "icon": "users",
+          "order": 20
+        }
+      ]
+    }
+  ]
+}

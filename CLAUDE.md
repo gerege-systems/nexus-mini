@@ -14,7 +14,8 @@
 - Модулийн UI: `backend/apps/<нэр>/ui/{pages,i18n.ts}` → `frontend/scripts/sync-modules.mjs` (prebuild/predev) `app/(portal)/<нэр>/` + `lib/i18n.modules.ts` үүсгэнэ (git-д ордоггүй). Модуль цөмийн frontend файлд гар хүрэхгүй; `frontend/modules.json` жагсаалт.
 - **SDK semver**: `pkg/nexus` + `core.Main` гэрээг v1.x дотор эвдэхгүй (tag `backend/v1.0.0`-ээс). Эвдэх өөрчлөлт = major; `internal/*` чөлөөтэй.
 - `frontend/` — landing + tenant portal (:3020) · `admin/` — платформын админ, ТУСДАА апп (:3021) · API :8084
-- `catalog/apps.json` — локал app store каталог (registry-гүй үеийн fallback, `CATALOG_PATH`)
+- `pkg/registry` — app store-ийн нийтийн гэрээ: манифест (`make manifest` кодоос), гарын үсэгтэй `index.json` (Ed25519), Fetch/ETag/кэш. Registry = статик репо `gerege-systems/nexus-registry` (raw URL, default түлхүүр цөмд). `catalog/index.json` — локал fallback (`CATALOG_PATH`). Private key: `~/.secrets/nexus-registry.key` (репод хэзээ ч биш).
+- `cmd/nexus` — дистрибуцийн CLI (`go run …/cmd/nexus@latest init|add|upgrade|remove|list`): main.go маркер, go get, `frontend/modules/<id>/ui` хуулбар, permission өргөсвөл `-approve`. `cmd/nexus-registry` — keygen/build/verify.
 - `deploy/` — `01-roles.sql` (DB role-ууд), `deploy.sh`, 3 systemd unit, `nginx-nexus-mini.conf`
 - Тохиргоо `backend/nexus-mini.env` (`.env.example`-оос; gitignore-д). DB role-ууд: `nexus_app` (RLS үйлчилнэ, апп), `nexus_admin` (`nexus_platform` гишүүн → бодлого платформ гэж таньдаг), `nexus_owner` (schema эзэн, зөвхөн миграц).
 
@@ -34,7 +35,7 @@
 - Сервер дээр: `bash deploy/deploy.sh` — pull → go build (атом mv, `.prev` үлдээнэ) → `migrate --env /home/bay/secrets/nexus-mini.env` → frontend/admin `pnpm build` (`.next.new` → атом солилт) → restart 3 unit → health curl.
 - systemd: `nexus-mini-api`, `nexus-mini-web`, `nexus-mini-adminweb`. Unit нь `node_modules/.bin/next start` шууд дууддаг — pnpm/corepack дуудахгүй (ProtectHome).
 - deploy.sh ХИЙДЭГГҮЙ зүйлс (гараар): unit файл өөрчлөгдвөл `sudo cp deploy/*.service /etc/systemd/system/ && sudo systemctl daemon-reload`; nginx conf өөрчлөгдвөл `sudo systemctl reload nginx`.
-- Secrets: `/home/bay/secrets/nexus-mini.env` (600) — DATABASE_URL / _ADMIN / _OWNER, ADMIN_*, CATALOG_PATH, ENVIRONMENT=production. DB нэр `nexus_mini`.
+- Secrets: `/home/bay/secrets/nexus-mini.env` (600) — DATABASE_URL / _ADMIN / _OWNER / _AUTH, ADMIN_*, CATALOG_PATH, REGISTRY_CACHE_DIR, PORTAL_URL, ENVIRONMENT=production. DB нэр `nexus_mini`.
 - Go сервер дээр `/usr/local/go` (1.25); apt-ийн `/usr/bin/go` 1.22 — гараар build хийвэл PATH-ыг түрүүлж тавь.
 - Прод DB цэвэр, demo дата байхгүй; тест мөр оруулсан бол устга.
 

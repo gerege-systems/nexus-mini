@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/gerege-systems/nexus-mini/backend/pkg/registry"
 )
 
 type Config struct {
@@ -19,10 +21,16 @@ type Config struct {
 	DatabaseURLAuth string
 	Port            string
 	Env             string // development | production
-	// CatalogPath — локал каталог файл (registry fallback).
+	// CatalogPath — локал index файл (registry хүрэхгүй/хоосон үеийн fallback).
 	CatalogPath string
-	// RegistryURL — төв app store registry (үе 2; хоосон бол локал каталог).
+	// RegistryURL — app store registry-ийн index.json URL. Default: nexus.*.com
+	// (gerege-systems/nexus-registry). "off" бол зөвхөн локал файл.
 	RegistryURL string
+	// RegistryKeys — index-ийн гарын үсгийн нийтийн түлхүүрүүд (base64, таслал).
+	// Default URL-д default түлхүүр; өөрийн registry бол заавал өгнө.
+	RegistryKeys string
+	// RegistryCacheDir — татсан index-ийн кэш (offline fallback, ETag).
+	RegistryCacheDir string
 	// CookieSecure — production дээр true.
 	CookieSecure bool
 	// PortalURL — portal-ийн гадаад URL (админ панелээс impersonation
@@ -37,11 +45,19 @@ func Load() (Config, error) {
 		DatabaseURLAuth:  os.Getenv("DATABASE_URL_AUTH"),
 		Port:             getenv("PORT", "8084"),
 		Env:              getenv("ENVIRONMENT", "development"),
-		CatalogPath:      getenv("CATALOG_PATH", "catalog/apps.json"),
-		RegistryURL:      os.Getenv("REGISTRY_URL"),
+		CatalogPath:      getenv("CATALOG_PATH", "catalog/index.json"),
+		RegistryURL:      getenv("REGISTRY_URL", registry.DefaultURL),
+		RegistryKeys:     os.Getenv("REGISTRY_KEYS"),
+		RegistryCacheDir: getenv("REGISTRY_CACHE_DIR", ".registry-cache"),
 		PortalURL:        getenv("PORTAL_URL", "http://localhost:3020"),
 	}
 	c.CookieSecure = c.Env == "production"
+	if c.RegistryKeys == "" && c.RegistryURL == registry.DefaultURL {
+		c.RegistryKeys = strings.Join(registry.DefaultKeys, ",")
+	}
+	if c.RegistryURL != "off" && c.RegistryKeys == "" {
+		return c, fmt.Errorf("REGISTRY_URL өгсөн бол REGISTRY_KEYS (нийтийн түлхүүр) заавал")
+	}
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("DATABASE_URL тохируулаагүй байна")
 	}

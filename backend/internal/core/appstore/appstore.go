@@ -15,23 +15,47 @@ import (
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
+	"github.com/gerege-systems/nexus-mini/backend/pkg/registry"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // CatalogEntry — каталог файлын (эсвэл registry-ийн, үе 2) нэг апп.
-type CatalogEntry struct {
-	ID          string `json:"id"`
-	ShortID     string `json:"short_id"`
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
-	Publisher   string `json:"publisher"`
-	GoModule    string `json:"go_module"`
+// Source — каталогийн эх: registry URL (гарын үсэгтэй) + локал файл fallback.
+type Source struct {
+	URL      string // "off" = зөвхөн файл
+	Keys     string // base64, таслал
+	CacheDir string
+	FilePath string
 }
 
-type catalogFile struct {
-	Apps []CatalogEntry `json:"apps"`
+// loadIndex — registry-ээс (амжилтгүй бол кэш), тэр ч байхгүй бол локал файл.
+// Boot-ийг хэзээ ч унагаахгүй — алдааг логлоод хоосон index-тэй үргэлжилнэ.
+func loadIndex(ctx context.Context, src Source) *registry.Index {
+	if src.URL != "" && src.URL != "off" {
+		keys, err := registry.ParseKeys(src.Keys)
+		if err != nil {
+			log.Printf("registry: %v", err)
+		} else {
+			ix, err := registry.Fetch(ctx, src.URL, keys, src.CacheDir)
+			if err != nil {
+				log.Printf("registry: %v", err)
+			}
+			if ix != nil {
+				return ix
+			}
+		}
+	}
+	if src.FilePath != "" {
+		ix, err := registry.LoadFile(src.FilePath)
+		if err == nil {
+			return ix
+		}
+		if !os.IsNotExist(err) {
+			log.Printf("каталог %s: %v", src.FilePath, err)
+		}
+	}
+	return &registry.Index{}
 }
 
 // syncPerm — permission-ийг каталогт тулгаад, анх удаа орж байвал
@@ -89,7 +113,7 @@ func syncPerm(ctx context.Context, admin *pgxpool.Pool, moduleID string, p nexus
 
 // Sync — бинари асахад нэг удаа: компиллогдсон модулиудын permission ба
 // апп мөрүүдийг admin pool-оор (nexus_platform эрхтэй) каталогт тулгана.
-func Sync(ctx context.Context, admin *pgxpool.Pool, catalogPath string) error {
+func Sync(ctx context.Context, admin *pgxpool.Pool, src Source) error {
 	// Платформын core permission-ууд. Модуль шинэчлэгдэж ШИНЭ permission
 	// нэмэгдвэл GrantOnInstall дахин ажилладаггүй тул syncPerm анх удаа орж
 	// буй кодод (xmax = 0) суулгасан tenant бүрт default оноолтыг мөн tx-д
@@ -120,23 +144,12 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, catalogPath string) error {
 		}
 	}
 
-	// Каталог файл: компиллогдоогүй аппууд store-д "татаж авах боломжтой"
-	// гэж харагдана. Файл байхгүй бол алгасна.
-	raw, err := os.ReadFile(catalogPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return markUncompiled(ctx, admin, compiled)
-		}
-		return err
-	}
-	var cat catalogFile
-	if err := json.Unmarshal(raw, &cat); err != nil {
-		return fmt.Errorf("каталог %s гэмтэлтэй: %w", catalogPath, err)
-	}
-	for _, e := range cat.Apps {
+	// Registry/локал index: компиллогдоогүй аппууд store-д "татаж авах
+	// боломжтой" гэж харагдана; компиллогдсоных нь тайлбар/publisher нөхөгдөнө.
+	ix := loadIndex(ctx, src)
+	for _, e := range ix.Apps {
+		var err error
 		if compiled[e.ID] {
-			// Компиллогдсон хувилбар нь үнэн эх — каталог зөвхөн
-			// тайлбар/publisher-ийг нөхнө.
 			_, err = admin.Exec(ctx, `
 				UPDATE apps SET description = $2::varchar(1000), publisher = $3::varchar(120),
 				                go_module = $4::varchar(255)
@@ -155,6 +168,17 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, catalogPath string) error {
 		}
 		if err != nil {
 			return fmt.Errorf("каталог sync %s: %w", e.ID, err)
+		}
+	}
+	// Компиллогдсон модулийн тайлбарыг кодоос (Describer) — registry-гүй ч.
+	for _, m := range nexus.Registered() {
+		mf := registry.FromModule(m)
+		if mf.Description != "" || mf.Publisher != "" {
+			if _, err := admin.Exec(ctx, `
+				UPDATE apps SET description = $2::varchar(1000), publisher = $3::varchar(120), go_module = $4::varchar(255)
+				 WHERE id = $1::varchar(128)`, mf.ID, mf.Description, mf.Publisher, mf.GoModule); err != nil {
+				return fmt.Errorf("describer sync %s: %w", mf.ID, err)
+			}
 		}
 	}
 	return markUncompiled(ctx, admin, compiled)
