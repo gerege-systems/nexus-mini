@@ -58,6 +58,17 @@ func loadIndex(ctx context.Context, src Source) *registry.Index {
 	return &registry.Index{}
 }
 
+// recordRelease — нийтлэгчийн хувилбарыг түүхэнд (анх харагдсан цаг).
+func recordRelease(ctx context.Context, admin *pgxpool.Pool, appID, version string) error {
+	if appID == "" {
+		return nil
+	}
+	_, err := admin.Exec(ctx, `
+		INSERT INTO app_releases (app_id, version) VALUES ($1::varchar(128), $2::varchar(32))
+		ON CONFLICT DO NOTHING`, appID, version)
+	return err
+}
+
 // syncPerm — permission-ийг каталогт тулгаад, анх удаа орж байвал
 // (INSERT зам: xmax = 0) тухайн модулийг суулгасан (core бол бүх) tenant-д
 // default оноолтыг хийнэ. Бүгд нэг tx — хагас төлөв үлдэхгүй. Байгаа кодод
@@ -142,6 +153,43 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, src Source) error {
 				return err
 			}
 		}
+		if err := recordRelease(ctx, admin, m.ID(), m.Version()); err != nil {
+			return err
+		}
+		// Суулгасан tenant-уудын хувилбарыг компиллогдсон руу нь өргөнө
+		// (түүхэнд "upgrade" үйл явдал, actor = систем). Шинэ permission-ийг
+		// syncPerm аль хэдийн backfill хийсэн.
+		rows, err := admin.Query(ctx, `
+			WITH old AS (
+			  SELECT id, tenant_id, version FROM app_installations
+			   WHERE app_id = $1::varchar(128) AND version <> $2::varchar(32))
+			UPDATE app_installations i SET version = $2::varchar(32)
+			  FROM old WHERE i.id = old.id
+			RETURNING old.tenant_id, old.version`,
+			m.ID(), m.Version())
+		if err != nil {
+			return fmt.Errorf("installation upgrade %s: %w", m.ID(), err)
+		}
+		type up struct{ tenant, from string }
+		ups, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (up, error) {
+			var u up
+			err := r.Scan(&u.tenant, &u.from)
+			return u, err
+		})
+		if err != nil {
+			return fmt.Errorf("installation upgrade %s: %w", m.ID(), err)
+		}
+		for _, u := range ups {
+			if _, err := admin.Exec(ctx, `
+				INSERT INTO installation_events (tenant_id, app_id, action, from_version, to_version)
+				VALUES ($1::uuid, $2::varchar(128), 'upgrade', $3::varchar(32), $4::varchar(32))`,
+				u.tenant, m.ID(), u.from, m.Version()); err != nil {
+				return err
+			}
+		}
+		if len(ups) > 0 {
+			log.Printf("app upgrade: %s → %s, %d tenant", m.ID(), m.Version(), len(ups))
+		}
 	}
 
 	// Registry/локал index: компиллогдоогүй аппууд store-д "татаж авах
@@ -149,6 +197,9 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, src Source) error {
 	ix := loadIndex(ctx, src)
 	for _, e := range ix.Apps {
 		var err error
+		if err := recordRelease(ctx, admin, e.ID, e.Version); err != nil {
+			return err
+		}
 		if compiled[e.ID] {
 			_, err = admin.Exec(ctx, `
 				UPDATE apps SET description = $2::varchar(1000), publisher = $3::varchar(120),
@@ -271,6 +322,12 @@ func (i *Installer) Install(ctx context.Context, appID string) error {
 			if err := rbac.GrantOnInstall(ctx, tx, tenantID, m.Permissions()); err != nil {
 				return err
 			}
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO installation_events (tenant_id, app_id, action, to_version, user_id)
+				VALUES ($1::uuid, $2::varchar(128), 'install', $3::varchar(32), $4::uuid)`,
+				tenantID, m.ID(), m.Version(), nexus.UserID(ctx)); err != nil {
+				return fmt.Errorf("install event %s: %w", m.ID(), err)
+			}
 		}
 		return nil
 	})
@@ -326,7 +383,15 @@ func (i *Installer) SetStatus(ctx context.Context, appID, status string) error {
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return nil
+	action := "enable"
+	if status == "disabled" {
+		action = "disable"
+	}
+	_, err = i.db.Exec(ctx, `
+		INSERT INTO installation_events (tenant_id, app_id, action, user_id)
+		VALUES ($1::uuid, $2::varchar(128), $3::varchar(16), $4::uuid)`,
+		nexus.TenantID(ctx), appID, action, nexus.UserID(ctx))
+	return err
 }
 
 // ─── Gate: "энэ tenant-д апп идэвхтэй юу" ───────────────────────────────

@@ -134,6 +134,7 @@ func cmdServe(_ []string) error {
 		g.Use(authSvc.RequireTenant)
 		g.Get("/api/menu", miscH.Menu)
 		g.Get("/api/store/apps", storeH.List)
+		g.Get("/api/store/apps/{id}/history", storeH.History)
 		g.Get("/api/permissions", rbacH.Permissions)
 
 		g.With(nexus.RequirePermission(perms, "core.apps.manage")).
@@ -170,6 +171,8 @@ func cmdServe(_ []string) error {
 		g.Get("/api/admin/tenants/{id}/members", adminH.TenantMembers)
 		g.Post("/api/admin/impersonate", adminH.Impersonate)
 		g.Put("/api/admin/tenants/{id}/state", adminH.SetTenantState)
+		g.Post("/api/admin/tenants/{id}/delete", adminH.ScheduleDeletion)
+		g.Post("/api/admin/tenants/{id}/delete/cancel", adminH.CancelDeletion)
 	})
 
 	// Модулиуд: урьдчилан хамгаалагдсан router (docs/02-rbac.md #5) —
@@ -214,6 +217,11 @@ func cmdServe(_ []string) error {
 					log.Printf("session purge: %v", err)
 				} else if n > 0 {
 					log.Printf("session purge: %d устгав", n)
+				}
+				if n, err := handlers.SweepDeletions(context.Background(), pools.Admin); err != nil {
+					log.Printf("tenant deletion sweep: %v", err)
+				} else if n > 0 {
+					log.Printf("tenant deletion sweep: %d байгууллага устгав", n)
 				}
 			}
 		}
@@ -285,6 +293,12 @@ func sameOriginOnly(next http.Handler) http.Handler {
 		// Handover нь админ панелийн (өөр домэйн) form POST — token өөрөө
 		// нэг удаагийн CSRF-ийн хамгаалалт.
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.URL.Path != "/api/auth/handover" {
+			// Sec-Fetch-Site: браузер өөрөө тавьдаг (клиент скрипт өөрчилж
+			// чадахгүй) — cross-site гэж хэлвэл Origin-оос үл хамааран 403.
+			if sfs := r.Header.Get("Sec-Fetch-Site"); sfs == "cross-site" {
+				http.Error(w, `{"error":"cross-site request"}`, http.StatusForbidden)
+				return
+			}
 			if origin := r.Header.Get("Origin"); origin != "" {
 				ok := origin == "https://"+r.Host || origin == "http://"+r.Host
 				if fh := r.Header.Get("X-Forwarded-Host"); !ok && fh != "" {

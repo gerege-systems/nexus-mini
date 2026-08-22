@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"strings"
@@ -47,7 +48,7 @@ func (h *Admin) Overview(w http.ResponseWriter, r *http.Request) {
 func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT t.id, t.slug, t.name, t.created_at,
-		       t.suspended_at IS NOT NULL, t.suspension_reason, t.read_only,
+		       t.suspended_at IS NOT NULL, t.suspension_reason, t.read_only, t.deletion_scheduled_at,
 		       (SELECT count(*) FROM memberships m WHERE m.tenant_id = t.id),
 		       (SELECT count(*) FROM app_installations i
 		         WHERE i.tenant_id = t.id AND i.status = 'enabled')
@@ -58,20 +59,21 @@ func (h *Admin) Tenants(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	type row struct {
-		ID        string    `json:"id"`
-		Slug      string    `json:"slug"`
-		Name      string    `json:"name"`
-		CreatedAt time.Time `json:"created_at"`
-		Suspended bool      `json:"suspended"`
-		Reason    string    `json:"reason"`
-		ReadOnly  bool      `json:"read_only"`
-		Members   int       `json:"members"`
-		Apps      int       `json:"apps"`
+		ID         string     `json:"id"`
+		Slug       string     `json:"slug"`
+		Name       string     `json:"name"`
+		CreatedAt  time.Time  `json:"created_at"`
+		Suspended  bool       `json:"suspended"`
+		Reason     string     `json:"reason"`
+		ReadOnly   bool       `json:"read_only"`
+		DeletionAt *time.Time `json:"deletion_at"`
+		Members    int        `json:"members"`
+		Apps       int        `json:"apps"`
 	}
 	out := []row{}
 	for rows.Next() {
 		var x row
-		if err := rows.Scan(&x.ID, &x.Slug, &x.Name, &x.CreatedAt, &x.Suspended, &x.Reason, &x.ReadOnly, &x.Members, &x.Apps); err != nil {
+		if err := rows.Scan(&x.ID, &x.Slug, &x.Name, &x.CreatedAt, &x.Suspended, &x.Reason, &x.ReadOnly, &x.DeletionAt, &x.Members, &x.Apps); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "scan failed")
 			return
 		}
@@ -214,6 +216,69 @@ func (h *Admin) SetTenantState(w http.ResponseWriter, r *http.Request) {
 	h.Rec.RecordAs(r.Context(), id, p.UserID, "platform.tenant.state", id,
 		map[string]any{"suspended": in.Suspended, "reason": in.Reason, "read_only": in.ReadOnly, "sessions_revoked": revoked})
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/admin/tenants/{id}/delete — 30 хоногийн дараа устгахаар товлоно
+// (cancel хүртэл буцаах боломжтой; sweep нь цагийн зайцаар). Товлохдоо
+// session-уудыг устгаж, түдгэлзүүлсэнтэй адил хаана.
+func (h *Admin) ScheduleDeletion(w http.ResponseWriter, r *http.Request) {
+	h.setDeletion(w, r, true)
+}
+
+// POST /api/admin/tenants/{id}/delete/cancel
+func (h *Admin) CancelDeletion(w http.ResponseWriter, r *http.Request) {
+	h.setDeletion(w, r, false)
+}
+
+const deletionGrace = 30 * 24 * time.Hour
+
+func (h *Admin) setDeletion(w http.ResponseWriter, r *http.Request, schedule bool) {
+	p, _ := auth.PrincipalFrom(r.Context())
+	id, ok := nexus.UUIDParam(w, r, "id")
+	if !ok {
+		return
+	}
+	var at *time.Time
+	if schedule {
+		t := time.Now().Add(deletionGrace)
+		at = &t
+	}
+	tag, err := h.Pool.Exec(r.Context(),
+		`UPDATE tenants SET deletion_scheduled_at = $2::timestamptz,
+		        suspended_at = CASE WHEN $2::timestamptz IS NULL THEN NULL ELSE coalesce(suspended_at, now()) END,
+		        suspension_reason = CASE WHEN $2::timestamptz IS NULL THEN '' ELSE 'устгалд товлогдсон' END
+		  WHERE id = $1::uuid`, id, at)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "deletion update failed")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		httpx.Error(w, http.StatusNotFound, "байгууллага олдсонгүй")
+		return
+	}
+	if h.State != nil {
+		h.State.Invalidate(id)
+	}
+	if schedule {
+		_, _ = h.Svc.RevokeTenantSessions(r.Context(), id)
+	}
+	action := "platform.tenant.delete.cancel"
+	if schedule {
+		action = "platform.tenant.delete.schedule"
+	}
+	h.Rec.RecordAs(r.Context(), id, p.UserID, action, id, map[string]any{"deletion_at": at})
+	httpx.JSON(w, http.StatusOK, map[string]any{"ok": true, "deletion_at": at})
+}
+
+// SweepDeletions — товлосон цаг нь өнгөрсөн байгууллагуудыг устгана (цагийн
+// зайцаар дуудагдана). Cascade: memberships, roles, installations, profiles…
+// audit_log FK-гүй тул гинж хэвээр үлдэнэ.
+func SweepDeletions(ctx context.Context, admin *pgxpool.Pool) (int, error) {
+	tag, err := admin.Exec(ctx, `DELETE FROM tenants WHERE deletion_scheduled_at IS NOT NULL AND deletion_scheduled_at < now()`)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
 }
 
 // GET /api/admin/users

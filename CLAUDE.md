@@ -29,7 +29,7 @@
 
 ## Deploy
 - runestone VPS (`ssh bay@46.250.254.85`), `/srv/nexus-mini`, deploy key alias `github-nexus-mini`.
-- Модулиуд: `apps/devices` (жишээ), `apps/organisation` (хэлтэс/нэгж + ажилтны байршил). Цөмд: байгууллагын профайл (`/api/tenant/profile`, `core.settings.manage`), түдгэлзүүлэх/зөвхөн-унших (`RequireTenant` → `tenant_state()`; админ `PUT /api/admin/tenants/{id}/state`).
+- Модулиуд: `apps/devices` (жишээ), `apps/organisation` (хэлтэс/нэгж + ажилтны байршил). Цөмд: байгууллагын профайл (`/api/tenant/profile`, `core.settings.manage`), түдгэлзүүлэх/зөвхөн-унших/устгалын 30 хоногийн хүлээлт (`RequireTenant` → `tenant_state()`; админ `PUT …/state`, `POST …/delete[/cancel]`, цагийн `SweepDeletions`); аппын хувилбарын түүх (`app_releases`, `installation_events`, `GET /api/store/apps/{id}/history`).
 - Env: `PORTAL_URL` (portal-ийн гадаад URL; admin → impersonation handover холбоос). Cross-process cache invalidation Postgres LISTEN/NOTIFY (`internal/core/bus`) — Redis хэрэггүй.
 - Домэйн: `nexus.runestonetechnologies.com` (portal; nginx `/api/*` → :8084, бусад → :3020), `nexus-admin.runestonetechnologies.com` (admin :3021, мөн `/api/*` → :8084). CORS байхгүй — same-origin rewrite.
 - Сервер дээр: `bash deploy/deploy.sh` — pull → go build (атом mv, `.prev` үлдээнэ) → `migrate --env /home/bay/secrets/nexus-mini.env` → frontend/admin `pnpm build` (`.next.new` → атом солилт) → restart 3 unit → health curl.

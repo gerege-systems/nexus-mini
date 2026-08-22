@@ -17,6 +17,8 @@ type State struct {
 	Suspended bool   `json:"suspended"`
 	Reason    string `json:"reason,omitempty"`
 	ReadOnly  bool   `json:"read_only"`
+	// DeletionAt — устгалд товлогдсон цаг (30 хоногийн хүлээлт); nil = үгүй.
+	DeletionAt *time.Time `json:"deletion_at,omitempty"`
 }
 
 type entry struct {
@@ -46,8 +48,8 @@ func (s *Store) Get(ctx context.Context, tenantID string) (State, error) {
 	var st State
 	var reason *string
 	err := s.pool.QueryRow(ctx,
-		`SELECT suspended, reason, read_only FROM tenant_state($1::uuid)`, tenantID).
-		Scan(&st.Suspended, &reason, &st.ReadOnly)
+		`SELECT suspended, reason, read_only, deletion_at FROM tenant_state($1::uuid)`, tenantID).
+		Scan(&st.Suspended, &reason, &st.ReadOnly, &st.DeletionAt)
 	if err != nil {
 		return State{}, err
 	}

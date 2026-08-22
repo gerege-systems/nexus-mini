@@ -129,3 +129,9 @@ Tenant/байгууллага/гишүүний загварыг open-gerege-nexu
 - **Fetch**: ETag, кэш (offline fallback), хэмжээний хязгаар, `generated_at` replay хамгаалалт; татаж чадахгүй бол boot унагаахгүй, кэш → локал `catalog/index.json`.
 - **`nexus` CLI** (`go run …/cmd/nexus@latest`): `init` (tag tarball-аас frontend + маркертай main.go), `add/upgrade/remove/list`. Модулийн UI-г Go module cache-ээс `frontend/modules/<нэр>/ui` руу **хуулна** (commit хийгдэнэ, дистрибуц доторх зам — sync скриптийн репо-дотор дүрэм хэвээр). `upgrade` permission өргөсвөл `-approve`.
 - Зориуд үгүй: runtime plugin/WASM, registry-д нэвтрэлт, модулийн tarball хостлох (Go proxy хийнэ).
+
+## OGN-ээс авсан сүүлийн 3 жижиг зүйл (2026-08-23)
+
+1. **Sec-Fetch-Site CSRF** — браузерын өөрөө тавьдаг толгой `cross-site` бол бичих хүсэлт 403 (Origin шалгалтаас гадна; handover чөлөөтэй).
+2. **Устгалын хүлээлт** — `tenants.deletion_scheduled_at`; `POST /api/admin/tenants/{id}/delete` = +30 хоног, тэр дороо suspend + session revoke; `…/delete/cancel` буцаана; цагийн sweep (`SweepDeletions`, admin pool) өнгөрсөн байгууллагыг cascade устгана (audit гинж FK-гүй тул үлдэнэ). Portal banner, админ UI «Төлөв» modal. OGN-ийн two-person rule-ийг аваагүй — нэг platform_admin role тул; олон оператортой болбол нэмнэ.
+3. **Хувилбарын түүх** — `app_releases` (нийтлэгчийн хувилбар анх харагдсан цаг; компиллогдсон + registry), `installation_events` (tenant бүрийн install/enable/disable/upgrade, actor). Boot-ийн Sync суулгасан tenant-уудын хувилбарыг компиллогдсон руу өргөж `upgrade` үйл явдал (actor=систем) бичнэ — permission backfill-тай хамт. Portal store «Түүх» modal, `GET /api/store/apps/{id}/history`.

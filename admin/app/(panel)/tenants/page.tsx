@@ -6,7 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 
-type Row = { id: string; slug: string; name: string; created_at: string; suspended: boolean; reason: string; read_only: boolean; members: number; apps: number };
+type Row = { id: string; slug: string; name: string; created_at: string; suspended: boolean; reason: string; read_only: boolean; deletion_at: string | null; members: number; apps: number };
 type Member = { id: string; name: string; email: string; platform_admin: boolean; roles: string[] };
 
 export default function TenantsPage() {
@@ -24,6 +24,21 @@ export default function TenantsPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  const setDeletion = async (row: Row, schedule: boolean) => {
+    const msg = schedule
+      ? `${row.name} — ${t("30 хоногийн дараа бүрмөсөн устгахаар товлох уу? Гишүүд тэр дороо хандах боломжгүй болно; хүртэл нь буцааж болно.")}`
+      : `${row.name} — ${t("устгалыг цуцлах уу?")}`;
+    if (!confirm(msg)) return;
+    try {
+      await api.post(`/api/admin/tenants/${row.id}/delete${schedule ? "" : "/cancel"}`);
+      toast(schedule ? t("Устгалд товлогдлоо (30 хоног)") : t("Устгал цуцлагдлаа"));
+      setState(null);
+      await loadRows();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа"));
+    }
+  };
 
   const saveState = async () => {
     if (!state) return;
@@ -80,6 +95,7 @@ export default function TenantsPage() {
                   <b style={{ fontWeight: 600 }}>{r.name}</b>
                   {r.suspended && <span className="badge badge--danger" style={{ marginLeft: "0.5rem" }}>{t("түдгэлзүүлсэн")}</span>}
                   {r.read_only && !r.suspended && <span className="badge badge--warn" style={{ marginLeft: "0.5rem" }}>{t("зөвхөн унших")}</span>}
+                  {r.deletion_at && <span className="badge badge--danger" style={{ marginLeft: "0.5rem" }}>{t("устгал")}: {new Date(r.deletion_at).toLocaleDateString("mn-MN")}</span>}
                 </td>
                 <td><code>{r.slug}</code></td>
                 <td>{r.members}</td>
@@ -124,6 +140,17 @@ export default function TenantsPage() {
                   onChange={(e) => setState({ ...state, read_only: e.target.checked })} />
                 {t("Зөвхөн унших — бичих хүсэлт 503 (засвар, төлбөр)")}
               </label>
+            </div>
+            <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: "0.8rem" }}>
+              <label>{t("Устгал (30 хоногийн хүлээлт)")}</label>
+              {state.row.deletion_at ? (
+                <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                  <span style={{ color: "var(--danger)" }}>{new Date(state.row.deletion_at).toLocaleString("mn-MN")}</span>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setDeletion(state.row, false)}>{t("Устгалыг цуцлах")}</button>
+                </div>
+              ) : (
+                <button className="btn btn--ghost btn--sm" style={{ color: "var(--danger)" }} onClick={() => setDeletion(state.row, true)}>{t("Устгалд товлох")}</button>
+              )}
             </div>
             <div className="modal__actions">
               <button className="btn btn--ghost" onClick={() => setState(null)}>{t("Болих")}</button>

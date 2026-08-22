@@ -4,12 +4,14 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/appstore"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 type Store struct {
@@ -98,6 +100,63 @@ func (h *Store) Catalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"apps": out})
+}
+
+// GET /api/store/apps/{id}/history — нийтлэгчийн хувилбарууд + энэ tenant-ийн
+// үйл явдлууд (суулгах/асаах/унтраах/шинэчлэх).
+func (h *Store) History(w http.ResponseWriter, r *http.Request) {
+	appID := chi.URLParam(r, "id")
+	type rel struct {
+		Version string    `json:"version"`
+		SeenAt  time.Time `json:"seen_at"`
+	}
+	rows, err := h.DB.Query(r.Context(),
+		`SELECT version, seen_at FROM app_releases WHERE app_id = $1::varchar(128) ORDER BY seen_at DESC`, appID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "history query failed")
+		return
+	}
+	releases, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (rel, error) {
+		var x rel
+		err := row.Scan(&x.Version, &x.SeenAt)
+		return x, err
+	})
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "history query failed")
+		return
+	}
+	type ev struct {
+		Action      string    `json:"action"`
+		FromVersion string    `json:"from_version"`
+		ToVersion   string    `json:"to_version"`
+		UserName    string    `json:"user_name"`
+		At          time.Time `json:"at"`
+	}
+	erows, err := h.DB.Query(r.Context(), `
+		SELECT e.action, e.from_version, e.to_version, coalesce(u.name, ''), e.at
+		  FROM installation_events e LEFT JOIN users u ON u.id = e.user_id
+		 WHERE e.tenant_id = $1::uuid AND e.app_id = $2::varchar(128)
+		 ORDER BY e.id DESC LIMIT 100`, nexus.TenantID(r.Context()), appID)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "history query failed")
+		return
+	}
+	events, err := pgx.CollectRows(erows, func(row pgx.CollectableRow) (ev, error) {
+		var x ev
+		err := row.Scan(&x.Action, &x.FromVersion, &x.ToVersion, &x.UserName, &x.At)
+		return x, err
+	})
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "history query failed")
+		return
+	}
+	if releases == nil {
+		releases = []rel{}
+	}
+	if events == nil {
+		events = []ev{}
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"releases": releases, "events": events})
 }
 
 // POST /api/store/apps/{id}/install

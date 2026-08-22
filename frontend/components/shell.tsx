@@ -134,7 +134,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main">
-        {me.tenant_state?.suspended && (
+        {me.tenant_state?.deletion_at && (
+          <div className="alert alert--danger" style={{ marginBottom: "1rem" }}>
+            <b>{t("Энэ байгууллага устгалд товлогдсон:")}</b> {new Date(me.tenant_state.deletion_at).toLocaleDateString("mn-MN")}. {t("Буцаахыг хүсвэл платформын админтай холбогдоно уу.")}
+          </div>
+        )}
+        {me.tenant_state?.suspended && !me.tenant_state.deletion_at && (
           <div className="alert alert--danger" style={{ marginBottom: "1rem" }}>
             <b>{t("Энэ байгууллагыг платформ түдгэлзүүлсэн байна.")}</b>{" "}
             {me.tenant_state.reason ? `${t("Шалтгаан")}: ${me.tenant_state.reason}. ` : ""}
