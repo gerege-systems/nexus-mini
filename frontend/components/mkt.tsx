@@ -60,11 +60,17 @@ function ThemeToggle() {
       (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
     setTheme(dark ? "light" : "dark");
   };
-  const showSun =
-    theme === "dark" ||
-    (theme === "system" &&
-      typeof window !== "undefined" &&
-      matchMedia("(prefers-color-scheme: dark)").matches);
+  // Системийн dark эсэхийг render-д биш mount-ын дараа уншина — үгүй бол
+  // сервер Moon, клиент Sun render хийж hydration зөрдөг (React #418).
+  const [systemDark, setSystemDark] = useState(false);
+  useEffect(() => {
+    const mq = matchMedia("(prefers-color-scheme: dark)");
+    setSystemDark(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  const showSun = theme === "dark" || (theme === "system" && systemDark);
   return (
     <button className="mkt-iconbtn" aria-label="Theme" onClick={toggle}>
       {showSun ? <Sun size={17} /> : <Moon size={17} />}
