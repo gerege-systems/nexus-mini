@@ -164,7 +164,7 @@ func (p *Provider) authenticateClient(r *http.Request) (*client, bool) {
 	if c.SecretHash == nil {
 		return c, secret == "" // public клиент secret илгээх ёсгүй
 	}
-	if secret == "" || !password.Verify(secret, *c.SecretHash) {
+	if secret == "" || !verifySecret(secret, *c.SecretHash) {
 		return nil, false
 	}
 	return c, true
@@ -705,11 +705,21 @@ func (p *Provider) EndSession(w http.ResponseWriter, r *http.Request) {
 
 // ─── Тусламж: клиент secret ───────────────────────────────────────────
 
-// NewClientSecret — 32 байт санамсаргүй secret + argon2 hash (хадгалахад).
+// NewClientSecret — 32 байт санамсаргүй secret + sha256 hash. Секрет нь
+// хэрэглэгчийн сонгосон биш, 256 бит энтропитой тул удаан hash (argon2)
+// хамгаалалт нэмэхгүй, харин /token дуудлага бүрт 64MB зарцуулж DoS-ийн
+// хөшүүрэг болно (OAuth серверүүдийн жишиг: sha256).
 func NewClientSecret() (plain, hash string, err error) {
 	plain = randToken()
-	hash, err = password.Hash(plain)
-	return
+	return plain, "sha256:" + sha256hex(plain), nil
+}
+
+// verifySecret — sha256 (шинэ) эсвэл argon2 (хуучин мөр) хоёуланг дэмжинэ.
+func verifySecret(plain, stored string) bool {
+	if rest, ok := strings.CutPrefix(stored, "sha256:"); ok {
+		return subtle.ConstantTimeCompare([]byte(sha256hex(plain)), []byte(rest)) == 1
+	}
+	return password.Verify(plain, stored)
 }
 
 func (p *Provider) String() string { return fmt.Sprintf("oidc(%s)", p.Issuer) }
