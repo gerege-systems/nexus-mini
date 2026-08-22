@@ -1,4 +1,6 @@
-# Модуль хөгжүүлэх гарын авлага
+# Хөгжүүлэгчийн гарын авлага — модуль, UI, дистрибуц, registry
+
+> Вэб хувилбар (агуулгын бүх хэсэгтэй — эхлэх, интеграц OIDC/SSO, аюулгүй байдлын дүрэм, хувь нэмэр): https://nexus.runestonetechnologies.com/developers · Интеграц: [04-integrations.md](04-integrations.md)
 
 Модуль бол `pkg/nexus.Module` interface-ийг хэрэгжүүлсэн Go package.
 Хамгийн сайн заавар бол ажиллаж байгаа жишээ —

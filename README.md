@@ -4,7 +4,7 @@
 
 nexus-mini нь [Gerege Nexus](https://github.com/gerege-systems/open-gerege-nexus)-аас
 санаа авсан, жижигрүүлж ойлгомжтой болгосон нээлттэй эхийн multi-tenant
-платформ юм. Цөм нь tenant, RBAC, audit-ыг (OIDC/SSO federation — үе 3, resilience — үе 4)
+платформ юм. Цөм нь tenant, RBAC, audit, OIDC provider + SSO federation-ийг (resilience — үе 4)
 өгнө; бизнесийн боломж бүр **модуль** болж app store-оор ирнэ.
 
 - **Go** (chi + pgx) · **PostgreSQL 16** (Row-Level Security) · **Next.js**
@@ -97,7 +97,8 @@ registry: [gerege-systems/nexus-registry](https://github.com/gerege-systems/nexu
 | [docs/00-decisions.md](docs/00-decisions.md) | Архитектурын шийдвэрүүд |
 | [docs/01-lessons.md](docs/01-lessons.md) | Өмнөх төслөөс авсан сургамж, мөрдөх дүрмүүд |
 | [docs/02-rbac.md](docs/02-rbac.md) | RBAC — Gerege Nexus-ийн суурь + засварууд |
-| [docs/03-module-guide.md](docs/03-module-guide.md) | Модуль хөгжүүлэх гарын авлага |
+| [docs/03-module-guide.md](docs/03-module-guide.md) | Хөгжүүлэгчийн гарын авлага — модуль, UI, дистрибуц, registry |
+| [docs/04-integrations.md](docs/04-integrations.md) | OIDC provider, SSO (Google/OIDC), federation |
 
 ## License
 

@@ -30,6 +30,8 @@ type Auth struct {
 	Audit *audit.Recorder
 	Perms *rbac.Store
 	State *tenantstate.Store
+	// Issuer — OIDC provider-ийн issuer URL (SSO клиентийн хуудсанд харуулна).
+	Issuer string
 }
 
 var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)

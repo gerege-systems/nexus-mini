@@ -206,6 +206,13 @@ func (s *Service) ConsumeHandover(ctx context.Context, w http.ResponseWriter, ha
 	return &h, nil
 }
 
+// IsMember — хэрэглэгч tenant-ийн гишүүн үү (OIDC authorize-д).
+func (s *Service) IsMember(ctx context.Context, tenantID, userID string) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT auth_is_member($1::uuid, $2::uuid)`, tenantID, userID).Scan(&ok)
+	return ok, err
+}
+
 // Lockout — данс түр түгжээтэй бол хэзээ хүртэл (нэвтрэхээс өмнө шалгана).
 func (s *Service) Lockout(ctx context.Context, email string) (*time.Time, error) {
 	var until *time.Time

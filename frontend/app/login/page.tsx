@@ -13,12 +13,23 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const { t } = useT();
+  // ?next= — зөвхөн энэ сайтын харьцангуй зам (open redirect хаалттай).
+  const [next, setNext] = useState("/dashboard");
+  const [providers, setProviders] = useState<{ key: string; name: string }[]>([]);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const n = sp.get("next") || "";
+    if (n.startsWith("/") && !n.startsWith("//")) setNext(n);
+    const e = sp.get("error");
+    if (e) setErr(e);
+    api.get<{ providers: { key: string; name: string }[] }>("/api/auth/sso/providers").then((r) => setProviders(r.providers)).catch(() => {});
+  }, []);
 
   // Аль хэдийн нэвтэрсэн хүнээс дахин нууц үг нэхэхгүй — session хүчинтэй
   // бол шууд портал руу.
   useEffect(() => {
-    api.get("/api/me").then(() => router.replace("/dashboard")).catch(() => {});
-  }, [router]);
+    api.get("/api/me").then(() => { window.location.assign(next); }).catch(() => {});
+  }, [router, next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +37,9 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await api.post("/api/login", { email, password });
-      router.replace("/dashboard");
+      // /api/... (OIDC authorize) руу буцах бол бүтэн navigation.
+      if (next.startsWith("/api/")) window.location.assign(next);
+      else router.replace(next);
     } catch (ex) {
       setErr(ex instanceof ApiError ? ex.message : t("Алдаа гарлаа"));
       setBusy(false);
@@ -59,6 +72,17 @@ export default function LoginPage() {
             {t("Нэвтрэх")}
           </button>
         </form>
+        {providers.length > 0 && (
+          <div style={{ marginTop: "1rem", display: "grid", gap: "0.5rem" }}>
+            <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: "0.8rem" }}>{t("эсвэл")}</div>
+            {providers.map((p) => (
+              <a key={p.key} className="btn btn--ghost" style={{ justifyContent: "center" }}
+                href={`/api/auth/sso/${p.key}/start?next=${encodeURIComponent(next)}`}>
+                {p.key === "google" ? t("Google-ээр нэвтрэх") : `${p.name} — ${t("SSO-оор нэвтрэх")}`}
+              </a>
+            ))}
+          </div>
+        )}
         <div className="foot">
           {t("Бүртгэлгүй юу?")} <Link href="/signup">{t("Байгууллагаа бүртгүүлэх")}</Link>
         </div>

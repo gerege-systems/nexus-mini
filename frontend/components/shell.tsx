@@ -55,6 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { path: "/members", label: t("Гишүүд"), icon: "users", perm: "core.members.manage" },
     { path: "/roles", label: t("Эрхийн тохиргоо"), icon: "key", perm: "core.roles.manage" },
     { path: "/audit", label: t("Audit лог"), icon: "scroll", perm: "core.audit.read" },
+    { path: "/sso-clients", label: t("SSO клиентүүд"), icon: "key", perm: "core.sso.manage" },
     { path: "/settings", label: t("Байгууллагын тохиргоо"), icon: "settings", perm: "" }, // унших — гишүүн бүр
   ].filter((i) => !i.perm || perms[i.perm]);
 

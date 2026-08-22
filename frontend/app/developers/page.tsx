@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, FolderTree, GitPullRequest, LayoutTemplate, Rocket } from "lucide-react";
+import { BookOpen, FolderTree, GitPullRequest, KeyRound, LayoutTemplate, Rocket, ShieldCheck } from "lucide-react";
 import { MktHeader, MktFooter } from "@/components/mkt";
 import { useT } from "@/lib/i18n";
 
@@ -18,7 +18,13 @@ export default function DevelopersPage() {
       <MktHeader />
 
       <section className="mkt-hero" style={{ paddingBottom: "1.5rem" }}>
-        <h1>{t("Модуль хөгжүүлэх")}</h1>
+        <h1>{t("Хөгжүүлэгчийн гарын авлага")}</h1>
+        <p style={{ color: "var(--text-2)" }}>{t("Локал ажиллуулахаас эхлээд модуль, UI, өөрийн дистрибуц, registry, гадны системтэй OIDC-ээр холбох, цөмд хувь нэмэр оруулах хүртэл — нэг хуудсанд.")}</p>
+        <nav className="mkt-toc" aria-label={t("Агуулга")}>
+          {[["#start", "0. Эхлэх"], ["#module", "1–5. Модуль (backend)"], ["#ui", "6. UI"], ["#register", "7–8. Бүртгэх · Registry"], ["#dist", "Өөрийн дистрибуц"], ["#oidc", "Гадны систем холбох (OIDC/SSO)"], ["#security", "Аюулгүй байдлын дүрэм"], ["#contrib", "Цөмд хувь нэмэр"], ["#test", "Тест · Deploy"]].map(([h, l]) => (
+            <a key={h} href={h}>{t(l)}</a>
+          ))}
+        </nav>
         <p>
           {t("Модуль бол")} <code>pkg/nexus.Module</code> {t("interface-ийг хэрэгжүүлсэн Go package.")}{" "}
           {t("Tenant тусгаарлалт, нэвтрэлт, суулгалт, RBAC оноолт, audit — платформ хийнэ; та бизнес логикоо л бичнэ. Хамгийн сайн заавар бол ажиллаж байгаа жишээ —")}{" "}
@@ -30,7 +36,24 @@ export default function DevelopersPage() {
       </section>
 
       <section className="mkt-sect" style={{ paddingTop: 0 }}>
-        <h2>{t("Хэн юу хариуцдаг вэ")}</h2>
+        <h2 id="start"><Rocket size={19} style={{ verticalAlign: "-3px" }} /> {t("0. Эхлэх — локал ажиллуулах")}</h2>
+        <Code>
+          <div><span className="c">$</span> git clone https://github.com/gerege-systems/nexus-mini &amp;&amp; cd nexus-mini</div>
+          <div><span className="c">$</span> psql -v owner_pw=… -v app_pw=… -v admin_pw=… -v auth_pw=… -f deploy/01-roles.sql&nbsp;&nbsp;<span className="c">{t("# нэг удаа, superuser")}</span></div>
+          <div><span className="c">$</span> cp .env.example backend/nexus-mini.env&nbsp;&nbsp;<span className="c">{t("# 4 DB URL + ADMIN_EMAIL/NAME/PASSWORD + PORTAL_URL")}</span></div>
+          <div><span className="c">$</span> make migrate &amp;&amp; make serve&nbsp;&nbsp;<span className="c">{t("# API :8084, анхны платформ админ env-ээс")}</span></div>
+          <div><span className="c">$</span> cd frontend &amp;&amp; pnpm install &amp;&amp; cd .. &amp;&amp; make web&nbsp;&nbsp;<span className="c">{t("# portal :3020;  make admin — :3021")}</span></div>
+          <div><span className="c">$</span> docker compose up -d&nbsp;&nbsp;<span className="c">{t("# эсвэл бүгд нэг коммандаар")}</span></div>
+        </Code>
+        <p style={{ color: "var(--text-2)" }}>{t("Бүх команд Makefile-аар (make help). Push-ийн өмнө make check — linux build + vet + test + SDK-ийн хил. Хөгжүүлэлтийн төрлүүд:")}</p>
+        <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
+          <li><b>{t("Модуль")}</b> — {t("бизнес функц (энэ репогийн apps/ эсвэл өөрийн репо); доорх §1–8")}</li>
+          <li><b>{t("Дистрибуц")}</b> — {t("өөрийн компанид nexus-mini ажиллуулах, модулиуд сонгох (nexus CLI)")}</li>
+          <li><b>{t("Интеграц")}</b> — {t("гадны систем nexus-mini-ээр нэвтрэх / nexus-mini Google, SSO-оор нэвтрэх (OIDC)")}</li>
+          <li><b>{t("Цөм")}</b> — {t("backend/internal, frontend, admin — PR-аар (доод хэсэг)")}</li>
+        </ul>
+
+        <h2 id="module">{t("Хэн юу хариуцдаг вэ")}</h2>
         <div className="card" style={{ margin: "1rem 0 2rem", overflowX: "auto" }}>
           <table className="table">
             <thead><tr><th>{t("МОДУЛЬ")}</th><th>{t("ПЛАТФОРМ")}</th></tr></thead>
@@ -144,7 +167,7 @@ export default function DevelopersPage() {
         </Code>
         <p style={{ color: "var(--text-2)" }}>{t("Path заавал /<ShortID> эсвэл /<ShortID>/… — өөр зам Register panic (portal-ийн middleware нийтийн замаас бусдыг хамгаалдаг, модуль тойрч чадахгүй). Icon нэр: components/icons.tsx.")}</p>
 
-        <h3>{t("6. UI хуудас (portal)")}</h3>
+        <h3 id="ui">{t("6. UI хуудас (portal)")}</h3>
         <p style={{ color: "var(--text-2)" }}>
           {t("UI нь модулийн хавтаст амьдарна: ui/pages/ доторх хуудсууд build үед app/(portal)/<нэр>/ руу хуулагдана, ui/i18n.ts толь цөмийнхтэй нэгдэнэ — цөмийн frontend файлд гар хүрэхгүй. Бэлэн загвар")}{" "}
           (<a href="https://github.com/gerege-systems/nexus-mini/blob/main/backend/apps/devices/ui/pages/page.tsx"
@@ -171,7 +194,7 @@ export default function DevelopersPage() {
           <li>{t("Толь:")} <code>ui/i18n.ts</code> — <code>{"{ en: { \"Төхөөрөмжүүд\": \"Devices\" } }"}</code> {t("(түлхүүр нь монгол текст)")}</li>
         </ul>
 
-        <h3>{t("7. Бүртгэх ба асаах")}</h3>
+        <h3 id="register">{t("7. Бүртгэх ба асаах")}</h3>
         <Code>
           <div><span className="c">{t("// backend/apps/apps.go — бинарид орох модулиуд:")}</span></div>
           <div><span className="k">func</span> All() []nexus.Module {"{"} <span className="k">return</span> []nexus.Module{"{"} devices.New(), name.New() {"}"} {"}"}</div>
@@ -189,7 +212,7 @@ export default function DevelopersPage() {
           {t("репод PR илгээнэ; maintainer index.json-ийг Ed25519-ээр гарын үсэглэнэ. Код registry-д хадгалагдахгүй — go_module зам + git tag хангалттай. Орсны дараа хэн ч")} <code>nexus add name</code> {t("гэж дистрибуцдаа нэмнэ. Өөрийн registry: репог хуулж, nexus-registry keygen → REGISTRY_URL + REGISTRY_KEYS.")}
         </p>
 
-        <h2 style={{ marginTop: "2rem" }}><GitPullRequest size={19} style={{ verticalAlign: "-3px" }} /> {t("Өөрийн дистрибуц — цөмийг fork хийхгүй")}</h2>
+        <h2 id="dist" style={{ marginTop: "2rem" }}><GitPullRequest size={19} style={{ verticalAlign: "-3px" }} /> {t("Өөрийн дистрибуц — цөмийг fork хийхгүй")}</h2>
         <p style={{ color: "var(--text-2)" }}>
           {t("Өөрийн компанид nexus-mini ашиглаж, өөрийн модулиуд, өөрийн store, өөрийн харилцагчидтай (tenant) платформ ажиллуулж болно. Цөмийн репог хуулбарлаж засахгүй — хамаарал болгоно. Ингэж байж цөмийн шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.")}
         </p>
@@ -214,9 +237,58 @@ export default function DevelopersPage() {
           <li>{t("Цөмд алдаа олбол өөр дээрээ засахгүй — upstream руу PR. Харилцагч тань таны instance дээр tenant болно; та платформ админ")}</li>
         </ul>
 
-        <h2 style={{ marginTop: "2rem" }}><BookOpen size={19} style={{ verticalAlign: "-3px" }} /> {t("Тест")}</h2>
+        <h2 id="oidc" style={{ marginTop: "2rem" }}><KeyRound size={19} style={{ verticalAlign: "-3px" }} /> {t("Гадны систем холбох — OIDC provider, SSO, federation")}</h2>
         <p style={{ color: "var(--text-2)" }}>
-          {t("SQL parse/encode бүх логикт unit тест бич.")} <code>make check</code> {t("нь linux cross-build + vet + test + SDK-ийн хилийн шалгалт (модуль internal/* импортолбол унадаг) — push бүрийн өмнө заавал.")}
+          {t("nexus-mini нь OpenID Connect provider (таны систем энэ платформын бүртгэлээр нэвтэрнэ) ба relying party (энэ платформ Google/өөр issuer-ээр нэвтэрнэ) хоёулаа. Хоёр nexus-mini хоорондоо = federation.")}
+        </p>
+        <h3>{t("Таны систем nexus-mini-ээр нэвтрэх")}</h3>
+        <ol style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
+          <li>{t("Portal → SSO клиентүүд (core.sso.manage) → Клиент нэмэх: нэр, redirect URI (https/localhost), scope. Confidential бол client_secret нэг л удаа харагдана; SPA/mobile бол Public (PKCE).")}</li>
+          <li>{t("Discovery:")} <code>&lt;PORTAL_URL&gt;/api/oauth2/.well-known/openid-configuration</code> — {t("дурын OIDC номын сан (openid-client, oidc-client-ts, Spring, NextAuth…) үүгээр бүх endpoint-ийг олно.")}</li>
+          <li>{t("Урсгал: authorization_code + PKCE S256 заавал. Хэрэглэгч portal-д нэвтэрч, клиентийн байгууллагын гишүүн бол consent → code → /token. Зөвшөөрөл санагдана.")}</li>
+          <li>{t("Токен: access opaque (/introspect, /revoke), id_token RS256 (/jwks), offline_access → refresh (rotation, replay бол гэр бүлээр хүчингүй). Claims: sub, name, email, tenant (slug) + tenant_id, roles.")}</li>
+          <li>{t("Сервер-сервер: client_credentials → tenant scope-той access token. Гарах: end_session?id_token_hint=…")}</li>
+        </ol>
+        <Code>
+          <div><span className="c">{t("// 1. browser → authorize (PKCE):")}</span></div>
+          <div>&lt;issuer&gt;/authorize?response_type=code&amp;client_id=…&amp;redirect_uri=…&amp;scope=openid%20profile%20email&amp;state=…&amp;nonce=…&amp;code_challenge=…&amp;code_challenge_method=S256</div>
+          <div><span className="c">{t("// 2. callback-ийн code-оор токен:")}</span></div>
+          <div><span className="c">$</span> curl -u &quot;$CLIENT_ID:$CLIENT_SECRET&quot; -X POST &lt;issuer&gt;/token -d grant_type=authorization_code -d code=… -d redirect_uri=… -d code_verifier=…</div>
+          <div><span className="c">{t("// 3. шалгах / хүчингүй болгох:")}</span></div>
+          <div><span className="c">$</span> curl -u … -X POST &lt;issuer&gt;/introspect -d token=…&nbsp;&nbsp;&nbsp;<span className="c">$</span> curl -u … -X POST &lt;issuer&gt;/revoke -d token=…</div>
+        </Code>
+        <h3>{t("nexus-mini Google / өөр OIDC-ээр нэвтрэх (env)")}</h3>
+        <Code>
+          <div>GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…&nbsp;&nbsp;<span className="c">{t("# redirect: <PORTAL_URL>/api/auth/sso/google/callback")}</span></div>
+          <div>SSO_ISSUER=https://nexus.bold.mn/api/oauth2 SSO_CLIENT_ID=… SSO_CLIENT_SECRET=… SSO_NAME=&quot;Bold SSO&quot;&nbsp;&nbsp;<span className="c">{t("# federation")}</span></div>
+          <div>SSO_AUTO_SIGNUP=false&nbsp;&nbsp;<span className="c">{t("# true: танигдаагүй имэйлд данс үүсгэнэ (JIT)")}</span></div>
+        </Code>
+        <p style={{ color: "var(--text-2)" }}>{t("Login хуудсанд товч гарна; PKCE + state + nonce, id_token-ийг issuer-ийн JWKS-ээр шалгана. Дэлгэрэнгүй:")} <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/04-integrations.md" style={{ color: "var(--accent)", fontWeight: 600 }}>docs/04-integrations.md</a>.</p>
+
+        <h2 id="security" style={{ marginTop: "2rem" }}><ShieldCheck size={19} style={{ verticalAlign: "-3px" }} /> {t("Аюулгүй байдлын дүрэм — модуль, цөм хоёуланд")}</h2>
+        <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
+          <li>{t("Эрх зөвхөн серверт: route бүр RequirePermission; UI-гийн нуулт нь UX. Мөрийн түвшин — RLS + query-дээ tenant_id, own scope бол created_by.")}</li>
+          <li>{t("SQL үргэлж параметртэй, төрлийн cast-тай ($1::uuid). Бүх string багана varchar(n); FK бусад хүснэгт рүү → same-tenant trigger.")}</li>
+          <li>{t("Алдааг клиентэд түүхийгээр нь буцаахгүй (DBError/Error): 23505 → 409, бусад → лог + ерөнхий 500. Буруу uuid → 400 (UUIDParam).")}</li>
+          <li>{t("Нууц зүйл (токен, нууц үг, session) лог/audit-д бичихгүй. Client secret argon2-оор hash-лагдсан; OAuth токен sha256 hash-аар хадгалагдана.")}</li>
+          <li>{t("Апп DB role-д: temp хүснэгт үгүй, auth_* функц үгүй, users.password_hash үгүй, tenants төлөв багана үгүй — модуль эдгээрт хүрч чадахгүй, хүрэх гэж бүү оролд.")}</li>
+          <li>{t("Cookie-тэй бичих хүсэлт Origin + Sec-Fetch-Site шалгалттай; гадны домэйноос дуудах endpoint бол токен-аар танигддаг байх (OAuth2 загвар).")}</li>
+          <li>{t("Render дотор window/localStorage/matchMedia уншихгүй (hydration) — useEffect-д. Шалгахдаа dark/light хоёуланг.")}</li>
+        </ul>
+
+        <h2 id="contrib" style={{ marginTop: "2rem" }}><GitPullRequest size={19} style={{ verticalAlign: "-3px" }} /> {t("Цөмд хувь нэмэр оруулах")}</h2>
+        <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
+          <li>{t("Бүтэц:")} <code>backend/internal/core/*</code> {t("(цөмийн дотоод — чөлөөтэй өөрчлөгдөнө),")} <code>backend/pkg/nexus</code> + <code>backend/core.Main</code> {t("(SDK — v1.x-д эвдэхгүй, эвдэх бол major),")} <code>backend/pkg/registry</code> {t("(registry гэрээ),")} <code>frontend/</code>, <code>admin/</code>.</li>
+          <li>{t("Миграц: backend/db/migrations/000NN_*.sql (goose, Up/Down хоёулаа); definer функц бүр SET search_path = pg_catalog, public, pg_temp + REVOKE FROM PUBLIC + тодорхой GRANT.")}</li>
+          <li>{t("Тест: unit (go test) + env-гэйт integration (NEXUS_TEST_DATABASE_URL*); RLS/RBAC өөрчлөлтөд integration заавал. make check push бүрийн өмнө.")}</li>
+          <li>{t("Баримт: docs/00-decisions.md-д шийдвэрээ, docs/03 ↔ энэ хуудас синк, CLAUDE.md-ийн invariant-ууд.")}</li>
+          <li>{t("PR: жижиг, нэг зорилготой; commit-д «яагаад». Алдаа олбол fork-доо биш upstream-д.")}</li>
+        </ul>
+
+        <h2 id="test" style={{ marginTop: "2rem" }}><BookOpen size={19} style={{ verticalAlign: "-3px" }} /> {t("Тест · Deploy")}</h2>
+        <p style={{ color: "var(--text-2)" }}>
+          {t("SQL parse/encode бүх логикт unit тест бич.")} <code>make check</code> {t("нь linux cross-build + vet + test + SDK-ийн хилийн шалгалт (модуль internal/* импортолбол унадаг) — push бүрийн өмнө заавал.")}{" "}
+          {t("Deploy: сервер дээр git pull → deploy/deploy.sh (make migrate ENV_FILE=… + атом бинари/Next солилт + systemd restart); unit/nginx өөрчлөлт гараар. Docker: docker-compose.yml. Production: ENVIRONMENT=production, PORTAL_URL https, nexus_auth role, ADMIN_* env-ээс анхны админ үүссэний дараа устга.")}
         </p>
 
         <div className="card card__pad" style={{ marginTop: "2rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>

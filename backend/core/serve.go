@@ -18,7 +18,9 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/config"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/handlers"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/oidc"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/ssoclient"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
@@ -70,7 +72,9 @@ func cmdServe(_ []string) error {
 		st, err := tstate.Get(ctx, tid)
 		return st.Suspended, st.ReadOnly, err
 	})
-	authH := &handlers.Auth{Pool: pools.Auth, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms, State: tstate}
+	issuer := strings.TrimRight(cfg.PortalURL, "/") + "/api/oauth2"
+	oidcP := oidc.New(issuer, strings.TrimRight(cfg.PortalURL, "/"), pools.Auth, authSvc, perms)
+	authH := &handlers.Auth{Pool: pools.Auth, DB: tdb, Svc: authSvc, Audit: rec, Perms: perms, State: tstate, Issuer: issuer}
 	storeH := &handlers.Store{DB: tdb, Installer: installer, Gate: gate, Audit: rec}
 	rbacH := &handlers.RBACH{DB: tdb, Pool: pools.Auth, Perms: perms, Audit: rec}
 	miscH := &handlers.Misc{DB: tdb, Perms: perms}
@@ -119,6 +123,33 @@ func cmdServe(_ []string) error {
 	r.With(httprate.LimitByIP(30, time.Minute)).Post("/api/logout", authH.Logout)
 	r.Get("/api/catalog", storeH.Catalog)
 
+	// SSO client (relying party): Google + ерөнхий OIDC issuer (өөр nexus-mini ч).
+	ssoC := ssoclient.New([]ssoclient.Provider{
+		{Key: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
+		{Key: "sso", Name: cfg.SSOName, Issuer: cfg.SSOIssuer, ClientID: cfg.SSOClientID, ClientSecret: cfg.SSOClientSecret},
+	})
+	ssoH := handlers.NewSSO(ssoC, authH, cfg.PortalURL, cfg.SSOAutoSignup, cfg.CookieSecure, cfg.DatabaseURLAuth)
+	r.Get("/api/auth/sso/providers", ssoH.Providers)
+	r.With(authLimit).Get("/api/auth/sso/{key}/start", ssoH.Start)
+	r.With(authLimit).Get("/api/auth/sso/{key}/callback", ssoH.Callback)
+
+	// OIDC provider (үе 3). Cookie-гүй endpoint-ууд CORS нээлттэй (SPA клиент);
+	// consent нь portal cookie-тэй тул CSRF хамгаалалт хэвээр.
+	r.Route("/api/oauth2", func(o chi.Router) {
+		o.Use(oauthCORS)
+		o.Get("/.well-known/openid-configuration", oidcP.Discovery)
+		o.Get("/jwks", oidcP.JWKS)
+		o.Get("/authorize", oidcP.Authorize)
+		o.With(httprate.LimitByIP(60, time.Minute)).Post("/token", oidcP.Token)
+		o.Get("/userinfo", oidcP.Userinfo)
+		o.Post("/userinfo", oidcP.Userinfo)
+		o.With(httprate.LimitByIP(60, time.Minute)).Post("/introspect", oidcP.Introspect)
+		o.Post("/revoke", oidcP.Revoke)
+		o.Get("/end_session", oidcP.EndSession)
+		o.Get("/consent", oidcP.ConsentInfo)
+		o.Post("/consent", oidcP.Consent)
+	})
+
 	// Нэвтэрсэн (tenant сонгоогүй байж болно).
 	r.Group(func(g chi.Router) {
 		g.Use(authSvc.RequireUser)
@@ -149,6 +180,10 @@ func cmdServe(_ []string) error {
 		g.With(nexus.RequirePermission(perms, "core.roles.manage")).Put("/api/roles/{id}/grants", rbacH.SetGrants)
 
 		g.Get("/api/tenant/profile", authH.TenantProfile)
+		g.With(nexus.RequirePermission(perms, "core.sso.manage")).Get("/api/sso-clients", authH.SSOClients)
+		g.With(nexus.RequirePermission(perms, "core.sso.manage")).Post("/api/sso-clients", authH.CreateSSOClient)
+		g.With(nexus.RequirePermission(perms, "core.sso.manage")).Put("/api/sso-clients/{id}", authH.UpdateSSOClient)
+		g.With(nexus.RequirePermission(perms, "core.sso.manage")).Delete("/api/sso-clients/{id}", authH.DeleteSSOClient)
 		g.With(nexus.RequirePermission(perms, "core.settings.manage")).Put("/api/tenant/profile", authH.UpdateTenantProfile)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members", rbacH.Members)
 		g.With(nexus.RequirePermission(perms, "core.members.manage")).Get("/api/members/lookup", rbacH.LookupMember)
@@ -218,6 +253,11 @@ func cmdServe(_ []string) error {
 				} else if n > 0 {
 					log.Printf("session purge: %d устгав", n)
 				}
+				if n, err := oidcP.Purge(context.Background()); err != nil {
+					log.Printf("oauth purge: %v", err)
+				} else if n > 0 {
+					log.Printf("oauth purge: %d устгав", n)
+				}
 				if n, err := handlers.SweepDeletions(context.Background(), pools.Admin); err != nil {
 					log.Printf("tenant deletion sweep: %v", err)
 				} else if n > 0 {
@@ -270,6 +310,23 @@ func securityHeaders(prod bool) func(http.Handler) http.Handler {
 	}
 }
 
+// oauthCORS — OIDC endpoint-уудад (cookie-гүй) CORS нээлттэй: SPA клиент
+// token/userinfo/jwks-ийг браузераас дуудна. Consent cookie-тэй тул хасна.
+func oauthCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/oauth2/consent" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // clientIP — rate limit/лог-ийн IP. chi-ийн RealIP нь True-Client-IP,
 // X-Forwarded-For зэрэг клиентийн тавьж болох толгойг итгэдэг (GHSA-3fxj-6jh8-hvhx)
 // тул хэрэглэхгүй. Зөвхөн шууд холбогч нь loopback/private (манай nginx)
@@ -292,7 +349,10 @@ func sameOriginOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Handover нь админ панелийн (өөр домэйн) form POST — token өөрөө
 		// нэг удаагийн CSRF-ийн хамгаалалт.
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.URL.Path != "/api/auth/handover" {
+		// OAuth2 token/introspect/revoke — клиент өөрөө танигддаг (secret/PKCE),
+		// cookie хэрэглэдэггүй тул same-origin шаардахгүй; consent нь cookie-тэй.
+		oauthPublic := strings.HasPrefix(r.URL.Path, "/api/oauth2/") && r.URL.Path != "/api/oauth2/consent"
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.URL.Path != "/api/auth/handover" && !oauthPublic {
 			// Sec-Fetch-Site: браузер өөрөө тавьдаг (клиент скрипт өөрчилж
 			// чадахгүй) — cross-site гэж хэлвэл Origin-оос үл хамааран 403.
 			if sfs := r.Header.Get("Sec-Fetch-Site"); sfs == "cross-site" {

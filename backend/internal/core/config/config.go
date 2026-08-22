@@ -31,6 +31,11 @@ type Config struct {
 	RegistryKeys string
 	// RegistryCacheDir — татсан index-ийн кэш (offline fallback, ETag).
 	RegistryCacheDir string
+	// SSO (relying party): ерөнхий OIDC provider + Google. Хоосон = товч гарахгүй.
+	SSOIssuer, SSOClientID, SSOClientSecret, SSOName string
+	GoogleClientID, GoogleClientSecret               string
+	// SSOAutoSignup — танигдаагүй имэйлд данс үүсгэх (JIT). Default хаалттай.
+	SSOAutoSignup bool
 	// CookieSecure — production дээр true.
 	CookieSecure bool
 	// PortalURL — portal-ийн гадаад URL (админ панелээс impersonation
@@ -40,16 +45,23 @@ type Config struct {
 
 func Load() (Config, error) {
 	c := Config{
-		DatabaseURL:      os.Getenv("DATABASE_URL"),
-		DatabaseURLAdmin: os.Getenv("DATABASE_URL_ADMIN"),
-		DatabaseURLAuth:  os.Getenv("DATABASE_URL_AUTH"),
-		Port:             getenv("PORT", "8084"),
-		Env:              getenv("ENVIRONMENT", "development"),
-		CatalogPath:      getenv("CATALOG_PATH", "../catalog/index.json"), // cwd=backend (make serve); systemd/Docker env-ээр абсолют зам
-		RegistryURL:      getenv("REGISTRY_URL", registry.DefaultURL),
-		RegistryKeys:     os.Getenv("REGISTRY_KEYS"),
-		RegistryCacheDir: getenv("REGISTRY_CACHE_DIR", ".registry-cache"),
-		PortalURL:        getenv("PORTAL_URL", "http://localhost:3020"),
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		DatabaseURLAdmin:   os.Getenv("DATABASE_URL_ADMIN"),
+		DatabaseURLAuth:    os.Getenv("DATABASE_URL_AUTH"),
+		Port:               getenv("PORT", "8084"),
+		Env:                getenv("ENVIRONMENT", "development"),
+		CatalogPath:        getenv("CATALOG_PATH", "../catalog/index.json"), // cwd=backend (make serve); systemd/Docker env-ээр абсолют зам
+		RegistryURL:        getenv("REGISTRY_URL", registry.DefaultURL),
+		RegistryKeys:       os.Getenv("REGISTRY_KEYS"),
+		RegistryCacheDir:   getenv("REGISTRY_CACHE_DIR", ".registry-cache"),
+		SSOIssuer:          os.Getenv("SSO_ISSUER"),
+		SSOClientID:        os.Getenv("SSO_CLIENT_ID"),
+		SSOClientSecret:    os.Getenv("SSO_CLIENT_SECRET"),
+		SSOName:            getenv("SSO_NAME", "SSO"),
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		SSOAutoSignup:      os.Getenv("SSO_AUTO_SIGNUP") == "true",
+		PortalURL:          getenv("PORTAL_URL", "http://localhost:3020"),
 	}
 	c.CookieSecure = c.Env == "production"
 	if c.RegistryKeys == "" && c.RegistryURL == registry.DefaultURL {

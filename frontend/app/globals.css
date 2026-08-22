@@ -493,3 +493,9 @@ html[data-theme="dark"] .nav__item { color: var(--text-2); }
   .hero2 { flex-direction: column; align-items: stretch; padding-top: 3rem; }
   .term { width: 100%; }
 }
+
+/* Гарын авлагын агуулга */
+.mkt-toc { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.2rem; }
+.mkt-toc a { font-size: 0.82rem; padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); background: var(--surface); }
+.mkt-toc a:hover { color: var(--text); border-color: var(--text-3); }
+.mkt-sect h2[id], .mkt-sect h3[id] { scroll-margin-top: 5rem; }

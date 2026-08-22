@@ -15,6 +15,8 @@ func CorePermissions() []nexus.PermissionDefinition {
 			Description: "App store-оос суулгах, идэвхгүй болгох"},
 		{Code: "core.audit.read", Name: "Audit лог харах",
 			DefaultRoles: []string{"manager"}},
+		{Code: "core.sso.manage", Name: "SSO клиент удирдах",
+			Description: "OAuth2/OIDC клиент бүртгэх (гадны систем энэ платформоор нэвтрэх)"},
 		{Code: "core.settings.manage", Name: "Байгууллагын тохиргоо",
 			Description: "Байгууллагын нэр, профайл (регистр, хаяг, холбоо барих)"},
 	}

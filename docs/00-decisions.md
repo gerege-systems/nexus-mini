@@ -78,7 +78,7 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 |---|---|
 | 1 | Цөм: миграц + CLI (migrate/serve) + session auth + tenant + RBAC + audit + module SDK + devices модуль + app store (локал каталог) + landing/portal/админ панель |
 | 2 ✅ | Гарын үсэгтэй статик registry + `nexus` CLI (init/add/upgrade/remove/list) — 2026-08-22 |
-| 3 | OIDC provider + SSO client federation |
+| 3 ✅ | OIDC provider (PKCE, RS256/JWKS, consent, refresh rotation) + SSO client (Google/OIDC/federation) — 2026-08-23 |
 | 4 | Resilience давхарга, чанаржуулалт |
 
 Үе бүр дуусаад **ажиллаж баталгаажсаны дараа** л дараагийнх эхэлнэ
@@ -135,3 +135,10 @@ Tenant/байгууллага/гишүүний загварыг open-gerege-nexu
 1. **Sec-Fetch-Site CSRF** — браузерын өөрөө тавьдаг толгой `cross-site` бол бичих хүсэлт 403 (Origin шалгалтаас гадна; handover чөлөөтэй).
 2. **Устгалын хүлээлт** — `tenants.deletion_scheduled_at`; `POST /api/admin/tenants/{id}/delete` = +30 хоног, тэр дороо suspend + session revoke; `…/delete/cancel` буцаана; цагийн sweep (`SweepDeletions`, admin pool) өнгөрсөн байгууллагыг cascade устгана (audit гинж FK-гүй тул үлдэнэ). Portal banner, админ UI «Төлөв» modal. OGN-ийн two-person rule-ийг аваагүй — нэг platform_admin role тул; олон оператортой болбол нэмнэ.
 3. **Хувилбарын түүх** — `app_releases` (нийтлэгчийн хувилбар анх харагдсан цаг; компиллогдсон + registry), `installation_events` (tenant бүрийн install/enable/disable/upgrade, actor). Boot-ийн Sync суулгасан tenant-уудын хувилбарыг компиллогдсон руу өргөж `upgrade` үйл явдал (actor=систем) бичнэ — permission backfill-тай хамт. Portal store «Түүх» modal, `GET /api/store/apps/{id}/history`.
+
+## Үе 3 — OIDC provider + SSO client (2026-08-23)
+
+- **Provider** `/api/oauth2/*` (issuer = `PORTAL_URL/api/oauth2` — nginx/rewrite өөрчлөлтгүй). Зөвхөн authorization code + PKCE S256 (заавал), refresh rotation (replay → гэр бүлээр хүчингүй), client_credentials; opaque access + introspect/revoke; id_token RS256 (JWT-г өөрсдөө бичсэн, sign-only, alg confusion байхгүй); consent санагдана; end_session. Клиент = tenant-ийнх (`oauth_clients`, `core.sso.manage`); хэрэглэгч клиентийн байгууллагын гишүүн байх ёстой. Токен/код/түлхүүр/зөвшөөрлийн хүснэгт зөвхөн `nexus_auth`. CORS cookie-гүй endpoint-уудад; consent CSRF-тэй.
+- **RP** `internal/core/ssoclient`: Google + ерөнхий issuer (env), discovery 1ц кэш, JWKS (kid эргэлтэд дахин татна), PKCE/state/nonce HMAC cookie, JIT `SSO_AUTO_SIGNUP` (default хаалттай). Federation = өөр nexus-mini issuer.
+- Зориуд үгүй: implicit/hybrid, JWT access token, dynamic registration, MFA (дараа).
+- Баталгаа: бүтэн урсгал curl (code/PKCE/refresh/replay/introspect/revoke/end_session/CORS) + federation (өөрийгөө issuer-ээр) + Playwright (SSO клиент UI, consent).
