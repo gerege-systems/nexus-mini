@@ -20,7 +20,7 @@ git clone https://github.com/gerege-systems/nexus-mini.git
 cd nexus-mini
 
 # 1. DB role + сан (нэг удаа, superuser-ээр):
-psql -v owner_pw='...' -v app_pw='...' -v admin_pw='...' -f deploy/01-roles.sql
+psql -v owner_pw='...' -v app_pw='...' -v admin_pw='...' -v auth_pw='...' -f deploy/01-roles.sql
 
 # 2. Тохиргоо:
 cp .env.example backend/nexus-mini.env   # DB URL + ADMIN_* бөглөнө
@@ -43,7 +43,7 @@ ADMIN_EMAIL=tanii@mail.mn ADMIN_NAME="Таны нэр" ADMIN_PASSWORD='нууц-
   docker compose up -d
 ```
 
-Postgres (role-ууд автомат), миграц + админ, API, вэб бүгд асаад
+Postgres (role-ууд автомат), миграц + админ, API, вэб (:3020), админ панель (:3021) бүгд асаад
 `http://localhost:3020` бэлэн болно.
 
 ## Бүтэц
@@ -56,10 +56,10 @@ backend/
   pkg/nexus/         Модулийн SDK — модуль зөвхөн үүнээс хамаарна (semver)
   internal/core/     цөмийн дотоод: tenant, auth, rbac, audit, appstore, bus
   apps/              модулиуд (devices, organisation; apps.go All()-д нэг мөр)
+    <нэр>/ui/        модулийн portal хуудас + толь → prebuild-д (sync-modules.mjs) portal руу хуулагдана
   pkg/registry/      app store registry-ийн нийтийн гэрээ (манифест, Ed25519 index)
   cmd/nexus/         дистрибуцийн CLI: init · add · upgrade · remove · list
   cmd/nexus-registry/ registry эзэмшигчийн хэрэгсэл: keygen · build · verify
-    <нэр>/ui/        модулийн portal хуудас + толь → build үед portal руу хуулагдана
 frontend/            Next.js — landing + portal (modules.json: ямар UI орох)
 admin/               Next.js — платформын админ (тусдаа апп, тусдаа домэйн)
 catalog/             локал index fallback (registry хүрэхгүй үед)
@@ -82,7 +82,7 @@ cd my-dist && go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@late
 make migrate && make serve
 ```
 
-`add` нь гарын үсэгтэй registry-ээс (nexus.*.com, эсвэл өөрийн) модулийн
+`add` нь гарын үсэгтэй registry-ээс (default: gerege-systems/nexus-registry raw URL, эсвэл өөрийн) модулийн
 манифестийг татаж, `go get` + `main.go` + portal UI-г автоматаар нэмнэ;
 `upgrade` permission өргөссөн бол `-approve` шаардана. Цөмийн шинэчлэлт =
 `go get …/backend@v1.x` — merge байхгүй. Өөрийн store, өөрийн харилцагчид

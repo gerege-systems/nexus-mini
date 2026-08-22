@@ -110,7 +110,7 @@ func (h *Store) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, appstore.ErrNotCompiled):
 		httpx.Error(w, http.StatusConflict,
-			"энэ апп бинарид ороогүй байна — `nexus-mini add` коммандаар нэмээд дахин build хийнэ")
+			"энэ апп бинарид ороогүй байна — `nexus add <short_id>` коммандаар нэмээд дахин build хийнэ")
 		return
 	case err != nil:
 		log.Printf("app install %s: %v", appID, err)

@@ -1,5 +1,5 @@
 // Package migrate — цөм + бүртгэгдсэн модуль бүрийн goose миграцыг
-// owner холболтоор ажиллуулна. CLI-ийн setup ба migrate хоёул дуудна.
+// owner холболтоор ажиллуулна. CLI-ийн migrate дуудна.
 package migrate
 
 import (

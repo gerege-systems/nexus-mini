@@ -64,7 +64,7 @@ type Dependency struct {
 
 // Module — compile-time модуль бүрийн хэрэгжүүлэх гэрээ.
 //
-// ID нь глобал давтагдашгүй reverse-DNS ("io.gerege.devices"); ShortID нь
+// ID нь глобал давтагдашгүй reverse-DNS ("mn.gerege.nexus_mini.devices"); ShortID нь
 // permission prefix болон URL зам болдог богино нэр ("devices").
 // RegisterRoutes-д өгөгдөх router нь /api/apps/<ShortID>/ дор аль хэдийн
 // байрлаж, tenant auth + "энэ tenant-д апп суусан эсэх" gate давхарласан

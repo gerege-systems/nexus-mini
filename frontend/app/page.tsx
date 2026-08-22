@@ -15,7 +15,7 @@ export default function Landing() {
 
       <section className="hero2">
         <div className="hero2__left">
-          <div className="hero2__badge"><span className="dot" /> v1.0 · Apache 2.0</div>
+          <div className="hero2__badge"><span className="dot" /> v1.1 · Apache 2.0</div>
           <h1>{t("Үйл ажиллагааны нэгдсэн дижитал платформ")}</h1>
           <p>
             {t("Байгууллагын үйлчилгээ, үйл ажиллагаа, систем, өгөгдлийг нэг дор холбодог модульт платформ — цөм нь суурийг, апп дэлгүүр нь боломжуудыг өгнө.")}
@@ -35,10 +35,10 @@ export default function Landing() {
           <div className="term__body">
             <div><span className="term__p">$</span> git clone gerege-systems/nexus-mini</div>
             <div><span className="term__p">$</span> make migrate</div>
-            <div className="term__out">{t("миграц: цөм ok · devices ok")}</div>
+            <div className="term__out">{t("миграц: цөм ok · devices ok · organisation ok")}</div>
             <div className="term__out">✓ {t("платформын админ үүслээ")}</div>
             <div><span className="term__p">$</span> make serve</div>
-            <div className="term__out">nexus-mini API :8084 (1 {t("модуль")})</div>
+            <div className="term__out">nexus-mini API :8084 (2 {t("модуль")})</div>
             <div><span className="term__p">$</span> <span className="term__cursor">&nbsp;</span></div>
           </div>
           <div className="term__foot">
@@ -61,7 +61,7 @@ export default function Landing() {
           </div>
           <div className="card mkt-feature">
             <div className="mkt-mono-tag">nexus.Module</div>
-            <h3>{t("7 метод = таны модуль")}</h3>
+            <h3>{t("9 метод = таны модуль")}</h3>
             <p>{t("Go interface хэрэгжүүлээд каталогт PR илгээхэд л таны модуль store-д — нэг бинари, микросервисийн төвөггүй.")}</p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function Landing() {
             <span className="ic"><Code2 size={19} /></span>
             <h3>{t("Модуль хөгжүүлэх")} <ArrowRight size={14} style={{ verticalAlign: "-2px" }} /></h3>
             <p>
-              {t("Модуль бол долоон метод хэрэгжүүлсэн Go package. Файлын бүтэц, permission, миграц, route — бүрэн гарын авлага.")}
+              {t("Модуль бол есөн метод хэрэгжүүлсэн Go package. Файлын бүтэц, permission, миграц, route — бүрэн гарын авлага.")}
             </p>
           </Link>
         </div>

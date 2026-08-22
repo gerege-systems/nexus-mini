@@ -255,7 +255,7 @@ Registry-д орсон модулийг хэн ч `nexus add <нэр>` гэж д
 `nexus` CLI бүгдийг хийнэ (`go run github.com/gerege-systems/nexus-mini/backend/cmd/nexus@latest …`):
 
 ```bash
-nexus init my-dist              # backend/{go.mod,main.go}, frontend/ (цөмийн хуулбар), makefile, .env.example, deploy/*.sql
+nexus init my-dist              # backend/{go.mod,main.go}, frontend/ + admin/ (цөмийн хуулбар), makefile, .env.example, deploy/*.sql
 cd my-dist
 nexus add organisation          # registry → go get + main.go маркер + frontend/modules/organisation/ui + modules.json
 nexus add inventory@0.4.0       # өөрийн модуль (registry-д нийтэлсэн)
@@ -279,7 +279,7 @@ my-dist/
 манифестийг тулгаж, **permission шинээр нэмэгдсэн/өргөссөн** бол зогсоож
 `-approve` шаардана — модулийн шинэчлэлт чимээгүй эрх авахгүй.
 
-Registry: default nexus.*.com (түлхүүр цөмд); өөрийнх бол `REGISTRY_URL` +
+Registry: default gerege-systems/nexus-registry (GitHub raw) (түлхүүр цөмд); өөрийнх бол `REGISTRY_URL` +
 `REGISTRY_KEYS` env (эсвэл `-registry/-keys` флаг). Бүх дистрибуц registry-д
 байгаа аппуудыг store-доо харуулна; бинарид ороогүйд нь `nexus add` заавар.
 

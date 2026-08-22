@@ -13,7 +13,7 @@
 //	frontend/modules.json  add/remove засна
 //
 // Registry: REGISTRY_URL / REGISTRY_KEYS env эсвэл -registry/-keys флаг;
-// default nexus.*.com. Манифестийн permission ӨРГӨСВӨЛ upgrade -approve шаардана.
+// default gerege-systems/nexus-registry (GitHub raw). Манифестийн permission ӨРГӨСВӨЛ upgrade -approve шаардана.
 package main
 
 import (
@@ -70,7 +70,7 @@ func main() {
 func usage() {
 	fmt.Print(`nexus — nexus-mini дистрибуцийн хэрэгсэл (цөмийг fork хийхгүй)
 
-  init <dir> [-core vX.Y.Z]     шинэ дистрибуц (backend/main.go, go.mod, frontend/, makefile, .env.example)
+  init <dir> [-core vX.Y.Z]     шинэ дистрибуц (backend/main.go, go.mod, frontend/, admin/, makefile, .env.example)
   add <short_id|go_module>[@v]  registry-ээс модуль нэмнэ: go get + main.go + frontend/modules.json + ui хуулбар
   upgrade [short_id] [-approve] шинэ хувилбар; permission ӨРГӨССӨН бол -approve шаардана
   remove <short_id>             модуль хасна
@@ -151,7 +151,7 @@ func modules() []nexus.Module {
 
 const makefileTemplate = `# nexus-mini дистрибуц — бүх команд Makefile-аар.
 ENV_FLAG := $(if $(ENV_FILE),--env $(ENV_FILE),)
-.PHONY: build migrate serve web manifest check add upgrade
+.PHONY: build migrate serve web admin manifest check add upgrade
 
 build:
 	cd backend && go build -o bin/nexus.new . && { [ -f bin/nexus ] && cp bin/nexus bin/nexus.prev || true; } && mv -f bin/nexus.new bin/nexus
@@ -163,6 +163,8 @@ manifest: build
 	cd backend && ./bin/nexus manifest $(MOD)
 web:
 	cd frontend && pnpm dev
+admin:
+	cd admin && pnpm dev
 check:
 	cd backend && GOOS=linux GOARCH=amd64 go build ./... && go vet ./...
 # Модуль: make add MOD=inventory · make upgrade MOD=inventory APPROVE=1
@@ -384,7 +386,7 @@ func fetchCoreFiles(root, ver string) error {
 		}
 		// nexus-mini-backend-v1.0.0/frontend/... → frontend/...
 		rel := h.Name[strings.Index(h.Name, "/")+1:]
-		if !(strings.HasPrefix(rel, "frontend/") || rel == ".env.example" || strings.HasPrefix(rel, "deploy/") && strings.HasSuffix(rel, ".sql")) {
+		if !(strings.HasPrefix(rel, "frontend/") || strings.HasPrefix(rel, "admin/") || rel == ".env.example" || strings.HasPrefix(rel, "deploy/") && strings.HasSuffix(rel, ".sql")) {
 			continue
 		}
 		if strings.Contains(rel, "node_modules/") || strings.Contains(rel, "/.next") || strings.HasPrefix(rel, "frontend/app/(portal)/devices") || strings.HasPrefix(rel, "frontend/app/(portal)/organisation") {
@@ -411,7 +413,7 @@ func fetchCoreFiles(root, ver string) error {
 			n++
 		}
 	}
-	fmt.Printf("цөмийн frontend: %d файл\n", n)
+	fmt.Printf("цөмийн frontend + admin: %d файл\n", n)
 	return nil
 }
 

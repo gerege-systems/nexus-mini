@@ -29,18 +29,19 @@
 interface нь цорын ганц гэрээ. "Татаж авах" гэдэг нь:
 
 ```
-nexus-mini add io.gerege.devices   # registry-ээс метадата татна → go get → бүртгэнэ → rebuild
+nexus add devices   # registry-ээс манифест татна → go get → main.go маркер + UI хуулбар → rebuild
 ```
 
 Runtime plugin/WASM хийхгүй — ойлгомжтой байдал нь mini-гийн гол чанар.
 
 ## Store топологи: төв registry + локал fallback
 
-- Төв registry (бид runestone дээр ажиллуулна) — модулийн каталог,
-  **гарын үсэгтэй JSON** тараана
-- Инстанс бүр `REGISTRY_URL`-ээс каталог татна; тохируулаагүй/офлайн бол
-  `catalog/apps.json` файлаараа ажиллана
-- Community хөгжүүлэгч модулиа төв registry рүү нийтэлнэ
+- Төв registry = **статик, гарын үсэгтэй** `index.json` (Ed25519), Git репо
+  `gerege-systems/nexus-registry` raw URL-аар — сервер код байхгүй
+  (2026-08-22-нд «runestone дээр сервер» гэснээс ингэж хялбарчилсан)
+- Инстанс бүр `REGISTRY_URL`-ээс (default gerege-systems/nexus-registry (GitHub raw), түлхүүр цөмд) татна;
+  офлайн бол кэш → `catalog/index.json` файл
+- Community хөгжүүлэгч манифестаа (`make manifest`) registry репод PR-аар нийтэлнэ
 
 ## Хэрэглэгчийн 3 шаардлага (2026-08-20)
 
@@ -76,7 +77,7 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 | Үе | Агуулга |
 |---|---|
 | 1 | Цөм: миграц + CLI (migrate/serve) + session auth + tenant + RBAC + audit + module SDK + devices модуль + app store (локал каталог) + landing/portal/админ панель |
-| 2 | Төв registry + гарын үсэгтэй каталог + `nexus-mini add` CLI |
+| 2 ✅ | Гарын үсэгтэй статик registry + `nexus` CLI (init/add/upgrade/remove/list) — 2026-08-22 |
 | 3 | OIDC provider + SSO client federation |
 | 4 | Resilience давхарга, чанаржуулалт |
 
@@ -97,7 +98,7 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 |---|---|---|
 | Portal + API (/api/* → Go) | nexus.runestonetechnologies.com | 3020 / 8084 |
 | Платформын админ | nexus-admin.runestonetechnologies.com | 3021 |
-| Registry (үе 2) | nexus-registry.runestonetechnologies.com | 8085 |
+| Registry | raw.githubusercontent.com/gerege-systems/nexus-registry (статик) | — |
 
 Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.
 

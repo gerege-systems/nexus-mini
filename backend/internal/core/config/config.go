@@ -23,7 +23,7 @@ type Config struct {
 	Env             string // development | production
 	// CatalogPath — локал index файл (registry хүрэхгүй/хоосон үеийн fallback).
 	CatalogPath string
-	// RegistryURL — app store registry-ийн index.json URL. Default: nexus.*.com
+	// RegistryURL — app store registry-ийн index.json URL. Default: gerege-systems/nexus-registry (GitHub raw)
 	// (gerege-systems/nexus-registry). "off" бол зөвхөн локал файл.
 	RegistryURL string
 	// RegistryKeys — index-ийн гарын үсгийн нийтийн түлхүүрүүд (base64, таслал).
@@ -45,7 +45,7 @@ func Load() (Config, error) {
 		DatabaseURLAuth:  os.Getenv("DATABASE_URL_AUTH"),
 		Port:             getenv("PORT", "8084"),
 		Env:              getenv("ENVIRONMENT", "development"),
-		CatalogPath:      getenv("CATALOG_PATH", "catalog/index.json"),
+		CatalogPath:      getenv("CATALOG_PATH", "../catalog/index.json"), // cwd=backend (make serve); systemd/Docker env-ээр абсолют зам
 		RegistryURL:      getenv("REGISTRY_URL", registry.DefaultURL),
 		RegistryKeys:     os.Getenv("REGISTRY_KEYS"),
 		RegistryCacheDir: getenv("REGISTRY_CACHE_DIR", ".registry-cache"),

@@ -77,8 +77,8 @@ const en: Record<string, string> = {
     "Modules compile into a single Go binary — no microservice overhead, no extra network hops.",
   "Байгууллага бүр өөрт хэрэгтэй модулиа сонгож суулгана — суусан апп эрх, цэсээ өөрөө авчирна. Одоо байгаа аппуудыг тайлбартай нь үзэх.":
     "Each organization installs only what it needs — an installed app brings its own permissions and menu. Browse the current apps with descriptions.",
-  "Модуль бол долоон метод хэрэгжүүлсэн Go package. Файлын бүтэц, permission, миграц, route — бүрэн гарын авлага.":
-    "A module is a Go package implementing seven methods. File layout, permissions, migrations, routes — the full guide.",
+  "Модуль бол есөн метод хэрэгжүүлсэн Go package. Файлын бүтэц, permission, миграц, route — бүрэн гарын авлага.":
+    "A module is a Go package implementing nine methods. File layout, permissions, migrations, routes — the full guide.",
   "Өөрөө ажиллуулж үзэх үү?": "Want to run it yourself?",
   "env-ээ бөглөөд": "fill in your env, then",
   "Эсвэл": "Or",
@@ -154,6 +154,7 @@ const en: Record<string, string> = {
   "Бүртгэлтэй хэрэглэгч — role өгөөд нэмнэ": "Registered user — pick a role and add",
   "Бүртгэлгүй — нэр, түр нууц үг өгч шинээр үүсгэнэ": "Not registered — give a name and a temporary password to create the account",
   "Түр нууц үг (8+)": "Temporary password (8+)",
+  "энэ апп бинарид ороогүй байна — `nexus add <short_id>` коммандаар нэмээд дахин build хийнэ": "This app is not in the binary — add it with `nexus add <short_id>` and rebuild",
   "нэг resource": "one resource",
   "олон resource, олон хуудас": "many resources, many pages",
   "Хувилбар + манифест (make manifest)": "Version + manifest (make manifest)",
@@ -189,13 +190,12 @@ const en: Record<string, string> = {
   "// backend/apps/apps.go — бинарид орох модулиуд:": "// backend/apps/apps.go — modules compiled into the binary:",
   "// frontend/modules.json — portal-д орох UI:": "// frontend/modules.json — UI included in the portal:",
   "Энэ сайтын store-д оруулах бол": "To list it in this site's store,",
-  "-д бүртгэлээ нэмээд PR илгээнэ. Өөрийн store-той бол өөрийн каталог (доор). Үе 2-т төв registry +": " — add your entry and send a PR. With your own store, use your own catalog (below). Phase 2 brings a central registry +",
   "Өөрийн дистрибуц — цөмийг fork хийхгүй": "Your own distribution — don't fork the core",
   "Өөрийн компанид nexus-mini ашиглаж, өөрийн модулиуд, өөрийн store, өөрийн харилцагчидтай (tenant) платформ ажиллуулж болно. Цөмийн репог хуулбарлаж засахгүй — хамаарал болгоно. Ингэж байж цөмийн шинэчлэлтийг merge-гүй, мөргөлдөөнгүй авна.": "You can run nexus-mini for your own company with your own modules, your own store and your own customers (tenants). Don't copy and edit the core repo — depend on it. That way core updates arrive without merges or conflicts.",
   "// your-company/nexus-dist/backend/main.go — бүхэлдээ:": "// your-company/nexus-dist/backend/main.go — in its entirety:",
   "// таны модуль — тусдаа репо": "// your module — its own repo",
   "// Цөмийг шинэчлэх — merge байхгүй, зөвхөн хувилбар:": "// Updating the core — no merge, just a version:",
-  "— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө": "— migrate/serve commands, env, migrations, first admin, permission sync, server: all in the core; you just pass your modules",
+  "— migrate/serve/manifest коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө": "— migrate/serve/manifest commands, env, migrations, first admin, permission sync, server: all in the core; you just pass your modules",
   "Frontend: цөмийн frontend-ийн хуулбар +": "Frontend: a copy of the core frontend +",
   "Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул цөмийн frontend-ийг tag-аас хуулж дарахад мөргөлдөхгүй": "You never touch core files (UI in ui/, dictionary in ui/i18n.ts), so overwriting the core frontend from a tag never conflicts",
   "SDK амлалт:": "SDK promise:",
@@ -250,7 +250,7 @@ const en: Record<string, string> = {
   "систем": "system",
 
   // ─── Devices модуль (portal хуудас) ───
-  "миграц: цөм ok · devices ok": "migrations: core ok · devices ok",
+  "миграц: цөм ok · devices ok · organisation ok": "migrations: core ok · devices ok · organisation ok",
   "платформын админ үүслээ": "platform admin created",
   "модуль": "module",
   "нэг бинари": "one binary",
@@ -260,7 +260,7 @@ const en: Record<string, string> = {
   "Эрх тунхаглалаар, бүртгэл гинжээр": "Permissions by declaration, records by chain",
   "Permission суулгах үед role-уудад автоматаар оноогдоно; бүх чухал үйлдэл hash chain-тэй audit бүртгэлд үлдэнэ.":
     "Permissions are granted to roles automatically on install; every important action lands in a hash-chained audit log.",
-  "7 метод = таны модуль": "7 methods = your module",
+  "9 метод = таны модуль": "9 methods = your module",
   "Go interface хэрэгжүүлээд каталогт PR илгээхэд л таны модуль store-д — нэг бинари, микросервисийн төвөггүй.":
     "Implement the Go interface and send a catalog PR — your module is in the store. One binary, no microservice overhead.",
 
@@ -273,7 +273,6 @@ const en: Record<string, string> = {
   "нэр ба slug шаардлагатай": "Name and slug are required",
   "энэ байгууллагын гишүүн биш": "You are not a member of this organization",
   "апп олдсонгүй": "App not found",
-  "энэ апп бинарид ороогүй байна — `nexus-mini add` коммандаар нэмээд дахин build хийнэ": "This app is not in the binary — add it with `nexus-mini add` and rebuild",
   "суулгалт амжилтгүй боллоо": "Installation failed",
   "code давхардаж байна (эсвэл формат буруу)": "Code already exists (or has invalid format)",
   "өвлөх role олдсонгүй": "The role to inherit from was not found",
@@ -356,8 +355,6 @@ const en: Record<string, string> = {
   "// backend/apps/apps.go — нэг мөр:": "// backend/apps/apps.go — one line:",
   "# модуль store-д гарч ирнэ": "# the module appears in the store",
   "8. Store-д нийтлэх": "8. Publish to the store",
-  "-д бүртгэлээ нэмээд PR илгээнэ. Үе 2-т төв registry +": " — add your entry and send a PR. In phase 2 a central registry and the",
-  "CLI ирэхэд go_module замаар тань шууд татдаг болно.": "CLI will fetch it directly via your go_module path.",
   "SQL parse/encode бүх логикт unit тест бич.": "Write unit tests for all SQL/parse/encode logic.",
   "нь linux cross-build + vet + test + SDK-ийн хилийн шалгалт (модуль internal/* импортолбол унадаг) — push бүрийн өмнө заавал.": "runs a linux cross-build + vet + tests + the SDK boundary check (importing internal/* fails) — required before every push.",
 

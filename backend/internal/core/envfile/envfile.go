@@ -1,5 +1,5 @@
 // Package envfile — энгийн KEY=VALUE файл уншиж орчинд ачаална.
-// `nexus-mini setup`-ын бичсэн nexus-mini.env-ийг serve/migrate/admin
+// `make migrate`/`serve`-ийн уншдаг (nexus-mini.env) nexus-mini.env-ийг serve/migrate/admin
 // коммандууд автоматаар олж уншдаг.
 package envfile
 

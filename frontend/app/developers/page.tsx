@@ -207,7 +207,7 @@ export default function DevelopersPage() {
           <div><span className="c">$</span> git fetch upstream --tags &amp;&amp; git checkout backend/v1.5.0 -- frontend</div>
         </Code>
         <ul style={{ color: "var(--text-2)", lineHeight: 1.8 }}>
-          <li><code>core.Main</code> {t("— migrate/serve коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө")}</li>
+          <li><code>core.Main</code> {t("— migrate/serve/manifest коммандууд, env, миграц, анхны админ, permission sync, сервер: бүгд цөмд; та модулиудаа л өгнө")}</li>
           <li><code>nexus upgrade</code> {t("— модулийн шинэ хувилбарт permission нэмэгдсэн/өргөссөн бол зогсоож -approve шаардана; модуль чимээгүй эрх авахгүй")}</li>
           <li>{t("Frontend: цөмийн frontend-ийн хуулбар +")} <code>modules.json</code>. {t("Та цөмийн файлд гар хүрдэггүй (UI ui/-д, толь ui/i18n.ts-д) тул цөмийн frontend-ийг tag-аас хуулж дарахад мөргөлдөхгүй")}</li>
           <li>{t("SDK амлалт:")} <code>pkg/nexus</code> + <code>core.Main</code> {t("v1.x дотор эвдэхгүй (semver); internal/* чөлөөтэй өөрчлөгдөнө — модуль түүнээс импортолж чадахгүй")}</li>

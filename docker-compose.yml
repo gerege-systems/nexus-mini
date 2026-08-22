@@ -1,6 +1,6 @@
 # nexus-mini — татаад `docker compose up -d` хийхэд бүгд асна:
-# Postgres (role-ууд автоматаар) → миграц → API → вэб.
-# Дараа нь http://localhost:3020 — setup wizard угтана.
+# Postgres (role-ууд автоматаар) → миграц → API → вэб → админ панель.
+# Дараа нь http://localhost:3020 — landing угтана (админ = ADMIN_* env).
 
 services:
   db:
