@@ -3,7 +3,9 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -45,6 +47,16 @@ func Load() (Config, error) {
 	}
 	if c.DatabaseURLAdmin == "" {
 		return c, fmt.Errorf("DATABASE_URL_ADMIN тохируулаагүй байна")
+	}
+	if c.Env == "production" {
+		// Production хамгаалалт: cookie Secure, portal URL https — үгүй бол
+		// асахаас татгалзана (OGN-ийн config/production.go загвар).
+		if !strings.HasPrefix(c.PortalURL, "https://") {
+			return c, fmt.Errorf("ENVIRONMENT=production үед PORTAL_URL https:// байх ёстой (одоо %q)", c.PortalURL)
+		}
+		if os.Getenv("ADMIN_PASSWORD") != "" {
+			log.Println("АНХААР: production env-д ADMIN_PASSWORD байна — анхны админ үүссэний дараа env-ээс устга")
+		}
 	}
 	if c.DatabaseURLAuth == "" {
 		return c, fmt.Errorf("DATABASE_URL_AUTH тохируулаагүй байна (nexus_auth role — deploy/01-roles.sql, .env.example)")

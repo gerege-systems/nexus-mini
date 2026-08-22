@@ -110,3 +110,13 @@ Tenant/байгууллага/гишүүний загварыг open-gerege-nexu
 3. **`organisation` модуль** (цөм биш — store-оос суулгана) — `org_departments` мод (дээд нэгж, менежер, идэвхтэй, мөчлөг шалгалт) + `org_positions` (гишүүнчлэл бүрт хэлтэс, албан тушаал). `organisation.read/manage`. Portal `/organisation/departments`, `/organisation/people`. OGN ч үүнийг эцэст нь апп болгосон (`00055_organisation_rename`).
 
 Аваагүй: `allowed_tenant_ids` (олон байгууллагаас зэрэг унших — RLS-ийг төвөгтэй болгоно, группын компанид л хэрэгтэй), толгой компанийн холбоос, 30 хоногийн хүлээлттэй устгал, квот — хэрэгцээ гарахад.
+
+## OGN цөмтэй харьцуулсны дараах 5 жижиг цоорхой (2026-08-22)
+
+1. **Дансны түр түгжээ** — 15 мин дотор 5 буруу → 15 мин (`auth_login_result`, `auth_lockout`; IP rate limit-ээс тусдаа; байхгүй имэйлийг тоолохгүй). 429 + Retry-After.
+2. **Session idle timeout** — 90 мин хэрэглээгүй бол дуусна (`sessions.last_seen_at`, lookup 5 минутад нэгээс олон бичихгүй). Impersonated session 30 мин хэвээр.
+3. **Security headers Go талд** (nosniff, DENY, Referrer-Policy, CSP `default-src 'none'`, no-store, HSTS production) — nginx-гүй дистрибуц/Docker-т ч хамгаалалттай; nginx snippet-тэй давхардах нь ижил утгатай тул хор байхгүй.
+4. **Production guard** — `ENVIRONMENT=production` үед `PORTAL_URL` https биш бол асахгүй; env-д `ADMIN_PASSWORD` үлдсэн бол сануулна.
+5. **Түдгэлзүүлэх → session шууд устгах** (`auth_sessions_revoke_tenant`, audit-д тоо).
+
+Аваагүй: OGN-ийн settings registry (DB→env), Sec-Fetch-Site CSRF нотолгоо — хэрэгцээ гарахад.

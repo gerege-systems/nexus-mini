@@ -22,6 +22,9 @@ import (
 const (
 	CookieName = "nexus_session"
 	sessionTTL = 14 * 24 * time.Hour
+	// sessionIdle — сүүлийн хэрэглээнээс хойш энэ хугацаанд хүсэлтгүй бол
+	// session дуусна (token хулгайлагдсан ч удаан амьдрахгүй).
+	sessionIdle = 90 * time.Minute
 )
 
 // Principal — танигдсан хүсэлт гаргагч.
@@ -128,7 +131,7 @@ func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool
 		var tenantID, imp *string
 		err := s.pool.QueryRow(ctx,
 			`SELECT session_id, user_id, tenant_id, platform_admin, name, email, impersonated_by
-			   FROM auth_session_lookup($1::char(64))`, hashToken(c.Value)).
+			   FROM auth_session_lookup($1::char(64), $2::interval)`, hashToken(c.Value), sessionIdle).
 			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email, &imp)
 		if err != nil {
 			continue // хуучирсан/танигдахгүй token — дараагийнхыг үзнэ
@@ -201,6 +204,26 @@ func (s *Service) ConsumeHandover(ctx context.Context, w http.ResponseWriter, ha
 		MaxAge: int(ImpersonationTTL.Seconds()),
 	})
 	return &h, nil
+}
+
+// Lockout — данс түр түгжээтэй бол хэзээ хүртэл (нэвтрэхээс өмнө шалгана).
+func (s *Service) Lockout(ctx context.Context, email string) (*time.Time, error) {
+	var until *time.Time
+	err := s.pool.QueryRow(ctx, `SELECT auth_lockout($1::varchar(255))`, email).Scan(&until)
+	return until, err
+}
+
+// LoginResult — амжилт/алдааг бүртгэнэ; locked=true бол яг одоо түгжигдлээ.
+func (s *Service) LoginResult(ctx context.Context, email string, ok bool) (locked bool, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT auth_login_result($1::varchar(255), $2::boolean)`, email, ok).Scan(&locked)
+	return locked, err
+}
+
+// RevokeTenantSessions — түдгэлзүүлэхэд tenant-ийн бүх session-ийг устгана.
+func (s *Service) RevokeTenantSessions(ctx context.Context, tenantID string) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx, `SELECT auth_sessions_revoke_tenant($1::uuid)`, tenantID).Scan(&n)
+	return n, err
 }
 
 // SetTenant нь session-ий идэвхтэй tenant-ийг сольж, гишүүнчлэлийг DB

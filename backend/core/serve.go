@@ -100,7 +100,7 @@ func cmdServe(_ []string) error {
 	go b.Run(busCtx)
 
 	r := chi.NewRouter()
-	r.Use(clientIP, middleware.Logger, middleware.Recoverer)
+	r.Use(clientIP, middleware.Logger, middleware.Recoverer, securityHeaders(cfg.Env == "production"))
 	r.Use(middleware.Timeout(30 * time.Second))
 	// CSRF (#5): SameSite=Lax нь same-site (*.домэйн) хоорондын хүсэлтээс
 	// хамгаалдаггүй — бичих хүсэлт бүрд Origin-ийг хостой тулгана.
@@ -243,6 +243,25 @@ func cmdServe(_ []string) error {
 // солигддог (Docker compose: api:8084) тул X-Forwarded-Host-ийг мөн
 // хүлээн зөвшөөрнө — түүнийг эцсийн proxy (Next/nginx) тавьдаг, гаднаас
 // шууд ирсэн хүсэлтэд nginx хүчээр дарж бичдэг тул хуурч болохгүй.
+// securityHeaders — API-ийн хариу бүрт (nginx-гүй дистрибуц/Docker-т ч).
+// JSON API тул CSP 'none'; HTML-ийг Next өөрөө өгдөг.
+func securityHeaders(prod bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := w.Header()
+			h.Set("X-Content-Type-Options", "nosniff")
+			h.Set("X-Frame-Options", "DENY")
+			h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+			h.Set("Cache-Control", "no-store")
+			if prod {
+				h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // clientIP — rate limit/лог-ийн IP. chi-ийн RealIP нь True-Client-IP,
 // X-Forwarded-For зэрэг клиентийн тавьж болох толгойг итгэдэг (GHSA-3fxj-6jh8-hvhx)
 // тул хэрэглэхгүй. Зөвхөн шууд холбогч нь loopback/private (манай nginx)

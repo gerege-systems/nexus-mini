@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
@@ -215,12 +217,33 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	if !httpx.Decode(w, r, &in) {
 		return
 	}
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+	if len(email) > 255 {
+		httpx.Error(w, http.StatusUnauthorized, "имэйл эсвэл нууц үг буруу")
+		return
+	}
+	// Дансны түр түгжээ (IP rate limit-ээс тусдаа — тархсан brute force).
+	if until, err := h.Svc.Lockout(r.Context(), email); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "login failed")
+		return
+	} else if until != nil {
+		w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(*until).Seconds())+1))
+		httpx.Error(w, http.StatusTooManyRequests, "олон буруу оролдлого — данс 15 минут түгжигдлээ")
+		return
+	}
 	var uid, hash, name string
 	var isAdmin bool
 	err := h.Pool.QueryRow(r.Context(),
 		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`,
-		strings.ToLower(strings.TrimSpace(in.Email))).Scan(&uid, &hash, &name, &isAdmin)
+		email).Scan(&uid, &hash, &name, &isAdmin)
 	if err == pgx.ErrNoRows || (err == nil && !password.Verify(in.Password, hash)) {
+		if err == nil {
+			// Зөвхөн бодит дансанд тоолно (байхгүй имэйлийг тоолох утгагүй).
+			if locked, lerr := h.Svc.LoginResult(r.Context(), email, false); lerr == nil && locked {
+				httpx.Error(w, http.StatusTooManyRequests, "олон буруу оролдлого — данс 15 минут түгжигдлээ")
+				return
+			}
+		}
 		httpx.Error(w, http.StatusUnauthorized, "имэйл эсвэл нууц үг буруу")
 		return
 	}
@@ -228,6 +251,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "login failed")
 		return
 	}
+	_, _ = h.Svc.LoginResult(r.Context(), email, true)
 	if _, err := h.Svc.StartSession(r.Context(), w, uid); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "session failed")
 		return

@@ -202,8 +202,17 @@ func (h *Admin) SetTenantState(w http.ResponseWriter, r *http.Request) {
 	if h.State != nil {
 		h.State.Invalidate(id)
 	}
+	revoked := 0
+	if in.Suspended {
+		// Түдгэлзүүлэхэд бүх session шууд хүчингүй (30с cache хүлээхгүй).
+		if n, err := h.Svc.RevokeTenantSessions(r.Context(), id); err == nil {
+			revoked = n
+		} else {
+			log.Printf("revoke sessions %s: %v", id, err)
+		}
+	}
 	h.Rec.RecordAs(r.Context(), id, p.UserID, "platform.tenant.state", id,
-		map[string]any{"suspended": in.Suspended, "reason": in.Reason, "read_only": in.ReadOnly})
+		map[string]any{"suspended": in.Suspended, "reason": in.Reason, "read_only": in.ReadOnly, "sessions_revoked": revoked})
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
