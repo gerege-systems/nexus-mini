@@ -16,3 +16,4 @@ admin/.next/
 # Модулийн UI — sync-modules.mjs үүсгэнэ (эх нь backend/apps/*/ui)
 frontend/lib/modules/
 frontend/lib/i18n.modules.ts
+.registry-cache/
