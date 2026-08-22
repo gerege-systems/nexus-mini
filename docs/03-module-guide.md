@@ -112,7 +112,7 @@ func (m *Module) Migrations() fs.FS { return migrations }
   devices-ээс хуул
 - `OwnScope` ашиглах бол `created_by uuid` багана заавал
 - Бүх string баганад урттай хязгаар (varchar(n)) — задгай text хориотой
-- Төгсгөлд нь `GRANT ... ON <хүснэгт> TO nexus_app, nexus_admin` (функцэд
+- Төгсгөлд нь `GRANT ... ON <table> TO nexus_app, nexus_admin` (функцэд
   автомат GRANT байхгүй — хэрэгтэй бол ил бич)
 - Өөр хүснэгт рүү FK (`memberships`, өөрийн мод) заавал **same-tenant
   trigger**-тэй — FK шалгалт RLS-ийг давдаг тул uuid таамаглаж өөр

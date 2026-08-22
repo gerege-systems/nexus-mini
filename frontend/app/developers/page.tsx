@@ -103,7 +103,7 @@ export default function DevelopersPage() {
           <li><code>tenant_id uuid NOT NULL</code> + {t("RLS policy")} (<code>app_tenant_id()</code>) — {t("жишээг devices-ээс хуул")}</li>
           <li><code>OwnScope</code> {t("ашиглах бол")} <code>created_by uuid</code> {t("багана заавал")}</li>
           <li>{t("Бүх string баганад урттай хязгаар (varchar(n)) — задгай text хориотой")}</li>
-          <li>{t("Төгсгөлд нь")} <code>GRANT ... ON &lt;хүснэгт&gt; TO nexus_app, nexus_admin</code> {t("(функцэд автомат GRANT байхгүй)")}</li>
+          <li>{t("Төгсгөлд нь")} <code>GRANT ... ON &lt;table&gt; TO nexus_app, nexus_admin</code> {t("(функцэд автомат GRANT байхгүй)")}</li>
           <li>{t("Өөр хүснэгт рүү FK (memberships, өөрийн мод) заавал same-tenant trigger-тэй — FK шалгалт RLS-ийг давдаг. Загвар:")} <code>apps/organisation/migrations/00002_same_tenant.sql</code></li>
           <li>{t("Апп role-д temp хүснэгт, users.password_hash, auth_* функцууд хаалттай — зориуд")}</li>
         </ul>
