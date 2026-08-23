@@ -22,9 +22,10 @@
 ## Коммандууд
 - `make migrate` — миграц + env-д ADMIN_* байгаа бөгөөд админ огт байхгүй бол анхны платформ админ үүсгэнэ
 - `make serve` / `make web` / `make admin` — API :8084 / portal dev :3020 / админ dev :3021. **Бүх команд зөвхөн Makefile-аар** — `go run`/бинарийг шууд дуудахгүй (systemd unit + Docker image л үл хамаарна). `ENV_FILE=` өөр env файл.
-- `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`apps/` → `backend/internal/*` импорт байвал унана)
+- `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`apps/` → `backend/internal/*` импорт байвал унана). DB байхгүй бол RLS/RBAC-ийн integration тест алгасагдсаныг тод анхааруулна — `ok` гэдэг нь тэдгээр шалгагдсан гэсэн үг БИШ.
+- `make check-db` — check + RLS/RBAC integration заавал (`NEXUS_TEST_DATABASE_URL` + `_OWNER`). `NEXUS_TEST_REQUIRE_DB=1` тавьдаг тул алгасалт = алдаа. CI/прод deploy-ийн өмнөх хаалт.
 - `make push` — check амжилттай бол л `git push`
-- Integration тестүүд (`db/rls_test.go`, `rbac/rbac_integration_test.go`) `NEXUS_TEST_DATABASE_URL` + `NEXUS_TEST_DATABASE_URL_OWNER` шаардана, байхгүй бол Skip
+- Integration тестүүд (`db/rls_test.go`, `rbac/rbac_integration_test.go`) `NEXUS_TEST_DATABASE_URL` + `NEXUS_TEST_DATABASE_URL_OWNER` шаардана, хоёулаа байхгүй бол Skip. Нэг нь дутуу бол Skip биш **унана** (үсгийн алдааг чимээгүй өнгөрөөхгүй)
 - `docker compose up -d` — PG + migrate + api + web + admin (ADMIN_* env-ээр дамжуулна)
 
 ## Deploy
@@ -52,7 +53,7 @@
 - Frontend-ийн `.next` gitignore-д — серверт build заавал (deploy.sh хийнэ).
 
 ## Шалгах
-- Push-ийн өмнө `make check` (linux build + vet + test + SDK хил). Integration тест ажиллуулах бол NEXUS_TEST_* env.
+- Push-ийн өмнө `make check` (linux build + vet + test + SDK хил). **`make check` ганцаараа RLS/RBAC-ийг шалгадаггүй** — PG-тэй орчинд `make check-db` ажиллуулж байж л мөрийн түвшний тусгаарлалт, эрхийн олголт батлагдана.
 - Прод дээр `bash deploy/deploy.sh` өөрөө `is-active` + `/health`, `:3020/`, `:3021/login` curl хийдэг — гаралтыг нь унш. Next build/typecheck-ийг сервер дээр л баталгаажуулна.
 
 ## Нээлттэй ажил
