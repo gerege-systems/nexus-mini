@@ -62,25 +62,38 @@ func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "hash failed")
 		return
 	}
-	// Хэрэглэгч + байгууллага НЭГ гүйлгээнд — slug давхардвал орфан
-	// хэрэглэгч үлдэж "имэйл бүртгэлтэй" гацаа үүсгэдэг байсан (аудит).
+	// Хэрэглэгч (nexus_auth: auth_signup) ба байгууллага (nexus_app: RLS +
+	// role seed) хоёр өөр DB role-д хуваагдсан тул НЭГ гүйлгээнд багтахгүй
+	// (00010, 00015). Байгууллага үүсэхгүй бол дөнгөж үүссэн хэрэглэгчийг
+	// буцааж устгана — "имэйл бүртгэлтэй" гацаа үүсэхгүй.
 	var uid, tenantID string
-	err = h.DB.Tx(identity.With(r.Context(), "", ""), func(tx pgx.Tx) error {
-		if err := tx.QueryRow(r.Context(),
-			`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
-			in.Email, hash, in.Name).Scan(&uid); err != nil {
-			return err
+	if err := h.Pool.QueryRow(r.Context(),
+		`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
+		in.Email, hash, in.Name).Scan(&uid); err != nil {
+		if nexus.IsUniqueViolation(err) {
+			httpx.Error(w, http.StatusConflict, "имэйл эсвэл байгууллагын slug бүртгэлтэй байна")
+			return
 		}
+		log.Printf("signup (user): %v", err)
+		httpx.Error(w, http.StatusInternalServerError, "бүртгэл амжилтгүй боллоо")
+		return
+	}
+	err = h.DB.Tx(identity.With(r.Context(), "", ""), func(tx pgx.Tx) error {
 		var err error
 		tenantID, err = createTenantTx(r.Context(), tx, uid, in.TenantName, in.TenantSlug)
 		return err
 	})
 	if err != nil {
+		var deleted bool
+		if derr := h.Pool.QueryRow(context.WithoutCancel(r.Context()),
+			`SELECT auth_delete_tenantless_user($1::uuid)`, uid).Scan(&deleted); derr != nil || !deleted {
+			log.Printf("signup: орфан хэрэглэгч %s үлдлээ (delete: %v, %t)", uid, derr, deleted)
+		}
 		if nexus.IsUniqueViolation(err) {
 			httpx.Error(w, http.StatusConflict, "имэйл эсвэл байгууллагын slug бүртгэлтэй байна")
 			return
 		}
-		log.Printf("signup: %v", err)
+		log.Printf("signup (tenant): %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "бүртгэл амжилтгүй боллоо")
 		return
 	}

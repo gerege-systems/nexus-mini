@@ -7,12 +7,12 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Boxes } from "lucide-react";
-import { api, type Me, type MenuApp } from "@/lib/api";
+import { api, ApiError, type Me, type MenuApp } from "@/lib/api";
 import { Icon } from "./icons";
 import { UserMenu } from "./usermenu";
 import { useT } from "@/lib/i18n";
 
-type ShellData = { me: Me; menu: MenuApp[]; refresh: () => void };
+type ShellData = { me: Me; menu: MenuApp[]; refresh: () => void; blocked?: boolean };
 const ShellCtx = createContext<ShellData | null>(null);
 export const useShell = () => useContext(ShellCtx)!;
 
@@ -34,7 +34,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
         router.replace("/org/new");
         return;
       }
-      const menu = await api.get<{ apps: MenuApp[] }>("/api/menu");
+      let menu: { apps: MenuApp[] } = { apps: [] };
+      try {
+        menu = await api.get<{ apps: MenuApp[] }>("/api/menu");
+      } catch (e) {
+        // Түдгэлзүүлсэн байгууллага → 403. Login руу шидвэл /api/me амжилттай
+        // тул дахин dashboard руу буцаж ТӨГСГӨЛГҮЙ ДАВТАЛТ үүсдэг байсан.
+        // Оронд нь хаагдсаны тайлбартай дэлгэц.
+        if (e instanceof ApiError && e.status === 403) {
+          setData({ me, menu: [], blocked: true, refresh: () => void load() });
+          return;
+        }
+        throw e;
+      }
       setData({ me, menu: menu.apps || [], refresh: () => void load() });
     } catch {
       router.replace("/login");
@@ -47,6 +59,37 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   if (!data) return null;
   const { me, menu } = data;
+  if (data.blocked) {
+    const st = me.tenant_state;
+    const tenantName = me.tenants.find((x) => x.id === me.tenant_id)?.name ?? "";
+    return (
+      <div className="auth-wrap">
+        <div className="auth-card" style={{ maxWidth: 520 }}>
+          <h1 style={{ fontSize: "1.15rem" }}>{tenantName}</h1>
+          <div className="alert alert--danger" style={{ marginTop: "0.8rem" }}>
+            {st?.deletion_at
+              ? `${t("Энэ байгууллага устгалд товлогдсон:")} ${new Date(st.deletion_at).toLocaleDateString("mn-MN")}`
+              : t("Энэ байгууллагыг платформ түдгэлзүүлсэн байна.")}
+            {st?.reason ? ` ${t("Шалтгаан")}: ${st.reason}.` : ""}
+          </div>
+          <p style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
+            {t("Өгөгдөлд хандах боломжгүй — платформын админтай холбогдоно уу.")}
+          </p>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "1rem" }}>
+            {me.tenants.filter((x) => x.id !== me.tenant_id).map((x) => (
+              <button key={x.id} className="btn btn--ghost"
+                onClick={async () => { await api.post("/api/session/tenant", { tenant_id: x.id }); void load(); }}>
+                {x.name}
+              </button>
+            ))}
+            <button className="btn btn--ghost" onClick={async () => { await api.post("/api/logout"); window.location.assign("/login"); }}>
+              {t("Гарах")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const perms = me.permissions;
   const tenant = me.tenants.find((t) => t.id === me.tenant_id);
   const isOn = (p: string) => pathname === p || pathname.startsWith(p + "/");

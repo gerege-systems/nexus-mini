@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -53,16 +54,28 @@ type Menu struct {
 // Manifest — нэг модулийн нэг хувилбар. `nexus-mini manifest` кодоос
 // үүсгэнэ — гараар бичихгүй (drift байхгүй).
 type Manifest struct {
-	ID          string       `json:"id"`
-	ShortID     string       `json:"short_id"`
-	Name        string       `json:"name"`
-	Version     string       `json:"version"`
-	GoModule    string       `json:"go_module"` // import зам (go get-д)
+	ID      string `json:"id"`
+	ShortID string `json:"short_id"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	// GoModule — Go МОДУЛИЙН үндэс (`go get <GoModule>@v<Version>`).
+	GoModule string `json:"go_module"`
+	// Import — модулийн Go пакежийн зам (main.go-д импортлох). Ихэвчлэн
+	// GoModule-тэй ижил; дэд пакеж бол урт. Хоосон бол GoModule.
+	Import      string       `json:"import,omitempty"`
 	Description string       `json:"description,omitempty"`
 	Publisher   string       `json:"publisher,omitempty"`
 	MinCore     string       `json:"min_core,omitempty"` // "1.0.0" — шаардах цөмийн доод хувилбар
 	Permissions []Permission `json:"permissions"`
 	Menus       []Menu       `json:"menus,omitempty"`
+}
+
+// ImportPath — main.go-д импортлох зам.
+func (m Manifest) ImportPath() string {
+	if m.Import != "" {
+		return m.Import
+	}
+	return m.GoModule
 }
 
 // Index — registry-ийн бүтэн агуулга. GeneratedAt нь гарын үсгийн дотор
@@ -78,15 +91,18 @@ type Describer interface {
 	Publisher() string
 }
 
-// FromModule — бүртгэгдсэн модулиас манифест. GoModule нь модулийн Go
-// package-ийн зам (reflect-ээр) — Bold-ын модуль бол түүний репогийн зам.
+// FromModule — бүртгэгдсэн модулиас манифест. Import нь пакежийн зам
+// (reflect), GoModule нь тэр пакежийг агуулах МОДУЛИЙН үндэс (build info) —
+// хоёрыг ялгахгүй бол `go get <пакеж>@v1.0.0` нь агуулагч модулийг (жишээ нь
+// цөмийг) тэр таг руу БУУЛГАНА.
 func FromModule(m nexus.Module) Manifest {
 	mf := Manifest{ID: m.ID(), ShortID: m.ShortID(), Name: m.Name(), Version: m.Version(), MinCore: "1.0.0"}
 	if t := reflect.TypeOf(m); t != nil {
 		for t.Kind() == reflect.Ptr {
 			t = t.Elem()
 		}
-		mf.GoModule = t.PkgPath()
+		mf.Import = t.PkgPath()
+		mf.GoModule = moduleRoot(mf.Import)
 	}
 	if d, ok := m.(Describer); ok {
 		mf.Description, mf.Publisher = d.Description(), d.Publisher()
@@ -99,6 +115,34 @@ func FromModule(m nexus.Module) Manifest {
 		mf.Menus = append(mf.Menus, Menu{ID: mn.ID, Label: mn.Label, Path: mn.Path, Icon: mn.Icon, Order: mn.Order})
 	}
 	return mf
+}
+
+// moduleRoot — пакежийн замыг агуулах модулийн үндсийг build info-оос олно
+// (хамгийн урт тохирох модуль). Олдохгүй бол пакежийн зам өөрөө.
+func moduleRoot(pkg string) string {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return pkg
+	}
+	best := ""
+	consider := func(path string) {
+		if path == "" || len(path) > len(pkg) {
+			return
+		}
+		if pkg == path || strings.HasPrefix(pkg, path+"/") {
+			if len(path) > len(best) {
+				best = path
+			}
+		}
+	}
+	consider(bi.Main.Path)
+	for _, d := range bi.Deps {
+		consider(d.Path)
+	}
+	if best == "" {
+		return pkg
+	}
+	return best
 }
 
 var (
@@ -121,6 +165,8 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("%s: version semver биш: %q", m.ID, m.Version)
 	case m.GoModule == "" || len(m.GoModule) > 255:
 		return fmt.Errorf("%s: go_module шаардлагатай", m.ID)
+	case m.Import != "" && m.Import != m.GoModule && !strings.HasPrefix(m.Import, m.GoModule+"/"):
+		return fmt.Errorf("%s: import (%s) нь go_module (%s) дотор байх ёстой", m.ID, m.Import, m.GoModule)
 	case len(m.Description) > 1000 || len(m.Publisher) > 120:
 		return fmt.Errorf("%s: description ≤1000, publisher ≤120", m.ID)
 	}

@@ -465,11 +465,19 @@ func cmdAdd(args []string, upgrade bool) error {
 				return fmt.Errorf("%s: шинэ/өргөссөн permission %v — эрхийн өөрчлөлтийг хянаад -approve өг", mf.ShortID, widened)
 			}
 		}
-		fmt.Printf("→ %s (%s) %s@v%s\n", mf.ShortID, mf.Name, mf.GoModule, ver)
-		if err := run(filepath.Join(d.root, "backend"), "go", "get", mf.GoModule+"@v"+ver); err != nil {
+		if mf.GoModule == coreModule {
+			fmt.Printf("→ %s (%s) %s\n", mf.ShortID, mf.Name, mf.ImportPath())
+		} else {
+			fmt.Printf("→ %s (%s) %s@v%s\n", mf.ShortID, mf.Name, mf.GoModule, ver)
+		}
+		if mf.GoModule == coreModule {
+			// Цөмийн дотоод модуль (apps/*) — цөмтэйгээ хамт ирдэг. `go get`
+			// хийвэл цөмийг модулийн хувилбар руу БУУЛГАНА; зөвхөн импортлоно.
+			fmt.Printf("   (цөмийн дотоод модуль — go get хэрэггүй)\n")
+		} else if err := run(filepath.Join(d.root, "backend"), "go", "get", mf.GoModule+"@v"+ver); err != nil {
 			return fmt.Errorf("go get: %w", err)
 		}
-		current[mf.ShortID] = mf.GoModule
+		current[mf.ShortID] = mf.ImportPath()
 		if err := d.setMain(current); err != nil {
 			return err
 		}
@@ -500,7 +508,7 @@ func findManifest(ix *registry.Index, spec string) *registry.Manifest {
 // copyUI — модулийн ui/ хавтсыг (Go module cache-ээс) frontend/modules/<id>/ui
 // руу хуулж, modules.json + манифестийн хуулбар (upgrade-ийн diff-д) бичнэ.
 func (d *dist) copyUI(mf *registry.Manifest) error {
-	pkgDir, err := runOut(filepath.Join(d.root, "backend"), "go", "list", "-f", "{{.Dir}}", mf.GoModule)
+	pkgDir, err := runOut(filepath.Join(d.root, "backend"), "go", "list", "-f", "{{.Dir}}", mf.ImportPath())
 	if err != nil {
 		return fmt.Errorf("модулийн хавтас: %w", err)
 	}

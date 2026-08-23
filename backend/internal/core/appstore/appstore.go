@@ -197,9 +197,6 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, src Source) error {
 	ix := loadIndex(ctx, src)
 	for _, e := range ix.Apps {
 		var err error
-		if err := recordRelease(ctx, admin, e.ID, e.Version); err != nil {
-			return err
-		}
 		if compiled[e.ID] {
 			_, err = admin.Exec(ctx, `
 				UPDATE apps SET description = $2::varchar(1000), publisher = $3::varchar(120),
@@ -219,6 +216,11 @@ func Sync(ctx context.Context, admin *pgxpool.Pool, src Source) error {
 		}
 		if err != nil {
 			return fmt.Errorf("каталог sync %s: %w", e.ID, err)
+		}
+		// apps мөр БАЙСНЫ ДАРАА — app_releases.app_id нь apps руу FK-тай тул
+		// компиллогдоогүй апп дээр урд нь бичвэл 23503 → boot унана.
+		if err := recordRelease(ctx, admin, e.ID, e.Version); err != nil {
+			return err
 		}
 	}
 	// Компиллогдсон модулийн тайлбарыг кодоос (Describer) — registry-гүй ч.

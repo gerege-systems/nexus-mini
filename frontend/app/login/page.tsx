@@ -28,6 +28,9 @@ export default function LoginPage() {
   // Аль хэдийн нэвтэрсэн хүнээс дахин нууц үг нэхэхгүй — session хүчинтэй
   // бол шууд портал руу.
   useEffect(() => {
+    // Хаагдсан байгууллагатай хэрэглэгчийг dashboard руу шидвэл shell буцааж
+    // login руу явуулж давталт үүсгэдэг байсан — одоо shell хаагдсан дэлгэц
+    // үзүүлдэг тул аюулгүй; гэхдээ next нь /api/... бол шууд үргэлжлүүлнэ.
     api.get("/api/me").then(() => { window.location.assign(next); }).catch(() => {});
   }, [router, next]);
 

@@ -53,16 +53,19 @@ check:
 	 echo "⚠  RLS + RBAC-ийн integration тест АЛГАСАГДЛАА (NEXUS_TEST_DATABASE_URL алга)."; \
 	 echo "   go test 'ok' гэж бичсэн ч мөрийн түвшний тусгаарлалт болон эрхийн"; \
 	 echo "   олголт — цөмийн хоёр гол инвариант — шалгагдаагүй байна."; \
-	 echo "   Бүрэн шалгах:  make check-db NEXUS_TEST_DATABASE_URL=... NEXUS_TEST_DATABASE_URL_OWNER=..."; \
+	 echo "   Мөн: signup (хоёр DB role), түдгэлзүүлэлт, каталогийн апп."; \
+	 echo "   Бүрэн шалгах:  make check-db NEXUS_TEST_DATABASE_URL=... _OWNER=... _AUTH=... _ADMIN=..."; \
 	 echo ""; \
 	 fi
 
 # check-db — check-ийн бүрэн хувилбар: DB заавал, алгасалт = алдаа.
 # CI болон прод deploy-ийн өмнө үүнийг ажиллуулна.
 check-db: check
-	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] || \
-	 { echo "check-db: NEXUS_TEST_DATABASE_URL болон _OWNER хоёулаа шаардлагатай"; exit 1; }
-	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 ./internal/core/db/... ./internal/core/rbac/...
+	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] && \
+	 [ -n "$(NEXUS_TEST_DATABASE_URL_AUTH)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_ADMIN)" ] || \
+	 { echo "check-db: NEXUS_TEST_DATABASE_URL, _OWNER, _AUTH, _ADMIN бүгд шаардлагатай"; exit 1; }
+	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 \
+	  ./internal/core/db/... ./internal/core/rbac/... ./internal/core/handlers/... ./internal/core/appstore/...
 
 push: check
 	git push

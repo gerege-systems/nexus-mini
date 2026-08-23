@@ -142,3 +142,31 @@ Tenant/байгууллага/гишүүний загварыг open-gerege-nexu
 - **RP** `internal/core/ssoclient`: Google + ерөнхий issuer (env), discovery 1ц кэш, JWKS (kid эргэлтэд дахин татна), PKCE/state/nonce HMAC cookie, JIT `SSO_AUTO_SIGNUP` (default хаалттай). Federation = өөр nexus-mini issuer.
 - Зориуд үгүй: implicit/hybrid, JWT access token, dynamic registration, MFA (дараа).
 - Баталгаа: бүтэн урсгал curl (code/PKCE/refresh/replay/introspect/revoke/end_session/CORS) + federation (өөрийгөө issuer-ээр) + Playwright (SSO клиент UI, consent).
+
+## Аудитын 4 засвар (2026-08-24)
+
+Дөрвүүлээ "нэг ч удаа гүйцэд ажиллуулж үзээгүй" урсгалд байсан; тус бүрд DB-тэй
+integration тест нэмж, `make check-db`-д оруулав (хуучин код дээр унадаг нь
+батлагдсан).
+
+1. **Signup 500** — 00010-ын дараа `auth_signup`-ийг `nexus_app` дуудаж чадахгүй
+   болсон ч handler `h.DB` (апп pool)-оор дуудсаар байсан → `/signup` бүрэн үхсэн.
+   **Шийдвэр**: хэрэглэгчийг `nexus_auth` pool-оор, байгууллагыг апп pool-ын
+   гүйлгээнд үүсгэнэ. Хоёр DB role тул НЭГ гүйлгээ боломжгүй — байгууллага
+   үүсэхгүй бол дөнгөж үүссэн хэрэглэгчийг `auth_delete_tenantless_user`
+   (00015, гишүүнчлэлгүй бол л устгана) -аар буцаана. Процесс дундуур унавал
+   tenant-гүй хэрэглэгч үлдэж болно — тэр нь бүтээгдэхүүний хувьд хүчинтэй
+   төлөв (`/org/new`). Альтернатив (бүх tenant seed-ийг SQL definer-т зөөх)-ыг
+   аваагүй: role seed/permission оноолтын эх сурвалж Go-д байх ёстой.
+2. **Түдгэлзүүлсэн байгууллага → login давталт** — `/api/menu` 403 → shell
+   `/login` руу, login `/api/me` (RequireUser) OK → `/dashboard` → дахин 403…
+   Одоо shell 403-ыг таньж **хаагдсан дэлгэц** (шалтгаан, байгууллага солих,
+   гарах) үзүүлнэ; 30 хоногийн устгалын мэдэгдэл ч эндээс харагдана.
+3. **Каталогийн "татаж авах" апп boot унагаана** — `app_releases.app_id` нь
+   `apps` руу FK-тай атал `recordRelease` нь `apps` upsert-ээс ӨМНӨ дуудагдаж
+   байсан (23503 → Sync алдаа → serve зогсоно). Дараалал засав.
+4. **`nexus add` цөмийг буулгана** — манифестын `go_module` нь пакежийн зам
+   байсан тул `go get <пакеж>@v1.0.0` нь агуулагч модуль (цөм)-ийг тэр таг руу
+   буулгаж байв. Одоо `go_module` = модулийн үндэс (build info-оос), `import` =
+   пакежийн зам; цөмийн дотоод модульд `go get` огт хийхгүй (цөмтэйгээ ирдэг).
+   `Validate` нь import ⊂ go_module-ийг шаардана.
