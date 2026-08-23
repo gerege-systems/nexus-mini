@@ -10,6 +10,11 @@ set -euo pipefail
 
 main() {
   cd /srv/nexus-mini
+  # Next build (NEXT_DIST_DIR=.next.new) нь эдгээр ҮҮСГЭСЭН файлуудыг .next.new
+  # рүү заалгаж бичдэг — track хийгддэг тул upstream тэдгээрт хүрвэл pull унана.
+  # Хүний засвар биш учир pull-ийн өмнө буцаана (бусад файлд хүрэхгүй).
+  git checkout -- frontend/next-env.d.ts frontend/tsconfig.json \
+                  admin/next-env.d.ts admin/tsconfig.json 2>/dev/null || true
   git pull --ff-only
 
   export PATH=/usr/local/go/bin:$PATH
