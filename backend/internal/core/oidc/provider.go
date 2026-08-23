@@ -467,14 +467,34 @@ func (p *Provider) grantRefresh(w http.ResponseWriter, r *http.Request, c *clien
 		tokenErr(w, 400, "invalid_request", "refresh_token")
 		return
 	}
-	var family, scope, clientID string
+	// Токеныг НЭГ атом мэдэгдлээр эзэмшинэ: SELECT дараа UPDATE гэж хуваавал
+	// нэг refresh-ийг зэрэг хоёр удаа хэрэглэхэд хоёулаа "хүчингүй биш" гэж
+	// уншаад хоёулаа шинэ токен авна — replay илрүүлэлт хэзээ ч ажиллахгүй.
+	// UPDATE..RETURNING-д мөр авсан НЭГ л хүсэлт цааш явна.
+	// client_id-г WHERE-т тавьсан нь өөр клиентийн токенд хүрэхээс сэргийлнэ.
+	var family, scope string
 	var userID *string
-	var revoked *time.Time
 	err := p.pool.QueryRow(r.Context(), `
-		SELECT family, scope, client_id, user_id, revoked_at FROM oauth_tokens
-		 WHERE token_hash = $1::char(64) AND kind = 'refresh' AND expires_at > clock_timestamp()`, sha256hex(rt)).
-		Scan(&family, &scope, &clientID, &userID, &revoked)
-	if errors.Is(err, pgx.ErrNoRows) || clientID != c.ClientID {
+		UPDATE oauth_tokens SET revoked_at = now()
+		 WHERE token_hash = $1::char(64) AND kind = 'refresh' AND client_id = $2::varchar(64)
+		   AND revoked_at IS NULL AND expires_at > clock_timestamp()
+		RETURNING family, scope, user_id`, sha256hex(rt), c.ClientID).
+		Scan(&family, &scope, &userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Мөр аваагүй. Хоёр тохиолдол: (а) токен огт байхгүй/хугацаа дууссан,
+		// (б) аль хэдийн хүчингүй болсон = replay (эсвэл зэрэг ирсэн 2 дахь
+		// хүсэлт). (б) бол гэр бүлийг бүхэлд нь хаана.
+		var fam string
+		if e := p.pool.QueryRow(r.Context(), `
+			SELECT family FROM oauth_tokens
+			 WHERE token_hash = $1::char(64) AND kind = 'refresh'
+			   AND client_id = $2::varchar(64) AND revoked_at IS NOT NULL`,
+			sha256hex(rt), c.ClientID).Scan(&fam); e == nil {
+			_, _ = p.pool.Exec(r.Context(), `UPDATE oauth_tokens SET revoked_at = now() WHERE family = $1::uuid AND revoked_at IS NULL`, fam)
+			log.Printf("oidc: refresh replay, family %s revoked (client %s)", fam, c.ClientID)
+			tokenErr(w, 400, "invalid_grant", "refresh token reused — family revoked")
+			return
+		}
 		tokenErr(w, 400, "invalid_grant", "refresh token unknown")
 		return
 	}
@@ -482,13 +502,7 @@ func (p *Provider) grantRefresh(w http.ResponseWriter, r *http.Request, c *clien
 		tokenErr(w, 500, "server_error", "")
 		return
 	}
-	if revoked != nil {
-		// Replay: хүчингүй болсон refresh дахин ирлээ — гэр бүлийг бүхэлд нь хаана.
-		_, _ = p.pool.Exec(r.Context(), `UPDATE oauth_tokens SET revoked_at = now() WHERE family = $1::uuid AND revoked_at IS NULL`, family)
-		log.Printf("oidc: refresh replay, family %s revoked (client %s)", family, clientID)
-		tokenErr(w, 400, "invalid_grant", "refresh token reused — family revoked")
-		return
-	}
+	// Эргэлт: гэр бүлийн үлдсэн токенуудыг (гараа өгсөн access) мөн хаана.
 	if _, err := p.pool.Exec(r.Context(), `UPDATE oauth_tokens SET revoked_at = now() WHERE family = $1::uuid AND revoked_at IS NULL`, family); err != nil {
 		tokenErr(w, 500, "server_error", "")
 		return
@@ -638,12 +652,16 @@ func (p *Provider) Userinfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Provider) Introspect(w http.ResponseWriter, r *http.Request) {
-	if _, ok := p.authenticateClient(r); !ok {
+	c, ok := p.authenticateClient(r)
+	if !ok {
 		tokenErr(w, 401, "invalid_client", "")
 		return
 	}
 	ti, ok := p.lookupAccess(r.Context(), r.PostFormValue("token"))
-	if !ok {
+	// RFC 7662 §2.1: токеныг дуудагч клиентэд олгосон эсэхийг шалгана. Эс
+	// тэгвэл аль ч клиент өөр клиентийн токеныг шалгаж sub/scope/tenant_id-г
+	// уншиж чадна. Хариулт нь "active: false" — байгаа эсэхийг ч мэдэгдэхгүй.
+	if !ok || ti.ClientID != c.ClientID {
 		nexus.JSON(w, http.StatusOK, map[string]any{"active": false})
 		return
 	}

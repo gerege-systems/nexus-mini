@@ -7,7 +7,7 @@
 
 ENV_FLAG := $(if $(ENV_FILE),--env $(ENV_FILE),)
 
-.PHONY: help build migrate serve web admin check push manifest
+.PHONY: help build migrate serve web admin check check-db push manifest
 
 help:
 	@echo "make migrate   миграц + (env-д ADMIN_* байвал) анхны платформ админ"
@@ -16,6 +16,7 @@ help:
 	@echo "make build     бинари (backend/bin/nexus-mini, атом солилт)"
 	@echo "make manifest  registry манифест JSON (MOD=<short_id> нэг модуль)"
 	@echo "make check     linux build + vet + test + SDK-ийн хил    make push   check → git push"
+	@echo "make check-db  check + RLS/RBAC integration (NEXUS_TEST_DATABASE_URL{,_OWNER} заавал)"
 	@echo "ENV_FILE=...   env файлын зам (default backend/nexus-mini.env)"
 
 # Атом солилт: шинийг тусад нь build хийж mv-ээр (rename атом) дарна; өмнөхийг
@@ -47,6 +48,21 @@ check:
 	cd backend && GOOS=linux GOARCH=amd64 go build ./... && go vet ./... && go test ./...
 	@cd backend && bad=$$(go list -deps ./apps/... | grep 'backend/internal' || true); \
 	 if [ -n "$$bad" ]; then echo "SDK хил зөрчигдөв — модуль internal/* импортолж байна:"; echo "$$bad"; exit 1; fi
+	@if [ -z "$$NEXUS_TEST_DATABASE_URL" ]; then \
+	 echo ""; \
+	 echo "⚠  RLS + RBAC-ийн integration тест АЛГАСАГДЛАА (NEXUS_TEST_DATABASE_URL алга)."; \
+	 echo "   go test 'ok' гэж бичсэн ч мөрийн түвшний тусгаарлалт болон эрхийн"; \
+	 echo "   олголт — цөмийн хоёр гол инвариант — шалгагдаагүй байна."; \
+	 echo "   Бүрэн шалгах:  make check-db NEXUS_TEST_DATABASE_URL=... NEXUS_TEST_DATABASE_URL_OWNER=..."; \
+	 echo ""; \
+	 fi
+
+# check-db — check-ийн бүрэн хувилбар: DB заавал, алгасалт = алдаа.
+# CI болон прод deploy-ийн өмнө үүнийг ажиллуулна.
+check-db: check
+	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] || \
+	 { echo "check-db: NEXUS_TEST_DATABASE_URL болон _OWNER хоёулаа шаардлагатай"; exit 1; }
+	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 ./internal/core/db/... ./internal/core/rbac/...
 
 push: check
 	git push

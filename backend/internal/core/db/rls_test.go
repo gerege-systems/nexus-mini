@@ -18,7 +18,16 @@ func testEnv(t *testing.T) (appURL, ownerURL string) {
 	t.Helper()
 	appURL = os.Getenv("NEXUS_TEST_DATABASE_URL")
 	ownerURL = os.Getenv("NEXUS_TEST_DATABASE_URL_OWNER")
-	if appURL == "" || ownerURL == "" {
+	// Нэг нь тавигдаад нөгөө нь дутуу бол бараг үргэлж үсгийн алдаа. Чимээгүй
+	// алгасвал "тест өнгөрлөө" мэт харагдана — тиймээс унана.
+	if (appURL == "") != (ownerURL == "") {
+		t.Fatal("NEXUS_TEST_DATABASE_URL болон NEXUS_TEST_DATABASE_URL_OWNER хоёулаа хэрэгтэй — нэг нь дутуу")
+	}
+	if appURL == "" {
+		// make check-db / CI үүнийг тавина: алгасах нь ногоон гэж тооцогдохгүй.
+		if os.Getenv("NEXUS_TEST_REQUIRE_DB") != "" {
+			t.Fatal("NEXUS_TEST_REQUIRE_DB тавигдсан ч DB-ийн URL алга — integration тестийг алгасах боломжгүй")
+		}
 		t.Skip("NEXUS_TEST_DATABASE_URL(_OWNER) тохируулаагүй — integration тест алгаслаа")
 	}
 	return

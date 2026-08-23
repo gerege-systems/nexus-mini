@@ -15,7 +15,15 @@ import (
 func TestUserGrantsIntegration(t *testing.T) {
 	appURL := os.Getenv("NEXUS_TEST_DATABASE_URL")
 	ownerURL := os.Getenv("NEXUS_TEST_DATABASE_URL_OWNER")
-	if appURL == "" || ownerURL == "" {
+	// db package-ийн testEnv-тэй ижил дүрэм: дутуу env = үсгийн алдаа (унана),
+	// NEXUS_TEST_REQUIRE_DB тавигдсан бол алгасахыг зөвшөөрөхгүй.
+	if (appURL == "") != (ownerURL == "") {
+		t.Fatal("NEXUS_TEST_DATABASE_URL болон NEXUS_TEST_DATABASE_URL_OWNER хоёулаа хэрэгтэй — нэг нь дутуу")
+	}
+	if appURL == "" {
+		if os.Getenv("NEXUS_TEST_REQUIRE_DB") != "" {
+			t.Fatal("NEXUS_TEST_REQUIRE_DB тавигдсан ч DB-ийн URL алга — integration тестийг алгасах боломжгүй")
+		}
 		t.Skip("NEXUS_TEST_DATABASE_URL(_OWNER) тохируулаагүй — integration тест алгаслаа")
 	}
 	ctx := context.Background()
