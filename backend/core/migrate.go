@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/migrate"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/password"
@@ -64,7 +65,7 @@ func upsertAdmin(ownerURL, email, name, pass string) error {
 	if !strings.Contains(email, "@") || name == "" {
 		return fmt.Errorf("зөв имэйл ба нэр шаардлагатай")
 	}
-	if len(pass) < 8 {
+	if utf8.RuneCountInString(pass) < 8 {
 		return fmt.Errorf("нууц үг 8+ тэмдэгт байх ёстой")
 	}
 	hash, err := password.Hash(pass)

@@ -5,6 +5,7 @@ package handlers_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -184,5 +185,40 @@ func TestTenantIsolationBetweenSessions(t *testing.T) {
 	list := members["members"].([]any)
 	if len(list) != 1 || list[0].(map[string]any)["email"] != "htest-isoa@x.mn" {
 		t.Fatalf("гишүүдийн тусгаарлалт эвдэрсэн: %v", list)
+	}
+}
+
+// grantError — клиентэд харагдах мессежтэй алдаа.
+func TestGrantErrorMessage(t *testing.T) {
+	h := newHarness(t)
+	admin := h.signup(t, "granterr")
+	hr := hrSession(t, h, admin, admin.tenantID(t), "htest-granterr-hr@x.mn")
+	w := hr.do(t, http.MethodPost, "/api/members",
+		map[string]any{"email": "htest-granterr-x@x.mn", "name": "Х", "password": "password-12", "roles": []string{"admin"}})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("код = %d", w.Code)
+	}
+	// Мессеж нь ЯМАР role/permission болохыг хэлнэ (grantError.Error).
+	if body := w.Body.String(); !strings.Contains(body, "admin") {
+		t.Fatalf("алдааны мессеж мэдээлэлгүй: %s", body)
+	}
+}
+
+// grantError.Error() — Go-ийн error интерфэйсийг хангадаг эсэх (лог/errors.As).
+func TestGrantErrorImplementsError(t *testing.T) {
+	h := newHarness(t)
+	admin := h.signup(t, "granterr2")
+	roles := admin.json(t, http.MethodGet, "/api/roles", nil)
+	var adminRole string
+	for _, r := range roles["roles"].([]any) {
+		if m := r.(map[string]any); m["code"] == "admin" {
+			adminRole = m["id"].(string)
+		}
+	}
+	// admin role-ийн оноолт → grantError үүсч, түүний Error() лог-д ордог.
+	w := admin.do(t, http.MethodPut, "/api/roles/"+adminRole+"/grants",
+		map[string]any{"grants": map[string]string{"core.audit.read": "all"}})
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "admin") {
+		t.Fatalf("= %d %s", w.Code, w.Body.String())
 	}
 }

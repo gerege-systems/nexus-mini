@@ -119,6 +119,7 @@ func newHarness(t *testing.T) *harness {
 		g.With(nexus.RequirePermission(h.perms, "core.settings.manage")).Put("/api/tenant/profile", authH.UpdateTenantProfile)
 		g.With(nexus.RequirePermission(h.perms, "core.sso.manage")).Get("/api/sso-clients", authH.SSOClients)
 		g.With(nexus.RequirePermission(h.perms, "core.sso.manage")).Post("/api/sso-clients", authH.CreateSSOClient)
+		g.With(nexus.RequirePermission(h.perms, "core.sso.manage")).Put("/api/sso-clients/{id}", authH.UpdateSSOClient)
 		g.With(nexus.RequirePermission(h.perms, "core.sso.manage")).Delete("/api/sso-clients/{id}", authH.DeleteSSOClient)
 		g.With(nexus.RequirePermission(h.perms, "core.members.manage")).Get("/api/members", rbacH.Members)
 		g.With(nexus.RequirePermission(h.perms, "core.members.manage")).Get("/api/members/lookup", rbacH.LookupMember)

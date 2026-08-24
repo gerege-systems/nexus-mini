@@ -8,8 +8,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/registry"
@@ -125,5 +127,40 @@ func TestReadPrivRejectsBadKey(t *testing.T) {
 	}
 	if _, err := readPriv(filepath.Join(t.TempDir(), "байхгүй")); err == nil {
 		t.Fatal("байхгүй файл хүлээн авагдав")
+	}
+}
+
+func TestKeygenPrintsUsablePair(t *testing.T) {
+	// keygen нь stdout руу бичдэг — түр дамжуулж авна.
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	err = keygen()
+	_ = w.Close()
+	os.Stdout = old
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _ := io.ReadAll(r)
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) < 4 {
+		t.Fatalf("keygen гаралт:\n%s", out)
+	}
+	priv, err := base64.StdEncoding.DecodeString(strings.TrimSpace(lines[1]))
+	if err != nil || len(priv) != ed25519.PrivateKeySize {
+		t.Fatalf("private key = %d байт, %v", len(priv), err)
+	}
+	pub, err := base64.StdEncoding.DecodeString(strings.TrimSpace(lines[3]))
+	if err != nil || len(pub) != ed25519.PublicKeySize {
+		t.Fatalf("public key = %d байт, %v", len(pub), err)
+	}
+	// Хос болох эсэх: гарын үсэг зурж баталгаажуулна.
+	msg := []byte("тест")
+	sig := registry.Sign(ed25519.PrivateKey(priv), msg)
+	if err := registry.Verify([]ed25519.PublicKey{ed25519.PublicKey(pub)}, msg, sig); err != nil {
+		t.Fatalf("түлхүүрийн хос таарахгүй: %v", err)
 	}
 }

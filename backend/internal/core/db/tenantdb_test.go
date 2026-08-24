@@ -104,3 +104,34 @@ func TestTenantDBSetsAndResetsGUCs(t *testing.T) {
 		t.Fatal("rollback ажиллаагүй")
 	}
 }
+
+// rowWrapper.Scan — алдааг дамжуулж, холболтыг буцаана.
+func TestQueryRowScanError(t *testing.T) {
+	appURL := os.Getenv("NEXUS_TEST_DATABASE_URL")
+	if appURL == "" {
+		if os.Getenv("NEXUS_TEST_REQUIRE_DB") != "" {
+			t.Fatal("NEXUS_TEST_DATABASE_URL шаардлагатай")
+		}
+		t.Skip("DB тохируулаагүй — алгасав")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, appURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	tdb := NewTenantDB(pool)
+	var n int
+	// Синтакс алдаатай query — Scan алдаа буцаана (panic биш).
+	if err := tdb.QueryRow(ctx, `SELECT ЭНЭ БУРУУ`).Scan(&n); err == nil {
+		t.Fatal("алдаатай query амжилттай болов")
+	}
+	// Мөр буцаахгүй query.
+	if err := tdb.QueryRow(ctx, `SELECT 1 WHERE false`).Scan(&n); err == nil {
+		t.Fatal("мөргүй query алдаа өгсөнгүй")
+	}
+	// Дараа нь ажиллаж байна (холболт бохирдоогүй).
+	if err := tdb.QueryRow(ctx, `SELECT 42`).Scan(&n); err != nil || n != 42 {
+		t.Fatalf("дараагийн query = %d %v", n, err)
+	}
+}

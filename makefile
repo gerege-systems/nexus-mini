@@ -40,8 +40,11 @@ manifest: build
 # Frontend-ийн статик шалгалт: i18n бүрэн, middleware-ийн хамгаалалт,
 # hydration эрсдэл (DB ч, browser ч шаардахгүй).
 check-web:
+	cd frontend && node --test scripts/*.test.mjs
 	cd frontend && node scripts/audit.mjs
+	cd admin && node scripts/audit.mjs
 	cd frontend && pnpm build
+	cd admin && pnpm build
 
 web:
 	cd frontend && pnpm dev

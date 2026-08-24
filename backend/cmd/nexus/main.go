@@ -39,6 +39,10 @@ import (
 
 const coreModule = "github.com/gerege-systems/nexus-mini/backend"
 
+// archiveBase — цөмийн frontend/admin-ийг татах tarball-ийн үндэс. Тестээс
+// локал сервер рүү заана (init-ийг сүлжээгүй шалгахад).
+var archiveBase = "https://github.com/gerege-systems/nexus-mini/archive/refs/tags"
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -358,7 +362,7 @@ func cmdInit(args []string) error {
 
 // fetchCoreFiles — github tarball (tag backend/<ver>) → frontend/, .env.example, deploy/*.sql.
 func fetchCoreFiles(root, ver string) error {
-	url := fmt.Sprintf("https://github.com/gerege-systems/nexus-mini/archive/refs/tags/backend/%s.tar.gz", ver)
+	url := fmt.Sprintf("%s/backend/%s.tar.gz", archiveBase, ver)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
