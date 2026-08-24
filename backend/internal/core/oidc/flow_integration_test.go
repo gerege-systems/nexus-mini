@@ -408,3 +408,39 @@ func decodeJWT(t *testing.T, tok string) map[string]any {
 	}
 	return claims
 }
+
+func TestOIDCEndSession(t *testing.T) {
+	f := newFixture(t)
+	verifier, challenge := pkce()
+	q := f.authzQuery(challenge, "openid")
+	code := f.approve(t, q)
+	tok := f.token(t, url.Values{"grant_type": {"authorization_code"}, "code": {code},
+		"redirect_uri": {"https://rp.mn/cb"}, "code_verifier": {verifier}}, 200)
+	idToken := tok["id_token"].(string)
+
+	// Бүртгэлгүй post_logout_redirect_uri — portal руу (open redirect хаалттай).
+	w := f.get(t, f.p.EndSession, "/api/oauth2/end_session?id_token_hint="+idToken+
+		"&post_logout_redirect_uri="+url.QueryEscape("https://evil.mn/"), true)
+	if w.Code != http.StatusFound || !strings.HasPrefix(w.Header().Get("Location"), "https://portal.mn/") {
+		t.Fatalf("бүртгэлгүй URI = %d %s", w.Code, w.Header().Get("Location"))
+	}
+	// id_token_hint-гүй ч portal руу, session дуусна.
+	w = f.get(t, f.p.EndSession, "/api/oauth2/end_session?state=xyz", true)
+	loc := w.Header().Get("Location")
+	if w.Code != http.StatusFound || !strings.Contains(loc, "state=xyz") {
+		t.Fatalf("end_session = %d %s", w.Code, loc)
+	}
+	// Бүртгэлтэй post_logout URI — тэр рүү буцна.
+	ctx := context.Background()
+	if _, err := f.owner.Exec(ctx, `UPDATE oauth_clients SET post_logout_uris = '["https://rp.mn/bye"]'::jsonb WHERE client_id = $1`, f.clientID); err != nil {
+		t.Fatal(err)
+	}
+	w = f.get(t, f.p.EndSession, "/api/oauth2/end_session?id_token_hint="+idToken+
+		"&post_logout_redirect_uri="+url.QueryEscape("https://rp.mn/bye"), true)
+	if w.Header().Get("Location") != "https://rp.mn/bye" {
+		t.Fatalf("бүртгэлтэй URI = %s", w.Header().Get("Location"))
+	}
+	if f.p.String() == "" {
+		t.Fatal("String() хоосон")
+	}
+}

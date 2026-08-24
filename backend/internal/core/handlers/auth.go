@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
@@ -52,7 +53,7 @@ func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
 	in.TenantName = strings.TrimSpace(in.TenantName)
 	in.TenantSlug = strings.ToLower(strings.TrimSpace(in.TenantSlug))
-	if in.Name == "" || !emailRe.MatchString(in.Email) || len(in.Password) < 8 ||
+	if in.Name == "" || !emailRe.MatchString(in.Email) || utf8.RuneCountInString(in.Password) < 8 ||
 		in.TenantName == "" || in.TenantSlug == "" {
 		httpx.Error(w, http.StatusBadRequest, "бүх талбарыг зөв бөглөнө үү (нууц үг 8+)")
 		return

@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/appstore"
@@ -19,6 +21,7 @@ import (
 	coredb "github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/handlers"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/ssoclient"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/tenantstate"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
@@ -31,6 +34,9 @@ type harness struct {
 	svc                      *auth.Service
 	perms                    *rbac.Store
 	state                    *tenantstate.Store
+	ssoClient                *ssoclient.Client
+	sso                      *handlers.SSO
+	authHandler              *handlers.Auth
 	prefix                   string
 }
 
@@ -82,20 +88,33 @@ func newHarness(t *testing.T) *harness {
 	adminH := &handlers.Admin{Pool: h.admin, Svc: h.svc, Rec: rec, State: h.state, PortalURL: "https://portal.mn"}
 	storeH := &handlers.Store{DB: tdb, Installer: installer, Gate: gate, Audit: rec}
 	miscH := &handlers.Misc{DB: tdb, Perms: h.perms}
+	// SSO (relying party) — тестэд provider-ийг тест бүр өөрөө тохируулна.
+	h.ssoClient = ssoclient.New(nil)
+	ssoH := handlers.NewSSO(h.ssoClient, authH, "https://portal.mn", false, false, "тест-нууц")
+	h.sso = ssoH
+	h.authHandler = authH
 
 	r := chi.NewRouter()
 	r.Post("/api/signup", authH.Signup)
 	r.Post("/api/login", authH.Login)
 	r.Post("/api/logout", authH.Logout)
+	r.Post("/api/auth/handover", authH.Handover)
+	r.Get("/api/auth/sso/providers", ssoH.Providers)
+	r.Get("/api/auth/sso/{key}/start", ssoH.Start)
+	r.Get("/api/auth/sso/{key}/callback", ssoH.Callback)
 	r.Group(func(g chi.Router) {
 		g.Use(h.svc.RequireUser)
 		g.Get("/api/me", authH.Me)
+		g.Put("/api/me", authH.UpdateProfile)
+		g.Post("/api/me/password", authH.ChangePassword)
 		g.Post("/api/session/tenant", authH.SelectTenant)
 		g.Post("/api/tenants", authH.CreateTenant)
 	})
 	r.Group(func(g chi.Router) {
 		g.Use(h.svc.RequireTenant)
 		g.Get("/api/menu", miscH.Menu)
+		g.With(nexus.RequirePermission(h.perms, "core.audit.read")).Get("/api/audit", miscH.Audit)
+		g.With(nexus.RequirePermission(h.perms, "core.audit.read")).Get("/api/audit/verify", miscH.AuditVerify)
 		g.Get("/api/tenant/profile", authH.TenantProfile)
 		g.With(nexus.RequirePermission(h.perms, "core.settings.manage")).Put("/api/tenant/profile", authH.UpdateTenantProfile)
 		g.With(nexus.RequirePermission(h.perms, "core.sso.manage")).Get("/api/sso-clients", authH.SSOClients)
@@ -106,6 +125,7 @@ func newHarness(t *testing.T) *harness {
 		g.With(nexus.RequirePermission(h.perms, "core.members.manage")).Post("/api/members", rbacH.AddMember)
 		g.With(nexus.RequirePermission(h.perms, "core.members.manage")).Put("/api/members/{id}/roles", rbacH.SetMemberRoles)
 		g.With(nexus.RequirePermission(h.perms, "core.members.manage")).Delete("/api/members/{id}", rbacH.RemoveMember)
+		g.Get("/api/permissions", rbacH.Permissions)
 		g.With(nexus.RequirePermission(h.perms, "core.roles.manage")).Get("/api/roles", rbacH.Roles)
 		g.With(nexus.RequirePermission(h.perms, "core.roles.manage")).Post("/api/roles", rbacH.CreateRole)
 		g.With(nexus.RequirePermission(h.perms, "core.roles.manage")).Put("/api/roles/{id}/grants", rbacH.SetGrants)
@@ -117,6 +137,10 @@ func newHarness(t *testing.T) *harness {
 	})
 	r.Group(func(g chi.Router) {
 		g.Use(h.svc.RequirePlatformAdmin)
+		g.Get("/api/admin/overview", adminH.Overview)
+		g.Get("/api/admin/users", adminH.Users)
+		g.Get("/api/admin/apps", adminH.Apps)
+		g.Get("/api/admin/audit", adminH.Audit)
 		g.Get("/api/admin/tenants", adminH.Tenants)
 		g.Get("/api/admin/tenants/{id}/members", adminH.TenantMembers)
 		g.Put("/api/admin/tenants/{id}/state", adminH.SetTenantState)
@@ -215,6 +239,49 @@ func (s *session) json(t *testing.T, method, target string, body any) map[string
 	var out map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &out)
 	return out
+}
+
+// ssoStart — SSO нэвтрэлт эхлүүлж (state, cookie) буцаана.
+func (h *harness) ssoStart(t *testing.T, idp *fakeIDP) (state string, cookie *http.Cookie) {
+	t.Helper()
+	w := h.do(t, nil, http.MethodGet, "/api/auth/sso/sso/start", nil)
+	if w.Code != http.StatusFound {
+		t.Fatalf("sso start = %d", w.Code)
+	}
+	u, err := url.Parse(w.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	idp.nonce = u.Query().Get("nonce")
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "nexus_sso" {
+			cookie = c
+		}
+	}
+	return u.Query().Get("state"), cookie
+}
+
+func (h *harness) ssoCallback(t *testing.T, cookie *http.Cookie, query string) *httptest.ResponseRecorder {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodGet, "/api/auth/sso/sso/callback?"+query, nil)
+	if cookie != nil {
+		r.AddCookie(cookie)
+	}
+	return recordRequest(h, r)
+}
+
+// formPost — x-www-form-urlencoded хүсэлт (handover гэх мэт).
+func formPost(t *testing.T, target, body string) *http.Request {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return r
+}
+
+func recordRequest(h *harness, r *http.Request) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	h.router.ServeHTTP(w, r)
+	return w
 }
 
 // tenantID — session-ий идэвхтэй байгууллага.
