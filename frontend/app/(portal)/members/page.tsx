@@ -170,9 +170,10 @@ export default function MembersPage() {
                   <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 <div className="field">
-                  <label>{t("Түр нууц үг (8+)")}</label>
+                  <label>{t("Түр нууц үг")}</label>
                   <input type="password" value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                  <div className="hint">{t("8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)")}</div>
                 </div>
               </>
             )}

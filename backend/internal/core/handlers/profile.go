@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
@@ -53,8 +52,8 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	if !httpx.Decode(w, r, &in) {
 		return
 	}
-	if utf8.RuneCountInString(in.New) < 8 {
-		httpx.Error(w, http.StatusBadRequest, "шинэ нууц үг 8+ тэмдэгт байх ёстой")
+	if err := password.Validate(in.New); err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	var uid, hash, name string

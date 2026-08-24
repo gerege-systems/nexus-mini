@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/httpx"
@@ -520,8 +519,12 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 		in.Email).Scan(&userID, &existingHash, &existingName, &isAdmin)
 	if err == pgx.ErrNoRows {
 		in.Name = strings.TrimSpace(in.Name)
-		if in.Name == "" || utf8.RuneCountInString(in.Password) < 8 {
-			httpx.Error(w, http.StatusBadRequest, "шинэ хэрэглэгчид нэр ба 8+ тэмдэгт түр нууц үг өгнө")
+		if in.Name == "" {
+			httpx.Error(w, http.StatusBadRequest, "шинэ хэрэглэгчид нэр шаардлагатай")
+			return
+		}
+		if err := password.Validate(in.Password); err != nil {
+			httpx.Error(w, http.StatusBadRequest, "түр нууц үг: "+err.Error())
 			return
 		}
 		hash, herr := password.Hash(in.Password)

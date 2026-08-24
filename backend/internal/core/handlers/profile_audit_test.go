@@ -6,6 +6,7 @@ package handlers_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
@@ -35,20 +36,21 @@ func TestProfileUpdateAndPasswordChange(t *testing.T) {
 	}
 	// Буруу одоогийн нууц үг.
 	if w := s.do(t, http.MethodPost, "/api/me/password",
-		map[string]string{"current_password": "буруу", "new_password": "шинэ-нууц-12"}); w.Code != http.StatusForbidden {
+		map[string]string{"current_password": "буруу", "new_password": "NewPass-12"}); w.Code != http.StatusForbidden {
 		t.Fatalf("буруу одоогийн нууц үг = %d (403 хүлээсэн)", w.Code)
 	}
 	// Богино шинэ нууц үг — ТЭМДЭГТЭЭР тоологдоно (кирилл 6 тэмдэгт = 12 байт
 	// байсан ч 8-аас бага тул татгалзана).
-	for _, short := range []string{"богино", "abcdefg", "аб"} {
+	// Дүрэм: 8+ тэмдэгт, ЗӨВХӨН латин үсэг + тоо + тусгай тэмдэгт.
+	for _, bad := range []string{"Ab1!", "abcdefg", "Нууцүг123!", "passwоrd-12", "pass word1!", "password12", "12345678!", "passworddd"} {
 		if w := s.do(t, http.MethodPost, "/api/me/password",
-			map[string]string{"current_password": "password-12", "new_password": short}); w.Code != http.StatusBadRequest {
-			t.Fatalf("богино нууц үг %q = %d", short, w.Code)
+			map[string]string{"current_password": "password-12", "new_password": bad}); w.Code != http.StatusBadRequest {
+			t.Fatalf("дүрэм зөрчсөн нууц үг %q = %d", bad, w.Code)
 		}
 	}
 	// Зөв солилт.
 	if w := s.do(t, http.MethodPost, "/api/me/password",
-		map[string]string{"current_password": "password-12", "new_password": "шинэ-нууц-12"}); w.Code != 200 {
+		map[string]string{"current_password": "password-12", "new_password": "NewPass-12"}); w.Code != 200 {
 		t.Fatalf("нууц үг солих = %d: %s", w.Code, w.Body.String())
 	}
 	// Бусад session унтарсан, өөрийнх ажиллана.
@@ -63,7 +65,7 @@ func TestProfileUpdateAndPasswordChange(t *testing.T) {
 		map[string]string{"email": "htest-prof2@x.mn", "password": "password-12"}); w.Code == 200 {
 		t.Fatal("хуучин нууц үгээр нэвтэрлээ")
 	}
-	_ = h.login(t, "htest-prof2@x.mn", "шинэ-нууц-12", "")
+	_ = h.login(t, "htest-prof2@x.mn", "NewPass-12", "")
 }
 
 func TestImpersonatedSessionCannotChangeProfile(t *testing.T) {
@@ -165,4 +167,52 @@ func TestLogoutClearsSession(t *testing.T) {
 		t.Fatalf("cookie-гүй logout = %d", w.Code)
 	}
 	_ = context.Background()
+}
+
+// Нууц үгийн дүрэм бүх оруулах цэгт нэгэн адил үйлчилнэ.
+func TestPasswordPolicyEverywhere(t *testing.T) {
+	h := newHarness(t)
+	bad := []string{"Нууцүг123!", "богино", "password12", "12345678!", "passworddd", "pass word1!"}
+
+	// 1. Signup.
+	for _, p := range bad {
+		w := h.do(t, nil, http.MethodPost, "/api/signup", map[string]string{
+			"name": "Т", "email": "htest-pol@x.mn", "password": p,
+			"tenant_name": "Т", "tenant_slug": "htest-pol"})
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("signup %q = %d: %s", p, w.Code, w.Body.String())
+		}
+	}
+	// Зөв нууц үгээр signup ажиллана.
+	if w := h.do(t, nil, http.MethodPost, "/api/signup", map[string]string{
+		"name": "Т", "email": "htest-pol@x.mn", "password": "Good-Pass1",
+		"tenant_name": "Т", "tenant_slug": "htest-pol"}); w.Code >= 400 {
+		t.Fatalf("зөв нууц үгтэй signup = %d: %s", w.Code, w.Body.String())
+	}
+	// Signup нь tenant-ыг сонгож өгдөг ч login нь өгдөггүй — tenant-аа зааж авна.
+	var tid string
+	if err := h.owner.QueryRow(context.Background(),
+		`SELECT id FROM tenants WHERE slug = 'htest-pol'`).Scan(&tid); err != nil {
+		t.Fatal(err)
+	}
+	s := h.login(t, "htest-pol@x.mn", "Good-Pass1", tid)
+
+	// 2. Гишүүн нэмэх (түр нууц үг).
+	for _, p := range bad {
+		w := s.do(t, http.MethodPost, "/api/members", map[string]any{
+			"email": "htest-pol-new@x.mn", "name": "Ш", "password": p, "roles": []string{"user"}})
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "түр нууц үг") {
+			t.Fatalf("гишүүн нэмэх %q = %d: %s", p, w.Code, w.Body.String())
+		}
+	}
+	if w := s.do(t, http.MethodPost, "/api/members", map[string]any{
+		"email": "htest-pol-new@x.mn", "name": "Ш", "password": "Temp-Pass1", "roles": []string{"user"}}); w.Code >= 400 {
+		t.Fatalf("зөв түр нууц үг = %d: %s", w.Code, w.Body.String())
+	}
+	// 3. Алдааны мессеж кирилл гэдгийг зааж өгнө.
+	w := s.do(t, http.MethodPost, "/api/me/password",
+		map[string]string{"current_password": "Good-Pass1", "new_password": "Нууцүг123!"})
+	if !strings.Contains(w.Body.String(), "кирилл") {
+		t.Fatalf("мессеж = %s", w.Body.String())
+	}
 }

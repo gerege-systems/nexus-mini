@@ -54,9 +54,10 @@ export default function SignupPage() {
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div className="field">
-            <label>{t("Нууц үг (8+)")}</label>
+            <label>{t("Нууц үг")}</label>
             <input type="password" value={form.password} required minLength={8}
               onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <div className="hint">{t("8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)")}</div>
           </div>
           <div className="field">
             <label>{t("Байгууллагын нэр")}</label>

@@ -23,6 +23,9 @@ export function setLocale(l: Locale) {
 }
 
 const en: Record<string, string> = {
+  "8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)": "8+ characters: Latin letters, digits and a special character (Cyrillic not allowed)",
+  "Түр нууц үг": "Temporary password",
+  "Шинэ нууц үг": "New password",
   "Платформын админ": "Platform admin",
   "nexus-mini удирдлагын систем": "nexus-mini management console",
   "Энэ систем зөвхөн платформын админд зориулагдсан": "This console is for platform admins only",

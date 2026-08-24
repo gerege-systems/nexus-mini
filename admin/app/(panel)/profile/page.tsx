@@ -83,9 +83,10 @@ export default function ProfilePage() {
               onChange={(e) => setPw({ ...pw, current_password: e.target.value })} />
           </div>
           <div className="field">
-            <label>{t("Шинэ нууц үг (8+)")}</label>
+            <label>{t("Шинэ нууц үг")}</label>
             <input type="password" value={pw.new_password} required minLength={8}
               onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
+            <div className="hint">{t("8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)")}</div>
           </div>
           <div className="field">
             <label>{t("Шинэ нууц үг (давталт)")}</label>

@@ -217,7 +217,7 @@ func TestMigrateAndAdminBootstrap(t *testing.T) {
 	if _, err := owner.Exec(ctx, `INSERT INTO users (email, password_hash, name) VALUES ('boot-promote@x.mn',$1,'Б')`, hash); err != nil {
 		t.Fatal(err)
 	}
-	if err := upsertAdmin(ownerURL, "boot-promote@x.mn", "Б", "өөр-нууц-үг"); err != nil {
+	if err := upsertAdmin(ownerURL, "boot-promote@x.mn", "Б", "Other-Pass1!"); err != nil {
 		t.Fatal(err)
 	}
 	var isAdmin bool
@@ -239,7 +239,7 @@ func TestMigrateAndAdminBootstrap(t *testing.T) {
 		t.Fatal("шинэ админ үүсээгүй")
 	}
 	// Буруу оролт.
-	for _, c := range [][3]string{{"тийм-биш", "Н", "password-12"}, {"a@b.mn", "", "password-12"}, {"a@b.mn", "Н", "богино"}} {
+	for _, c := range [][3]string{{"тийм-биш", "Н", "password-12"}, {"a@b.mn", "", "password-12"}, {"a@b.mn", "Н", "Ab1!"}, {"a@b.mn", "Н", "Нууцүг123!"}, {"a@b.mn", "Н", "passwordonly"}} {
 		if err := upsertAdmin(ownerURL, c[0], c[1], c[2]); err == nil {
 			t.Errorf("буруу админ оролт хүлээн авагдав: %v", c)
 		}
