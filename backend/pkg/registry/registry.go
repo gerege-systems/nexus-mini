@@ -275,7 +275,7 @@ func Fetch(ctx context.Context, url string, keys []ed25519.PublicKey, cacheDir s
 	if cachedRaw != nil && Verify(keys, cachedRaw, cachedSig) == nil {
 		cached, _ = Parse(cachedRaw)
 	}
-	raw, sig, err := download(ctx, url, cacheDir)
+	raw, sig, etag, err := download(ctx, url, cacheDir)
 	if err != nil {
 		if cached != nil {
 			return cached, nil
@@ -301,11 +301,13 @@ func Fetch(ctx context.Context, url string, keys []ed25519.PublicKey, cacheDir s
 	if cached != nil && ix.GeneratedAt.Before(cached.GeneratedAt) {
 		return cached, errors.New("registry: хуучин index (replay) — кэш ашиглав")
 	}
-	_ = writeCache(cacheDir, raw, sig)
+	// ETag-ийг ЗӨВХӨН баталгаажсан index-тэй хамт бичнэ: урьдчилж бичвэл
+	// дараагийн хүсэлт 304 аваад хуучин кэшэндээ мөнхөд гацна (тестээр илэрсэн).
+	_ = writeCache(cacheDir, raw, sig, etag)
 	return ix, nil
 }
 
-func download(ctx context.Context, url, cacheDir string) ([]byte, string, error) {
+func download(ctx context.Context, url, cacheDir string) (raw []byte, sig, etag string, err error) {
 	client := &http.Client{Timeout: 15 * time.Second}
 	get := func(u string, etag string) ([]byte, string, int, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -335,32 +337,28 @@ func download(ctx context.Context, url, cacheDir string) ([]byte, string, error)
 		}
 		return b, resp.Header.Get("ETag"), resp.StatusCode, nil
 	}
-	etag := ""
+	prevETag := ""
 	if cacheDir != "" {
 		if b, err := os.ReadFile(filepath.Join(cacheDir, "etag")); err == nil {
-			etag = strings.TrimSpace(string(b))
+			prevETag = strings.TrimSpace(string(b))
 		}
 	}
-	raw, newETag, code, err := get(url, etag)
+	body, newETag, code, err := get(url, prevETag)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	if code == http.StatusNotModified {
 		cr, cs, cerr := readCache(cacheDir)
 		if cerr != nil {
-			return nil, "", errors.New("304 гэвч кэш байхгүй")
+			return nil, "", "", errors.New("304 гэвч кэш байхгүй")
 		}
-		return cr, cs, nil
+		return cr, cs, prevETag, nil
 	}
 	sigB, _, _, err := get(url+".sig", "")
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
-	if cacheDir != "" && newETag != "" {
-		_ = os.MkdirAll(cacheDir, 0o755)
-		_ = os.WriteFile(filepath.Join(cacheDir, "etag"), []byte(newETag), 0o644)
-	}
-	return raw, string(sigB), nil
+	return body, string(sigB), newETag, nil
 }
 
 func readCache(dir string) ([]byte, string, error) {
@@ -378,7 +376,7 @@ func readCache(dir string) ([]byte, string, error) {
 	return raw, string(sig), nil
 }
 
-func writeCache(dir string, raw []byte, sig string) error {
+func writeCache(dir string, raw []byte, sig, etag string) error {
 	if dir == "" {
 		return nil
 	}
@@ -388,5 +386,11 @@ func writeCache(dir string, raw []byte, sig string) error {
 	if err := os.WriteFile(filepath.Join(dir, "index.json"), raw, 0o644); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "index.json.sig"), []byte(sig), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "index.json.sig"), []byte(sig), 0o644); err != nil {
+		return err
+	}
+	if etag == "" {
+		return os.Remove(filepath.Join(dir, "etag"))
+	}
+	return os.WriteFile(filepath.Join(dir, "etag"), []byte(etag), 0o644)
 }

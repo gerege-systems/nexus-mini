@@ -26,12 +26,10 @@ func TestSyncWithUninstallableCatalogApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer admin.Close()
 	owner, err := pgxpool.New(ctx, ownerURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer owner.Close()
 	// Өмнөх ажиллалтын үлдэгдэл байвал apps мөр аль хэдийн байж FK-ийн замыг
 	// далдалдаг — эхлэхдээ ч цэвэрлэнэ.
 	clean := func() {
@@ -41,6 +39,8 @@ func TestSyncWithUninstallableCatalogApp(t *testing.T) {
 	clean()
 	t.Cleanup(func() {
 		clean()
+		admin.Close()
+		owner.Close()
 	})
 
 	dir := t.TempDir()

@@ -170,3 +170,26 @@ integration тест нэмж, `make check-db`-д оруулав (хуучин �
    буулгаж байв. Одоо `go_module` = модулийн үндэс (build info-оос), `import` =
    пакежийн зам; цөмийн дотоод модульд `go get` огт хийхгүй (цөмтэйгээ ирдэг).
    `Validate` нь import ⊂ go_module-ийг шаардана.
+
+## Тестийн бүрэн аудит (2026-08-24)
+
+Багц бүрийг төрлөөр нь хамрав; `make check` (DB-гүй), `make check-db` (бүх
+багц, DB заавал), `make check-web` (frontend статик аудит + build).
+
+| Төрөл | Юу шалгадаг |
+|---|---|
+| Unit (DB-гүй) | middleware (clientIP spoof, CSRF 2 давхарга, security headers, CORS), OIDC JWT/secret/redirect/scope, SSO client id_token баталгаажуулалт (fake IdP: alg=none, aud, iss, nonce, exp, kid эргэлт, хуурамч гарын үсэг), registry (гарын үсэг, replay, ETag, офлайн кэш, хэмжээ, Validate хүснэгт), pkg/nexus web (Decode хязгаар, UUID, DBError зураглал), envfile, config (production guard), identity, nexus CLI (main.go маркер, permission diff), nexus-registry CLI (build/verify/tamper) |
+| Integration (DB) | RLS тусгаарлалт, RBAC (implies, scope, эрх дээшлүүлэлтийн 6 зам), signup (хоёр DB role + нөхөн устгал), session/lockout/idle/handover, tenant төлөв (suspend/read-only/устгал), OIDC бүтэн урсгал (code→token→refresh rotation→replay→introspect/revoke), audit гинж + append-only, appstore (хамаарал, default оноолт, gate, enable/disable, каталогийн апп), bus (LISTEN/NOTIFY), TenantDB GUC/rollback, модулиуд (devices own-scope, organisation мод/мөчлөг/cross-tenant) |
+| Frontend статик | i18n бүрэн байдал + давхардал, middleware matcher (12 хамгаалалттай / 11 нийтийн зам), hydration эрсдэл (render дотор browser API), build |
+
+**Тест бичих явцад олдсон 3 бодит алдаа** (бүгд засагдсан):
+1. `pkg/registry` — ETag-ийг гарын үсэг шалгахаас ӨМНӨ хадгалдаг тул нэг удаа
+   буруу гарын үсэг ирсний дараа клиент 304 аваад хуучин кэшэндээ мөнхөд гацдаг.
+2. `apps/organisation` — same-tenant триггерийн `23514` нь 500 болж хувирдаг
+   (байхгүй/өөр tenant-ийн хэлтэс өгөхөд). Одоо 400.
+3. Тестийн цэвэрлэлт: `defer pool.Close()` нь `t.Cleanup`-ээс өмнө ажилладаг
+   тул цэвэрлэлт хаагдсан pool дээр чимээгүй унаж, DB-д тест дата үлддэг байв.
+
+Тестгүй үлдсэн: `cmd/nexus-mini` (нэг мөр main), `core.Run` (амьд сервер —
+deploy дараах curl/Playwright-аар шалгагддаг), `cmd/nexus`-ийн сүлжээ/Go
+toolchain-тай хэсэг (`init`/`add` — бодит дистрибуц дээр гараар батлагдсан).

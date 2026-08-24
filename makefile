@@ -16,6 +16,7 @@ help:
 	@echo "make build     бинари (backend/bin/nexus-mini, атом солилт)"
 	@echo "make manifest  registry манифест JSON (MOD=<short_id> нэг модуль)"
 	@echo "make check     linux build + vet + test + SDK-ийн хил    make push   check → git push"
+	@echo "make check-db  DB-тэй бүрэн тест (RLS/RBAC/OIDC/handler)  make check-web  i18n + middleware + build"
 	@echo "make check-db  check + RLS/RBAC integration (NEXUS_TEST_DATABASE_URL{,_OWNER} заавал)"
 	@echo "ENV_FILE=...   env файлын зам (default backend/nexus-mini.env)"
 
@@ -35,6 +36,12 @@ serve: build
 # Registry манифест (кодоос). Нийтлэх: nexus-registry репогийн manifests/ руу.
 manifest: build
 	cd backend && ./bin/nexus-mini manifest $(MOD)
+
+# Frontend-ийн статик шалгалт: i18n бүрэн, middleware-ийн хамгаалалт,
+# hydration эрсдэл (DB ч, browser ч шаардахгүй).
+check-web:
+	cd frontend && node scripts/audit.mjs
+	cd frontend && pnpm build
 
 web:
 	cd frontend && pnpm dev
@@ -64,8 +71,7 @@ check-db: check
 	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] && \
 	 [ -n "$(NEXUS_TEST_DATABASE_URL_AUTH)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_ADMIN)" ] || \
 	 { echo "check-db: NEXUS_TEST_DATABASE_URL, _OWNER, _AUTH, _ADMIN бүгд шаардлагатай"; exit 1; }
-	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 \
-	  ./internal/core/db/... ./internal/core/rbac/... ./internal/core/handlers/... ./internal/core/appstore/...
+	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 ./...
 
 push: check
 	git push

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // GET /departments — хавтгай жагсаалт (parent_id-тэй); модыг клиент босгоно.
@@ -137,6 +138,13 @@ func (h *handler) updateDepartment(w http.ResponseWriter, r *http.Request) {
 
 var errNotFound = errors.New("not found")
 
+// isCheckViolation — DB-ийн CHECK/триггерийн зөрчил (23514). Манай
+// same-tenant триггерүүд үүгээр буцдаг тул хэрэглэгчийн алдаа (400).
+func isCheckViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23514"
+}
+
 // deptErr — нийтлэг алдааны зураглал; true = хариу аль хэдийн бичигдсэн.
 func (h *handler) deptErr(w http.ResponseWriter, err error) bool {
 	switch {
@@ -148,8 +156,9 @@ func (h *handler) deptErr(w http.ResponseWriter, err error) bool {
 		nexus.Error(w, http.StatusBadRequest, "дээд нэгж олдсонгүй")
 	case errors.Is(err, errNotFound):
 		nexus.Error(w, http.StatusNotFound, "хэлтэс олдсонгүй")
-	case nexus.IsFKViolation(err):
-		nexus.Error(w, http.StatusBadRequest, "менежер энэ байгууллагын гишүүн биш")
+	case nexus.IsFKViolation(err) || isCheckViolation(err):
+		// Same-tenant триггер (00002) ба FK — хоёулаа "энэ байгууллагынх биш".
+		nexus.Error(w, http.StatusBadRequest, "менежер эсвэл дээд нэгж энэ байгууллагынх биш")
 	default:
 		nexus.DBError(w, err, "ийм кодтой хэлтэс аль хэдийн байна")
 	}

@@ -59,8 +59,9 @@ func (h *handler) updatePosition(w http.ResponseWriter, r *http.Request) {
 		  department_id = excluded.department_id, job_title = excluded.job_title, updated_at = now()`,
 		mid, nexus.TenantID(r.Context()), in.DepartmentID, in.JobTitle)
 	if err != nil {
-		if nexus.IsFKViolation(err) {
-			nexus.Error(w, http.StatusBadRequest, "хэлтэс олдсонгүй")
+		// FK эсвэл same-tenant триггер (23514) — хоёулаа хэрэглэгчийн алдаа.
+		if nexus.IsFKViolation(err) || isCheckViolation(err) {
+			nexus.Error(w, http.StatusBadRequest, "хэлтэс олдсонгүй эсвэл энэ байгууллагынх биш")
 			return
 		}
 		nexus.Error(w, http.StatusInternalServerError, "position save failed")
