@@ -229,3 +229,30 @@ Signup, нууц үг солих, гишүүн нэмэх гурвуулаа `ut
   гурван талбарт (signup, гишүүн нэмэх, админ профайл) hint бичигдсэн.
 
 Байгаа нууц үгэнд хамаарахгүй — зөвхөн ШИНЭЭР тавихад шалгагдана.
+
+## Тестийн төрлүүд — эцсийн байдал (2026-08-24)
+
+| Төрөл | Комманд | Байдал |
+|---|---|---|
+| Unit (Go) | `make check` | ✅ бүх багц |
+| Integration (DB) | `make check-db` | ✅ 24 багц, RLS/RBAC/OIDC/handler/модуль |
+| Амьд сервер | `make check-db` дотор | ✅ асаах → route/CSRF/rate limit → SIGTERM |
+| Fuzz | `make check-fuzz` | ✅ 6 зорилт (нууц үг, registry JSON+гарын үсэг, OIDC authz+JWT) |
+| Race detector | `make check-race` | ✅ (bus, кэш, semaphore) |
+| Эмзэг байдал | `make check-vuln` | ✅ govulncheck |
+| Миграцын Down | `NEXUS_TEST_ALLOW_DOWN=1` | ✅ (өгөгдөл устгадаг тул opt-in) |
+| Frontend статик | `make check-web` | ✅ i18n, middleware matcher, hydration, build (portal+admin) |
+| Build script (Node) | `make check-web` | ✅ `node --test` 7 тест |
+| **Browser E2E** | — | ❌ репод байхгүй (гараар Playwright-аар шалгасан) |
+| **Ачааллын тест** | — | ❌ (хэрэгцээ гараагүй) |
+
+**Fuzz-аар илэрсэн бодит алдаа**: `password.Verify` нь гэмтсэн hash-д
+(`t=0`, `p=0`) `argon2.IDKey`-г шууд дуудаж **panic** хийдэг байсан — DB-д
+хуурамч/эвдэрсэн мөр байхад нэвтрэлт бүр процессын горимыг унагаана.
+Параметрийн шалгалт нэмсэн; regression corpus `testdata/fuzz/`-д хадгалагдав.
+
+**govulncheck-ээр илэрсэн**: сервер Go 1.25.5-аар build хийж байсан —
+`net/http`, `crypto/tls`, `net/url` зэрэгт 17 мэдэгдсэн CVE. Сервер дээр Go
+**1.25.13** суулгаж дахин build хийсэн (`go version -m bin/nexus-mini` →
+go1.25.13); одоо кодоос дуудагддаг эмзэг байдал алга. Локал toolchain-ыг ч
+шинэчлэх нь зүйтэй (`brew upgrade go`).

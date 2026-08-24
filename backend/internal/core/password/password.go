@@ -61,6 +61,12 @@ func Verify(plain, encoded string) bool {
 	if err != nil {
 		return false
 	}
+	// argon2.IDKey нь боломжгүй параметрт PANIC хийдэг (t=0, p=0, m хэт бага,
+	// keyLen=0). DB-д гэмтсэн/хуурамч hash байвал нэвтрэлт унтрахын оронд
+	// процессын горим унана — fuzz-аар илэрсэн. Тиймээс урьдчилж шалгана.
+	if t < 1 || p < 1 || m < 8*uint32(p) || len(want) < 4 || len(salt) == 0 {
+		return false
+	}
 	got := idKey([]byte(plain), salt, t, m, p, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
 }

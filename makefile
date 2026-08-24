@@ -17,6 +17,7 @@ help:
 	@echo "make manifest  registry манифест JSON (MOD=<short_id> нэг модуль)"
 	@echo "make check     linux build + vet + test + SDK-ийн хил    make push   check → git push"
 	@echo "make check-db  DB-тэй бүрэн тест (RLS/RBAC/OIDC/handler)  make check-web  i18n + middleware + build"
+	@echo "make check-race уралдаан · make check-fuzz fuzz · make check-vuln эмзэг байдал"
 	@echo "make check-db  check + RLS/RBAC integration (NEXUS_TEST_DATABASE_URL{,_OWNER} заавал)"
 	@echo "ENV_FILE=...   env файлын зам (default backend/nexus-mini.env)"
 
@@ -75,6 +76,23 @@ check-db: check
 	 [ -n "$(NEXUS_TEST_DATABASE_URL_AUTH)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_ADMIN)" ] || \
 	 { echo "check-db: NEXUS_TEST_DATABASE_URL, _OWNER, _AUTH, _ADMIN бүгд шаардлагатай"; exit 1; }
 	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 ./...
+
+# check-race — уралдаан илрүүлэгчтэй (concurrency: bus, кэшүүд, semaphore).
+check-race:
+	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -race -count=1 ./...
+
+# check-fuzz — fuzz зорилтууд тус бүр SEC секунд (default 20).
+SEC ?= 20
+check-fuzz:
+	@cd backend && for t in \
+	  "./internal/core/password FuzzValidate" "./internal/core/password FuzzVerifyDoesNotPanic" \
+	  "./pkg/registry FuzzParse" "./pkg/registry FuzzVerifySignature" \
+	  "./internal/core/oidc FuzzParseAuthz" "./internal/core/oidc FuzzVerifyJWT"; do \
+	  set -- $$t; echo "fuzz $$2"; go test $$1 -run $$2 -fuzz $$2 -fuzztime $(SEC)s || exit 1; done
+
+# check-vuln — мэдэгдэж буй эмзэг байдал (Go stdlib + хамаарлууд).
+check-vuln:
+	cd backend && go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 push: check
 	git push
