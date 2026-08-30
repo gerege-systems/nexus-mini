@@ -1,42 +1,88 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Icons,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  formatDate,
+} from '@craftzbay/ui';
+import { PageHead, Resource } from '@/components/states';
+import { useT } from '@/lib/i18n';
+import { useResource } from '@/lib/use-resource';
 
-type Row = { id: string; email: string; name: string; platform_admin: boolean; created_at: string; tenants: number };
+type Row = {
+  id: string;
+  email: string;
+  name: string;
+  platform_admin: boolean;
+  created_at: string;
+  tenants: number;
+};
 
 export default function UsersPage() {
   const { t } = useT();
-  const [rows, setRows] = useState<Row[]>([]);
-  useEffect(() => {
-    void api.get<{ users: Row[] }>("/api/admin/users").then((r) => setRows(r.users));
-  }, []);
+  const res = useResource<{ users: Row[] }>('/api/admin/users');
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Хэрэглэгчид")}</h1>
-          <div className="sub">{t("Платформ дээрх бүх бүртгэлтэй хэрэглэгч")}</div>
-        </div>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead><tr><th>{t("Нэр")}</th><th>{t("Имэйл")}</th><th>{t("Байгууллага")}</th><th>{t("Бүртгүүлсэн")}</th><th></th></tr></thead>
-          <tbody>
-            {rows.map((u) => (
-              <tr key={u.id}>
-                <td><b style={{ fontWeight: 600 }}>{u.name}</b></td>
-                <td style={{ color: "var(--text-2)" }}>{u.email}</td>
-                <td>{u.tenants}</td>
-                <td style={{ color: "var(--text-2)" }}>{new Date(u.created_at).toLocaleDateString("mn-MN")}</td>
-                <td>{u.platform_admin && <span className="badge badge--accent">{t("платформ админ")}</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PageHead
+        title={t('Хэрэглэгчид')}
+        description={t('Платформ дээрх бүх бүртгэлтэй хэрэглэгч')}
+      />
+
+      <Card padding="none">
+        <Resource
+          state={res}
+          isEmpty={(d) => d.users.length === 0}
+          empty={
+            <EmptyState
+              icon={<Icons.Users />}
+              title={t('Хэрэглэгч алга')}
+              description={t('Платформ дээр хараахан хэрэглэгч бүртгүүлээгүй байна.')}
+            />
+          }
+        >
+          {(d) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('Нэр')}</TableHead>
+                  <TableHead>{t('Имэйл')}</TableHead>
+                  <TableHead align="right">{t('Байгууллага')}</TableHead>
+                  <TableHead>{t('Бүртгүүлсэн')}</TableHead>
+                  <TableHead>{t('Эрх')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.users.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell className="text-foreground-muted">{u.email}</TableCell>
+                    <TableCell align="right">
+                      {u.tenants}
+                    </TableCell>
+                    <TableCell className="text-foreground-muted whitespace-nowrap">
+                      {formatDate(u.created_at, { pattern: 'yyyy-MM-dd' })}
+                    </TableCell>
+                    <TableCell>
+                      {u.platform_admin && (
+                        <Badge tone="accent">{t('платформ админ')}</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Resource>
+      </Card>
     </>
   );
 }

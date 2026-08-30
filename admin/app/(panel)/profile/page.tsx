@@ -1,100 +1,151 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { api, ApiError, type Me } from "@/lib/api";
-import { toast } from "@/lib/toast";
-import { useT } from "@/lib/i18n";
+import { useEffect, useState } from 'react';
+import { Button, Card, CardTitle, Input, Spinner, toast } from '@craftzbay/ui';
+import { PageHead } from '@/components/states';
+import { api, ApiError, type Me } from '@/lib/api';
+import { useT } from '@/lib/i18n';
+
+const fail = (e: unknown, fallback: string) =>
+  toast({ title: e instanceof ApiError ? e.message : fallback, variant: 'danger' });
 
 export default function ProfilePage() {
   const { t } = useT();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState({ current_password: "", new_password: "", confirm: "" });
+  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [pw, setPw] = useState({ current_password: '', new_password: '', confirm: '' });
+  const [confirmErr, setConfirmErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void api.get<Me>("/api/me").then((m) => {
-      setName(m.user.name);
-      setEmail(m.user.email);
-    });
-  }, []);
+    let alive = true;
+    api
+      .get<Me>('/api/me')
+      .then((m) => {
+        if (!alive) return;
+        setName(m.user.name);
+        setEmail(m.user.email);
+        setLoaded(true);
+      })
+      .catch((e) => alive && fail(e, t('Алдаа гарлаа')));
+    return () => {
+      alive = false;
+    };
+  }, [t]);
 
   const saveName = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingName(true);
     try {
-      await api.put("/api/me", { name });
-      toast(t("Хадгалагдлаа"));
+      await api.put('/api/me', { name });
+      toast({ title: t('Хадгалагдлаа'), variant: 'success' });
     } catch (ex) {
-      toast(ex instanceof ApiError ? t(ex.message) : t("Алдаа гарлаа"), "err");
+      fail(ex, t('Алдаа гарлаа'));
+    } finally {
+      setSavingName(false);
     }
   };
 
   const savePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pw.new_password !== pw.confirm) {
-      toast(t("Шинэ нууц үг давталттайгаа таарахгүй байна"), "err");
+      setConfirmErr(t('Шинэ нууц үг давталттайгаа таарахгүй байна'));
       return;
     }
+    setConfirmErr('');
     setBusy(true);
     try {
-      await api.post("/api/me/password", {
+      await api.post('/api/me/password', {
         current_password: pw.current_password,
         new_password: pw.new_password,
       });
-      setPw({ current_password: "", new_password: "", confirm: "" });
-      toast(t("Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан"));
+      setPw({ current_password: '', new_password: '', confirm: '' });
+      toast({
+        title: t('Нууц үг солигдлоо — бусад төхөөрөмжийн нэвтрэлт хаагдсан'),
+        variant: 'success',
+      });
     } catch (ex) {
-      toast(ex instanceof ApiError ? t(ex.message) : t("Алдаа гарлаа"), "err");
+      fail(ex, t('Алдаа гарлаа'));
     } finally {
       setBusy(false);
     }
   };
 
+  if (!loaded) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner label={t('Уншиж байна…')} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Профайл")}</h1>
-          <div className="sub">{email}</div>
-        </div>
-      </div>
+      <PageHead title={t('Профайл')} description={email} />
 
-      <div className="card card__pad" style={{ maxWidth: 480 }}>
-        <b style={{ display: "block", marginBottom: "0.9rem" }}>{t("Ерөнхий мэдээлэл")}</b>
-        <form onSubmit={saveName}>
-          <div className="field">
-            <label>{t("Нэр")}</label>
-            <input value={name} required onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>{t("Имэйл")}</label>
-            <input value={email} disabled style={{ opacity: 0.6 }} />
-          </div>
-          <button className="btn">{t("Хадгалах")}</button>
-        </form>
-      </div>
+      <div className="max-w-lg space-y-4">
+        <Card>
+          <CardTitle className="mb-4">{t('Ерөнхий мэдээлэл')}</CardTitle>
+          <form onSubmit={saveName} className="space-y-4">
+            <Input
+              label={t('Нэр')}
+              value={name}
+              required
+              autoComplete="name"
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              label={t('Имэйл')}
+              value={email}
+              disabled
+              helperText={t('Имэйлийг энэ панелаас солих боломжгүй')}
+            />
+            <Button type="submit" loading={savingName}>
+              {t('Хадгалах')}
+            </Button>
+          </form>
+        </Card>
 
-      <div className="card card__pad" style={{ maxWidth: 480, marginTop: "1rem" }}>
-        <b style={{ display: "block", marginBottom: "0.9rem" }}>{t("Нууц үг солих")}</b>
-        <form onSubmit={savePassword}>
-          <div className="field">
-            <label>{t("Одоогийн нууц үг")}</label>
-            <input type="password" value={pw.current_password} required
-              onChange={(e) => setPw({ ...pw, current_password: e.target.value })} />
-          </div>
-          <div className="field">
-            <label>{t("Шинэ нууц үг")}</label>
-            <input type="password" value={pw.new_password} required minLength={8}
-              onChange={(e) => setPw({ ...pw, new_password: e.target.value })} />
-            <div className="hint">{t("8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)")}</div>
-          </div>
-          <div className="field">
-            <label>{t("Шинэ нууц үг (давталт)")}</label>
-            <input type="password" value={pw.confirm} required
-              onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-          </div>
-          <button className="btn" disabled={busy}>{t("Солих")}</button>
-        </form>
+        <Card>
+          <CardTitle className="mb-4">{t('Нууц үг солих')}</CardTitle>
+          <form onSubmit={savePassword} className="space-y-4">
+            <Input
+              type="password"
+              label={t('Одоогийн нууц үг')}
+              autoComplete="current-password"
+              value={pw.current_password}
+              required
+              onChange={(e) => setPw({ ...pw, current_password: e.target.value })}
+            />
+            <Input
+              type="password"
+              label={t('Шинэ нууц үг')}
+              autoComplete="new-password"
+              value={pw.new_password}
+              required
+              minLength={8}
+              helperText={t('8+ тэмдэгт: латин үсэг, тоо, тусгай тэмдэгт (кирилл хориотой)')}
+              onChange={(e) => setPw({ ...pw, new_password: e.target.value })}
+            />
+            <Input
+              type="password"
+              label={t('Шинэ нууц үг (давталт)')}
+              autoComplete="new-password"
+              value={pw.confirm}
+              required
+              error={confirmErr || undefined}
+              onChange={(e) => {
+                setPw({ ...pw, confirm: e.target.value });
+                if (confirmErr) setConfirmErr('');
+              }}
+            />
+            <Button type="submit" loading={busy}>
+              {t('Солих')}
+            </Button>
+          </form>
+        </Card>
       </div>
     </>
   );

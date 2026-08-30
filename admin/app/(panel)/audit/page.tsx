@@ -1,45 +1,87 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Icons,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  formatDate,
+} from '@craftzbay/ui';
+import { PageHead, Resource } from '@/components/states';
+import { useT } from '@/lib/i18n';
+import { useResource } from '@/lib/use-resource';
 
-type Row = { id: number; tenant: string; user_name: string; action: string; object: string; occurred_at: string };
+type Row = {
+  id: number;
+  tenant: string;
+  user_name: string;
+  action: string;
+  object: string;
+  occurred_at: string;
+};
 
 export default function AuditPage() {
   const { t } = useT();
-  const [rows, setRows] = useState<Row[]>([]);
-  useEffect(() => {
-    void api.get<{ entries: Row[] }>("/api/admin/audit").then((r) => setRows(r.entries));
-  }, []);
+  const res = useResource<{ entries: Row[] }>('/api/admin/audit');
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Audit</h1>
-          <div className="sub">{t("Бүх байгууллагын сүүлийн үйлдлүүд")}</div>
-        </div>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead><tr><th>#</th><th>{t("Байгууллага")}</th><th>{t("Үйлдэл")}</th><th>{t("Объект")}</th><th>{t("Хэн")}</th><th>{t("Хэзээ")}</th></tr></thead>
-          <tbody>
-            {rows.map((e) => (
-              <tr key={e.id}>
-                <td style={{ color: "var(--text-3)" }}>{e.id}</td>
-                <td><code>{e.tenant}</code></td>
-                <td><span className="badge badge--accent">{e.action}</span></td>
-                <td>{e.object || "—"}</td>
-                <td>{e.user_name || t("систем")}</td>
-                <td style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
-                  {new Date(e.occurred_at).toLocaleString("mn-MN")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PageHead title="Audit" description={t('Бүх байгууллагын сүүлийн үйлдлүүд')} />
+
+      <Card padding="none">
+        <Resource
+          state={res}
+          isEmpty={(d) => d.entries.length === 0}
+          empty={
+            <EmptyState
+              icon={<Icons.FileText />}
+              title={t('Бичлэг алга')}
+              description={t('Хараахан бүртгэгдсэн үйлдэл байхгүй байна.')}
+            />
+          }
+        >
+          {(d) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead align="right">#</TableHead>
+                  <TableHead>{t('Байгууллага')}</TableHead>
+                  <TableHead>{t('Үйлдэл')}</TableHead>
+                  <TableHead>{t('Объект')}</TableHead>
+                  <TableHead>{t('Хэн')}</TableHead>
+                  <TableHead>{t('Хэзээ')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell align="right" className="text-foreground-subtle">
+                      {e.id}
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-foreground-muted font-mono text-xs">{e.tenant}</code>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone="accent">{e.action}</Badge>
+                    </TableCell>
+                    <TableCell>{e.object || '—'}</TableCell>
+                    <TableCell>{e.user_name || t('систем')}</TableCell>
+                    <TableCell className="text-foreground-muted whitespace-nowrap">
+                      {formatDate(e.occurred_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Resource>
+      </Card>
     </>
   );
 }

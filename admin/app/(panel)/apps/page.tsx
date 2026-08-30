@@ -1,45 +1,88 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Icons,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@craftzbay/ui';
+import { PageHead, Resource } from '@/components/states';
+import { useT } from '@/lib/i18n';
+import { useResource } from '@/lib/use-resource';
 
-type Row = { id: string; short_id: string; name: string; version: string; compiled: boolean; publisher: string; installs: number };
+type Row = {
+  id: string;
+  short_id: string;
+  name: string;
+  version: string;
+  compiled: boolean;
+  publisher: string;
+  installs: number;
+};
 
 export default function AppsPage() {
   const { t } = useT();
-  const [rows, setRows] = useState<Row[]>([]);
-  useEffect(() => {
-    void api.get<{ apps: Row[] }>("/api/admin/apps").then((r) => setRows(r.apps));
-  }, []);
+  const res = useResource<{ apps: Row[] }>('/api/admin/apps');
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Каталог")}</h1>
-          <div className="sub">{t("App store-ийн бүх апп, суулгалтын тоо")}</div>
-        </div>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead><tr><th>{t("Апп")}</th><th>ID</th><th>{t("Хувилбар")}</th><th>{t("Бинарид")}</th><th>{t("Суулгалт")}</th></tr></thead>
-          <tbody>
-            {rows.map((a) => (
-              <tr key={a.id}>
-                <td><b style={{ fontWeight: 600 }}>{a.name}</b>
-                  <div style={{ color: "var(--text-3)", fontSize: "0.8rem" }}>{a.publisher}</div></td>
-                <td><code style={{ fontSize: "0.8rem" }}>{a.id}</code></td>
-                <td>v{a.version}</td>
-                <td>{a.compiled
-                  ? <span className="badge badge--ok">{t("Тийм")}</span>
-                  : <span className="badge badge--muted">{t("Үгүй")}</span>}</td>
-                <td>{a.installs}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PageHead title={t('Каталог')} description={t('App store-ийн бүх апп, суулгалтын тоо')} />
+
+      <Card padding="none">
+        <Resource
+          state={res}
+          isEmpty={(d) => d.apps.length === 0}
+          empty={
+            <EmptyState
+              icon={<Icons.Package />}
+              title={t('Апп алга')}
+              description={t('Каталогт хараахан апп нэмэгдээгүй байна.')}
+            />
+          }
+        >
+          {(d) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('Апп')}</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>{t('Хувилбар')}</TableHead>
+                  <TableHead>{t('Бинарид')}</TableHead>
+                  <TableHead align="right">{t('Суулгалт')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.apps.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell>
+                      <span className="text-foreground block font-medium">{a.name}</span>
+                      <span className="text-foreground-subtle block text-xs">{a.publisher}</span>
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-foreground-muted font-mono text-xs">{a.id}</code>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">v{a.version}</TableCell>
+                    <TableCell>
+                      {a.compiled ? (
+                        <Badge tone="success">{t('Тийм')}</Badge>
+                      ) : (
+                        <Badge tone="neutral">{t('Үгүй')}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">{a.installs}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Resource>
+      </Card>
     </>
   );
 }

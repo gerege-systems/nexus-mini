@@ -49,7 +49,7 @@
 - Шинэ tenant үүсгэхдээ id-г урьдчилан гаргаж `app.tenant_id`-г ЭХЭЛЖ тохируулна — INSERT..RETURNING нь RLS SELECT бодлого шаарддаг (handlers/auth.go createTenant).
 - Миграц зөвхөн `nexus_owner`-оор; апп `nexus_app`/`nexus_admin`-аар. Модулийн миграц модулийн өөрийн FS-д (`backend/apps/<x>/migrations/`), цөмийнхөд нэмэхгүй.
 - Вэб талд setup wizard байхгүй, landing төлөв шалгадаггүй; анхны админ зөвхөн env + `migrate`-ээс. Энэ чиглэлээр "сайжруулалт" санал болгохгүй.
-- UI chrome-ийг өөрөө зохиохгүй — open-gerege-nexus-ийн дизайн жишиг; админ teal accent.
+- **UI бүхэлдээ `@craftzbay/ui` дээр** (admin 2026-08-30-нд шилжсэн; portal дараагийн ээлжид). Хуучин гараар бичсэн CSS/token (teal accent, `--accent:#0064e1`) хүчингүй. Интеграц: `@import 'tailwindcss'` + `tw-animate-css` + `@craftzbay/ui/theme.css` + `@source "../node_modules/@craftzbay/ui/dist-lib"` (globals.css 4 мөр); фонт next/font-ийн Geist-ийг `--font-sans`-д холбоно. Dark горим **`dark` класс** (`data-theme` БИШ). Монгол мөрүүд `DesignSystemProvider strings={mnStrings}`. Дүрс `Icons.*`-ээс, байхгүйг `@craftzbay/ui/icon`-ийн `<Icon name>`-ээр — **`lucide-react`-ийг шууд импортлохгүй**. Гараар өнгө/зай/радиус бичихгүй, токеноор л. Хуудас бүр loading/empty/error төлөвтэй (`components/states.tsx`, `lib/use-resource.ts`).
 - Frontend-ийн `.next` gitignore-д — серверт build заавал (deploy.sh хийнэ).
 
 ## Шалгах
