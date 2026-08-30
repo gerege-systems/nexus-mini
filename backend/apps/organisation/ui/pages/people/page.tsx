@@ -1,103 +1,237 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { Pencil, Users } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { useShell } from "@/components/shell";
-import { toast } from "@/lib/toast";
-import { useT } from "@/lib/i18n";
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Icons,
+  IconButton,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  toast,
+} from '@craftzbay/ui';
+import { PageHead } from '@/components/states';
+import { api, ApiError } from '@/lib/api';
+import { useShell } from '@/components/shell';
+import { useT } from '@/lib/i18n';
 
 type Person = {
-  membership_id: string; user_id: string; name: string;
-  department_id: string | null; department_name: string; job_title: string;
+  membership_id: string;
+  user_id: string;
+  name: string;
+  department_id: string | null;
+  department_name: string;
+  job_title: string;
 };
 type Dept = { id: string; name: string; active: boolean };
 type Form = { membership_id: string; name: string; department_id: string; job_title: string };
 
+// Radix Select нь хоосон string value зөвшөөрдөггүй — «хэлтэсгүй»-г маркераар.
+const NO_DEPT = '__none__';
+const msg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
+
 export default function PeoplePage() {
   const { t } = useT();
   const { me } = useShell();
-  const manage = !!me.permissions["organisation.manage"];
+  const manage = !!me.permissions['organisation.manage'];
   const [people, setPeople] = useState<Person[] | null>(null);
   const [depts, setDepts] = useState<Dept[]>([]);
+  const [loadErr, setLoadErr] = useState('');
   const [form, setForm] = useState<Form | null>(null);
-  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
-    const [p, d] = await Promise.all([
-      api.get<{ people: Person[] }>("/api/apps/organisation/people"),
-      api.get<{ departments: Dept[] }>("/api/apps/organisation/departments"),
-    ]);
-    setPeople(p.people); setDepts(d.departments.filter((x) => x.active));
-  }, []);
-  useEffect(() => { void load(); }, [load]);
-
-  const save = async () => {
-    if (!form) return;
-    setErr("");
     try {
-      await api.put(`/api/apps/organisation/people/${form.membership_id}`,
-        { department_id: form.department_id || null, job_title: form.job_title });
-      setForm(null); toast(t("Хадгалагдлаа")); await load();
-    } catch (e) { setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа")); }
-  };
+      const [p, d] = await Promise.all([
+        api.get<{ people: Person[] }>('/api/apps/organisation/people'),
+        api.get<{ departments: Dept[] }>('/api/apps/organisation/departments'),
+      ]);
+      setPeople(p.people);
+      setDepts(d.departments.filter((x) => x.active));
+      setLoadErr('');
+    } catch (e) {
+      setLoadErr(msg(e, 'Алдаа гарлаа'));
+      setPeople([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Ажилтнууд")}</h1>
-          <div className="sub">{t("Гишүүн бүрийн хэлтэс, албан тушаал")}</div>
-        </div>
-      </div>
-      <div className="card">
-        {people === null ? (
-          <div className="empty">{t("Уншиж байна…")}</div>
+      <PageHead title={t('Ажилтнууд')} description={t('Гишүүн бүрийн хэлтэс, албан тушаал')} />
+
+      <Card padding="none">
+        {loadErr ? (
+          <div className="p-5">
+            <Alert variant="danger">{t(loadErr)}</Alert>
+          </div>
+        ) : people === null ? (
+          <div className="flex justify-center py-12">
+            <Spinner label={t('Уншиж байна…')} />
+          </div>
         ) : people.length === 0 ? (
-          <div className="empty"><Users size={36} strokeWidth={1.4} /><b>{t("Гишүүн байхгүй")}</b></div>
+          <EmptyState icon={<Icons.Users />} title={t('Гишүүн байхгүй')} />
         ) : (
-          <table className="table">
-            <thead><tr><th>{t("Нэр")}</th><th>{t("Хэлтэс")}</th><th>{t("Албан тушаал")}</th><th></th></tr></thead>
-            <tbody>
-              {people?.map((p) => (
-                <tr key={p.membership_id}>
-                  <td><b style={{ fontWeight: 600 }}>{p.name}</b></td>
-                  <td>{p.department_name || "—"}</td>
-                  <td>{p.job_title || "—"}</td>
-                  <td style={{ textAlign: "right" }}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('Нэр')}</TableHead>
+                <TableHead>{t('Хэлтэс')}</TableHead>
+                <TableHead>{t('Албан тушаал')}</TableHead>
+                <TableHead align="right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {people.map((p) => (
+                <TableRow key={p.membership_id}>
+                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell>{p.department_name || '—'}</TableCell>
+                  <TableCell>{p.job_title || '—'}</TableCell>
+                  <TableCell align="right">
                     {manage && (
-                      <button className="btn btn--ghost btn--sm" aria-label={`${p.name} ${t("засах")}`}
-                        onClick={() => { setErr(""); setForm({ membership_id: p.membership_id, name: p.name, department_id: p.department_id ?? "", job_title: p.job_title }); }}>
-                        <Pencil size={13} />
-                      </button>
+                      <Tooltip label={t('засах')}>
+                        <IconButton
+                          aria-label={`${p.name} — ${t('засах')}`}
+                          icon={<Icons.Pencil />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setForm({
+                              membership_id: p.membership_id,
+                              name: p.name,
+                              department_id: p.department_id ?? '',
+                              job_title: p.job_title,
+                            })
+                          }
+                        />
+                      </Tooltip>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       {form && (
-        <div className="modal-back" onClick={() => setForm(null)} onKeyDown={(e) => e.key === "Escape" && setForm(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>{form.name}</h3>
-            {err && <div className="alert alert--danger">{t(err)}</div>}
-            <div className="field"><label>{t("Хэлтэс")}</label>
-              <select value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}>
-                <option value="">—</option>
-                {depts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select></div>
-            <div className="field"><label>{t("Албан тушаал")}</label>
-              <input value={form.job_title} maxLength={120} autoFocus onChange={(e) => setForm({ ...form, job_title: e.target.value })} /></div>
-            <div className="modal__actions">
-              <button className="btn btn--ghost" onClick={() => setForm(null)}>{t("Болих")}</button>
-              <button className="btn" onClick={save}>{t("Хадгалах")}</button>
-            </div>
-          </div>
-        </div>
+        <PersonDialog
+          form={form}
+          depts={depts}
+          onClose={() => setForm(null)}
+          onSaved={() => {
+            setForm(null);
+            void load();
+          }}
+        />
       )}
     </>
+  );
+}
+
+function PersonDialog({
+  form: initial,
+  depts,
+  onClose,
+  onSaved,
+}: {
+  form: Form;
+  depts: Dept[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useT();
+  const [form, setForm] = useState(initial);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr('');
+    setBusy(true);
+    try {
+      await api.put(`/api/apps/organisation/people/${form.membership_id}`, {
+        department_id: form.department_id || null,
+        job_title: form.job_title,
+      });
+      toast({ title: t('Хадгалагдлаа'), variant: 'success' });
+      onSaved();
+    } catch (ex) {
+      setErr(msg(ex, t('Алдаа гарлаа')));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>{form.name}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={submit} className="space-y-4">
+          {err && <Alert variant="danger">{err}</Alert>}
+
+          <div className="space-y-1.5">
+            <label htmlFor="dept" className="text-foreground block text-sm font-medium">
+              {t('Хэлтэс')}
+            </label>
+            <Select
+              value={form.department_id || NO_DEPT}
+              onValueChange={(v) =>
+                setForm({ ...form, department_id: v === NO_DEPT ? '' : v })
+              }
+            >
+              <SelectTrigger id="dept" placeholder="—" />
+              <SelectContent>
+                <SelectItem value={NO_DEPT}>—</SelectItem>
+                {depts.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Input
+            label={t('Албан тушаал')}
+            value={form.job_title}
+            maxLength={120}
+            autoFocus
+            onChange={(e) => setForm({ ...form, job_title: e.target.value })}
+          />
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {t('Болих')}
+            </Button>
+            <Button type="submit" loading={busy}>
+              {t('Хадгалах')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

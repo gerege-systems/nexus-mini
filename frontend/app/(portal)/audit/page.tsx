@@ -1,71 +1,116 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { ShieldCheck, ShieldX } from "lucide-react";
-import { api, type AuditEntry } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icons,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  formatDate,
+} from '@craftzbay/ui';
+import { PageHead, Resource } from '@/components/states';
+import { api, type AuditEntry } from '@/lib/api';
+import { useT } from '@/lib/i18n';
+import { useResource } from '@/lib/use-resource';
 
 export default function AuditPage() {
   const { t } = useT();
-  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  const res = useResource<{ entries: AuditEntry[] }>('/api/audit?limit=100');
   const [verify, setVerify] = useState<{ intact: boolean; broken_at: number | null } | null>(null);
-
-  const load = useCallback(async () => {
-    const r = await api.get<{ entries: AuditEntry[] }>("/api/audit?limit=100");
-    setEntries(r.entries);
-  }, []);
-  useEffect(() => { void load(); }, [load]);
+  const [busy, setBusy] = useState(false);
 
   const runVerify = async () => {
-    setVerify(await api.get("/api/audit/verify"));
+    setBusy(true);
+    try {
+      setVerify(await api.get('/api/audit/verify'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Audit лог")}</h1>
-          <div className="sub">{t("Append-only, hash гинжтэй үйлдлийн бүртгэл")}</div>
-        </div>
-        <div className="spacer" />
-        <button className="btn btn--ghost" onClick={runVerify}>
-          <ShieldCheck size={16} /> {t("Гинж шалгах")}
-        </button>
-      </div>
+      <PageHead
+        title={t('Audit лог')}
+        description={t('Append-only, hash гинжтэй үйлдлийн бүртгэл')}
+        actions={
+          <Button
+            variant="secondary"
+            leadingIcon={<Icons.Lock />}
+            loading={busy}
+            onClick={runVerify}
+          >
+            {t('Гинж шалгах')}
+          </Button>
+        }
+      />
 
       {verify && (
-        <div className={`alert ${verify.intact ? "alert--ok" : "alert--danger"}`}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {verify.intact ? <ShieldCheck size={17} /> : <ShieldX size={17} />}
+        <Alert variant={verify.intact ? 'success' : 'danger'} className="mb-4">
           {verify.intact
-            ? t("Гинж бүрэн — бүртгэлд гар хүрээгүй")
-            : `#${verify.broken_at} ${t("дээр тасарсан!")}`}
-        </div>
+            ? t('Гинж бүрэн — бүртгэлд гар хүрээгүй')
+            : `#${verify.broken_at} ${t('дээр тасарсан!')}`}
+        </Alert>
       )}
 
-      <div className="card">
-        <table className="table">
-          <thead>
-            <tr><th>#</th><th>{t("Үйлдэл")}</th><th>{t("Объект")}</th><th>{t("Хэн")}</th><th>{t("Хэзээ")}</th><th>Hash</th></tr>
-          </thead>
-          <tbody>
-            {entries?.map((e) => (
-              <tr key={e.id}>
-                <td style={{ color: "var(--text-3)" }}>{e.id}</td>
-                <td><span className="badge badge--accent">{e.action}</span></td>
-                <td>{e.object || "—"}</td>
-                <td>{e.user_name || t("систем")}</td>
-                <td style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>
-                  {new Date(e.occurred_at).toLocaleString("mn-MN")}
-                </td>
-                <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.76rem", color: "var(--text-3)" }}>
-                  {e.hash.slice(0, 12)}…
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card padding="none">
+        <Resource
+          state={res}
+          isEmpty={(d) => d.entries.length === 0}
+          empty={
+            <EmptyState
+              icon={<Icons.FileText />}
+              title={t('Бичлэг алга')}
+              description={t('Хараахан бүртгэгдсэн үйлдэл байхгүй байна.')}
+            />
+          }
+        >
+          {(d) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead align="right">#</TableHead>
+                  <TableHead>{t('Үйлдэл')}</TableHead>
+                  <TableHead>{t('Объект')}</TableHead>
+                  <TableHead>{t('Хэн')}</TableHead>
+                  <TableHead>{t('Хэзээ')}</TableHead>
+                  <TableHead>Hash</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.entries.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell align="right" className="text-foreground-subtle">
+                      {e.id}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone="accent">{e.action}</Badge>
+                    </TableCell>
+                    <TableCell>{e.object || '—'}</TableCell>
+                    <TableCell>{e.user_name || t('систем')}</TableCell>
+                    <TableCell className="text-foreground-muted whitespace-nowrap">
+                      {formatDate(e.occurred_at)}
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-foreground-subtle font-mono text-xs">
+                        {e.hash.slice(0, 12)}…
+                      </code>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Resource>
+      </Card>
     </>
   );
 }

@@ -1,19 +1,72 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { useShell } from "@/components/shell";
-import { toast } from "@/lib/toast";
-import { useT } from "@/lib/i18n";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  ConfirmationDialog,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Icons,
+  IconButton,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  cn,
+  toast,
+} from '@craftzbay/ui';
+import { PageHead } from '@/components/states';
+import { api, ApiError } from '@/lib/api';
+import { useShell } from '@/components/shell';
+import { useT } from '@/lib/i18n';
 
 type Dept = {
-  id: string; code: string; name: string; parent_id: string | null;
-  manager_membership_id: string | null; manager_name: string; active: boolean; people: number;
+  id: string;
+  code: string;
+  name: string;
+  parent_id: string | null;
+  manager_membership_id: string | null;
+  manager_name: string;
+  active: boolean;
+  people: number;
 };
 type Person = { membership_id: string; name: string };
-type Form = { id?: string; code: string; name: string; parent_id: string; manager_membership_id: string; active: boolean };
-const empty: Form = { code: "", name: "", parent_id: "", manager_membership_id: "", active: true };
+type Form = {
+  id?: string;
+  code: string;
+  name: string;
+  parent_id: string;
+  manager_membership_id: string;
+  active: boolean;
+};
+
+const EMPTY: Form = {
+  code: '',
+  name: '',
+  parent_id: '',
+  manager_membership_id: '',
+  active: true,
+};
+// Radix Select нь хоосон string value зөвшөөрдөггүй.
+const NONE = '__none__';
+const msg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
 // Хавтгай жагсаалтыг мод болгож, гүнтэй нь дарааллуулна.
 function flatten(list: Dept[]): { d: Dept; depth: number }[] {
@@ -24,7 +77,10 @@ function flatten(list: Dept[]): { d: Dept; depth: number }[] {
   }
   const out: { d: Dept; depth: number }[] = [];
   const walk = (parent: string | null, depth: number) => {
-    for (const d of byParent.get(parent) ?? []) { out.push({ d, depth }); if (depth < 32) walk(d.id, depth + 1); }
+    for (const d of byParent.get(parent) ?? []) {
+      out.push({ d, depth });
+      if (depth < 32) walk(d.id, depth + 1);
+    }
   };
   walk(null, 0);
   return out;
@@ -33,128 +89,292 @@ function flatten(list: Dept[]): { d: Dept; depth: number }[] {
 export default function DepartmentsPage() {
   const { t } = useT();
   const { me } = useShell();
-  const manage = !!me.permissions["organisation.manage"];
+  const manage = !!me.permissions['organisation.manage'];
   const [depts, setDepts] = useState<Dept[] | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
+  const [loadErr, setLoadErr] = useState('');
   const [form, setForm] = useState<Form | null>(null);
-  const [err, setErr] = useState("");
+  const [removing, setRemoving] = useState<Dept | null>(null);
 
   const load = useCallback(async () => {
-    const [d, p] = await Promise.all([
-      api.get<{ departments: Dept[] }>("/api/apps/organisation/departments"),
-      api.get<{ people: Person[] }>("/api/apps/organisation/people").catch(() => ({ people: [] })),
-    ]);
-    setDepts(d.departments); setPeople(p.people);
+    try {
+      const [d, p] = await Promise.all([
+        api.get<{ departments: Dept[] }>('/api/apps/organisation/departments'),
+        api
+          .get<{ people: Person[] }>('/api/apps/organisation/people')
+          .catch(() => ({ people: [] })),
+      ]);
+      setDepts(d.departments);
+      setPeople(p.people);
+      setLoadErr('');
+    } catch (e) {
+      setLoadErr(msg(e, 'Алдаа гарлаа'));
+      setDepts([]);
+    }
   }, []);
-  useEffect(() => { void load(); }, [load]);
-  const tree = useMemo(() => (depts ? flatten(depts) : []), [depts]);
 
-  const save = async () => {
-    if (!form) return;
-    setErr("");
-    const body = { code: form.code, name: form.name, parent_id: form.parent_id || null,
-      manager_membership_id: form.manager_membership_id || null, active: form.active };
-    try {
-      if (form.id) await api.put(`/api/apps/organisation/departments/${form.id}`, body);
-      else await api.post("/api/apps/organisation/departments", body);
-      setForm(null); toast(t("Хадгалагдлаа")); await load();
-    } catch (e) { setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа")); }
-  };
-  const remove = async (d: Dept) => {
-    if (!confirm(`"${d.name}" ${t("хэлтсийг устгах уу? Харьяа нэгжүүд дээд түвшингүй болно.")}`)) return;
-    try {
-      await api.del(`/api/apps/organisation/departments/${d.id}`);
-      toast(t("Устгагдлаа")); await load();
-    } catch (e) { toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа")); }
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const tree = useMemo(() => (depts ? flatten(depts) : []), [depts]);
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("Хэлтэс, нэгж")}</h1>
-          <div className="sub">{t("Байгууллагын бүтцийн мод")}</div>
-        </div>
-        <div className="spacer" />
-        {manage && <button className="btn" onClick={() => { setErr(""); setForm(empty); }}><Plus size={16} /> {t("Нэгж нэмэх")}</button>}
-      </div>
+      <PageHead
+        title={t('Хэлтэс, нэгж')}
+        description={t('Байгууллагын бүтцийн мод')}
+        actions={
+          manage && (
+            <Button leadingIcon={<Icons.Plus />} onClick={() => setForm(EMPTY)}>
+              {t('Нэгж нэмэх')}
+            </Button>
+          )
+        }
+      />
 
-      <div className="card">
-        {depts === null ? (
-          <div className="empty">{t("Уншиж байна…")}</div>
-        ) : depts.length === 0 ? (
-          <div className="empty">
-            <Building2 size={36} strokeWidth={1.4} />
-            <b>{t("Нэгж байхгүй")}</b>
-            {t("Эхний хэлтэс/нэгжээ үүсгээрэй")}
+      <Card padding="none">
+        {loadErr ? (
+          <div className="p-5">
+            <Alert variant="danger">{t(loadErr)}</Alert>
           </div>
+        ) : depts === null ? (
+          <div className="flex justify-center py-12">
+            <Spinner label={t('Уншиж байна…')} />
+          </div>
+        ) : depts.length === 0 ? (
+          <EmptyState
+            icon={<Icons.Folder />}
+            title={t('Нэгж байхгүй')}
+            description={t('Эхний хэлтэс/нэгжээ үүсгээрэй')}
+          />
         ) : (
-          <table className="table">
-            <thead><tr><th>{t("Нэгж")}</th><th>{t("Код")}</th><th>{t("Менежер")}</th><th>{t("Ажилтан")}</th><th></th></tr></thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('Нэгж')}</TableHead>
+                <TableHead>{t('Код')}</TableHead>
+                <TableHead>{t('Менежер')}</TableHead>
+                <TableHead align="right">{t('Ажилтан')}</TableHead>
+                <TableHead align="right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {tree.map(({ d, depth }) => (
-                <tr key={d.id} style={{ opacity: d.active ? 1 : 0.55 }}>
-                  <td style={{ paddingLeft: `${1.25 + depth * 1.25}rem` }}>
-                    <b style={{ fontWeight: 600 }}>{d.name}</b>
-                    {!d.active && <span className="badge badge--muted" style={{ marginLeft: "0.5rem" }}>{t("идэвхгүй")}</span>}
-                  </td>
-                  <td><code>{d.code}</code></td>
-                  <td style={{ color: "var(--text-2)" }}>{d.manager_name || "—"}</td>
-                  <td>{d.people}</td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                <TableRow key={d.id} className={cn(!d.active && 'opacity-60')}>
+                  <TableCell>
+                    <span
+                      className="flex items-center gap-2"
+                      style={{ paddingInlineStart: `${depth * 1.25}rem` }}
+                    >
+                      <span className="text-foreground font-medium">{d.name}</span>
+                      {!d.active && <Badge tone="neutral">{t('идэвхгүй')}</Badge>}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <code className="font-mono text-xs">{d.code}</code>
+                  </TableCell>
+                  <TableCell className="text-foreground-muted">{d.manager_name || '—'}</TableCell>
+                  <TableCell align="right">{d.people}</TableCell>
+                  <TableCell align="right">
                     {manage && (
-                      <>
-                        <button className="btn btn--ghost btn--sm" aria-label={`${d.name} ${t("засах")}`}
-                          onClick={() => { setErr(""); setForm({ id: d.id, code: d.code, name: d.name, parent_id: d.parent_id ?? "", manager_membership_id: d.manager_membership_id ?? "", active: d.active }); }}>
-                          <Pencil size={13} />
-                        </button>{" "}
-                        <button className="btn btn--ghost btn--sm" aria-label={`${d.name} ${t("устгах")}`} onClick={() => remove(d)}>
-                          <Trash2 size={13} />
-                        </button>
-                      </>
+                      <span className="flex justify-end gap-1">
+                        <Tooltip label={t('засах')}>
+                          <IconButton
+                            aria-label={`${d.name} — ${t('засах')}`}
+                            icon={<Icons.Pencil />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setForm({
+                                id: d.id,
+                                code: d.code,
+                                name: d.name,
+                                parent_id: d.parent_id ?? '',
+                                manager_membership_id: d.manager_membership_id ?? '',
+                                active: d.active,
+                              })
+                            }
+                          />
+                        </Tooltip>
+                        <Tooltip label={t('устгах')}>
+                          <IconButton
+                            aria-label={`${d.name} — ${t('устгах')}`}
+                            icon={<Icons.Trash2 />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setRemoving(d)}
+                          />
+                        </Tooltip>
+                      </span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       {form && (
-        <div className="modal-back" onClick={() => setForm(null)} onKeyDown={(e) => e.key === "Escape" && setForm(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>{form.id ? t("Нэгж засах") : t("Нэгж нэмэх")}</h3>
-            {err && <div className="alert alert--danger">{t(err)}</div>}
-            <div className="field"><label>{t("Нэр")}</label>
-              <input value={form.name} autoFocus onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div className="field"><label>{t("Код")}</label>
-              <input value={form.code} placeholder="hr, it, sales…" onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
-            <div className="field"><label>{t("Дээд нэгж")}</label>
-              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}>
-                <option value="">{t("— байхгүй (дээд түвшин) —")}</option>
-                {tree.filter((x) => x.d.id !== form.id).map(({ d, depth }) => (
-                  <option key={d.id} value={d.id}>{" ".repeat(depth * 3)}{d.name}</option>
-                ))}
-              </select></div>
-            <div className="field"><label>{t("Менежер")}</label>
-              <select value={form.manager_membership_id} onChange={(e) => setForm({ ...form, manager_membership_id: e.target.value })}>
-                <option value="">—</option>
-                {people.map((p) => <option key={p.membership_id} value={p.membership_id}>{p.name}</option>)}
-              </select></div>
-            {form.id && (
-              <div className="field"><label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} style={{ width: "auto" }} />
-                {t("Идэвхтэй")}
-              </label></div>
-            )}
-            <div className="modal__actions">
-              <button className="btn btn--ghost" onClick={() => setForm(null)}>{t("Болих")}</button>
-              <button className="btn" onClick={save}>{t("Хадгалах")}</button>
-            </div>
-          </div>
-        </div>
+        <DeptDialog
+          form={form}
+          tree={tree}
+          people={people}
+          onClose={() => setForm(null)}
+          onSaved={() => {
+            setForm(null);
+            void load();
+          }}
+        />
       )}
+
+      <ConfirmationDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title={removing ? `"${removing.name}"` : ''}
+        description={t('хэлтсийг устгах уу? Харьяа нэгжүүд дээд түвшингүй болно.')}
+        confirmLabel={t('устгах')}
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!removing) return;
+          await api.del(`/api/apps/organisation/departments/${removing.id}`);
+          toast({ title: t('Устгагдлаа'), variant: 'success' });
+          await load();
+        }}
+      />
     </>
+  );
+}
+
+function DeptDialog({
+  form: initial,
+  tree,
+  people,
+  onClose,
+  onSaved,
+}: {
+  form: Form;
+  tree: { d: Dept; depth: number }[];
+  people: Person[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useT();
+  const [form, setForm] = useState(initial);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr('');
+    setBusy(true);
+    const body = {
+      code: form.code,
+      name: form.name,
+      parent_id: form.parent_id || null,
+      manager_membership_id: form.manager_membership_id || null,
+      active: form.active,
+    };
+    try {
+      if (form.id) await api.put(`/api/apps/organisation/departments/${form.id}`, body);
+      else await api.post('/api/apps/organisation/departments', body);
+      toast({ title: t('Хадгалагдлаа'), variant: 'success' });
+      onSaved();
+    } catch (ex) {
+      setErr(msg(ex, t('Алдаа гарлаа')));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>{form.id ? t('Нэгж засах') : t('Нэгж нэмэх')}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={submit} className="space-y-4">
+          {err && <Alert variant="danger">{err}</Alert>}
+
+          <Input
+            label={t('Нэр')}
+            value={form.name}
+            required
+            autoFocus
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Input
+            label={t('Код')}
+            value={form.code}
+            required
+            placeholder="hr, it, sales…"
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+          />
+
+          <div className="space-y-1.5">
+            <label htmlFor="parent" className="text-foreground block text-sm font-medium">
+              {t('Дээд нэгж')}
+            </label>
+            <Select
+              value={form.parent_id || NONE}
+              onValueChange={(v) => setForm({ ...form, parent_id: v === NONE ? '' : v })}
+            >
+              <SelectTrigger id="parent" placeholder={t('— байхгүй (дээд түвшин) —')} />
+              <SelectContent>
+                <SelectItem value={NONE}>{t('— байхгүй (дээд түвшин) —')}</SelectItem>
+                {tree
+                  .filter((x) => x.d.id !== form.id)
+                  .map(({ d, depth }) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {' '.repeat(depth * 3)}
+                      {d.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="manager" className="text-foreground block text-sm font-medium">
+              {t('Менежер')}
+            </label>
+            <Select
+              value={form.manager_membership_id || NONE}
+              onValueChange={(v) =>
+                setForm({ ...form, manager_membership_id: v === NONE ? '' : v })
+              }
+            >
+              <SelectTrigger id="manager" placeholder="—" />
+              <SelectContent>
+                <SelectItem value={NONE}>—</SelectItem>
+                {people.map((p) => (
+                  <SelectItem key={p.membership_id} value={p.membership_id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.id && (
+            <Checkbox
+              checked={form.active}
+              onCheckedChange={(v) => setForm({ ...form, active: v === true })}
+              label={t('Идэвхтэй')}
+            />
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {t('Болих')}
+            </Button>
+            <Button type="submit" loading={busy}>
+              {t('Хадгалах')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

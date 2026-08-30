@@ -1,111 +1,117 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import {
-  ChevronDown,
-  LogOut,
-  Sun,
-  Moon,
-  Monitor,
-  Building2,
-  Check,
-  Plus,
-} from "lucide-react";
-import { api, type Me } from "@/lib/api";
-import { useThemeMode } from "@/lib/theme";
-import { locales, setLocale, useT } from "@/lib/i18n";
+  Avatar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Icons,
+} from '@craftzbay/ui';
+import { api, type Me } from '@/lib/api';
+import { useThemeMode, type ThemeMode } from '@/lib/theme';
+import { locales, setLocale, useT } from '@/lib/i18n';
 
 export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [theme, setTheme] = useThemeMode();
   const { t, locale } = useT();
 
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
   const initials = me.user.name
-    .split(" ")
+    .split(' ')
     .map((s) => s[0])
-    .join("")
+    .join('')
     .slice(0, 2)
     .toUpperCase();
 
   const selectTenant = async (id: string) => {
-    await api.post("/api/session/tenant", { tenant_id: id });
-    setOpen(false);
+    if (id === me.tenant_id) return;
+    await api.post('/api/session/tenant', { tenant_id: id });
     if (onTenantChange) onTenantChange();
     else window.location.reload();
   };
 
   const logout = async () => {
-    await api.post("/api/logout");
-    router.replace("/login");
+    await api.post('/api/logout').catch(() => {});
+    router.replace('/login');
   };
 
   return (
-    <div className="topbar__user" ref={ref}>
-      <button className={`um__btn${open ? " is-open" : ""}`} onClick={() => setOpen(!open)}>
-        <span className="um__avatar">{initials}</span>
-        <span>{me.user.name}</span>
-        <ChevronDown size={15} className="um__chev" />
-      </button>
-      {open && (
-        <div className="um__menu">
-          <div className="um__head">
-            <b>{me.user.name}</b>
-            <span>{me.user.email}</span>
-          </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="hover:bg-background-muted focus-visible:ring-ring focus-visible:ring-offset-background flex h-9 max-w-[14rem] items-center gap-2 rounded-md px-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          <Avatar size="sm" fallback={initials} alt="" />
+          <span className="text-foreground hidden truncate text-sm sm:block">{me.user.name}</span>
+          <Icons.ChevronDown className="text-foreground-subtle size-4 shrink-0" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
 
-          <div className="um__sect">{t("Байгууллага")}</div>
-          {me.tenants.map((t) => (
-            <button key={t.id} className={`um__item${t.id === me.tenant_id ? " is-on" : ""}`}
-              onClick={() => selectTenant(t.id)}>
-              <Building2 size={16} />
-              <span style={{ flex: 1 }}>{t.name}</span>
-              {t.id === me.tenant_id && <Check size={15} />}
-            </button>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="font-normal">
+          <span className="text-foreground block truncate text-sm font-medium">
+            {me.user.name}
+          </span>
+          <span className="text-foreground-subtle block truncate text-xs">{me.user.email}</span>
+        </DropdownMenuLabel>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-foreground-subtle text-xs font-normal">
+          {t('Байгууллага')}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={me.tenant_id ?? ''}
+          onValueChange={(v) => void selectTenant(v)}
+        >
+          {me.tenants.map((x) => (
+            <DropdownMenuRadioItem key={x.id} value={x.id}>
+              {x.name}
+            </DropdownMenuRadioItem>
           ))}
-          <button className="um__item" onClick={() => { setOpen(false); router.push("/org/new"); }}>
-            <Plus size={16} />
-            {t("Байгууллага нэмэх")}
-          </button>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuItem onSelect={() => router.push('/org/new')}>
+          <Icons.Plus aria-hidden />
+          {t('Байгууллага нэмэх')}
+        </DropdownMenuItem>
 
-          <div className="um__sect">{t("Тохиргоо")}</div>
-          <div className="um__prefrow">
-            <span>{t("Хэл")}</span>
-            <div className="um__pills">
-              {locales.map((l) => (
-                <button key={l.code} className={`um__pill${locale === l.code ? " is-on" : ""}`}
-                  onClick={() => setLocale(l.code)}>{l.label}</button>
-              ))}
-            </div>
-          </div>
-          <div className="um__prefrow">
-            <span>{t("Загвар")}</span>
-            <div className="um__pills">
-              <button className={`um__pill${theme === "light" ? " is-on" : ""}`}
-                onClick={() => setTheme("light")} title={t("Цайвар")}><Sun size={14} /></button>
-              <button className={`um__pill${theme === "dark" ? " is-on" : ""}`}
-                onClick={() => setTheme("dark")} title={t("Бараан")}><Moon size={14} /></button>
-              <button className={`um__pill${theme === "system" ? " is-on" : ""}`}
-                onClick={() => setTheme("system")} title={t("Систем")}><Monitor size={14} /></button>
-            </div>
-          </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-foreground-subtle text-xs font-normal">
+          {t('Хэл')}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={locale}
+          onValueChange={(v) => setLocale(v as (typeof locales)[number]['code'])}
+        >
+          {locales.map((l) => (
+            <DropdownMenuRadioItem key={l.code} value={l.code}>
+              {l.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
 
-          <button className="um__item um__logout" onClick={logout}>
-            <LogOut size={16} />
-            {t("Гарах")}
-          </button>
-        </div>
-      )}
-    </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-foreground-subtle text-xs font-normal">
+          {t('Загвар')}
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeMode)}>
+          <DropdownMenuRadioItem value="light">{t('Цайвар')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">{t('Бараан')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">{t('Систем')}</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={logout}>
+          <Icons.LogOut aria-hidden />
+          {t('Гарах')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

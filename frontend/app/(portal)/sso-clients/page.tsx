@@ -1,144 +1,416 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { Copy, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { toast } from "@/lib/toast";
-import { useT } from "@/lib/i18n";
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  ConfirmationDialog,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Icons,
+  IconButton,
+  Input,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Textarea,
+  Tooltip,
+  toast,
+} from '@craftzbay/ui';
+import { PageHead } from '@/components/states';
+import { api, ApiError } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 // OAuth2/OIDC клиентүүд — гадны систем энэ байгууллагын хэрэглэгчээр нэвтрэх.
-type Client = { id: string; client_id: string; name: string; public: boolean; redirect_uris: string[]; post_logout_uris: string[]; scopes: string; created_at: string };
-type Form = { id?: string; name: string; public: boolean; redirect_uris: string; post_logout_uris: string; scopes: string };
-const empty: Form = { name: "", public: false, redirect_uris: "", post_logout_uris: "", scopes: "openid profile email" };
-const ALL_SCOPES = ["openid", "profile", "email", "tenant", "roles", "offline_access"];
+type Client = {
+  id: string;
+  client_id: string;
+  name: string;
+  public: boolean;
+  redirect_uris: string[];
+  post_logout_uris: string[];
+  scopes: string;
+  created_at: string;
+};
+type Form = {
+  id?: string;
+  name: string;
+  public: boolean;
+  redirect_uris: string;
+  post_logout_uris: string;
+  scopes: string;
+};
+
+const EMPTY: Form = {
+  name: '',
+  public: false,
+  redirect_uris: '',
+  post_logout_uris: '',
+  scopes: 'openid profile email',
+};
+const ALL_SCOPES = ['openid', 'profile', 'email', 'tenant', 'roles', 'offline_access'];
+
+const msg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
 export default function SSOClientsPage() {
   const { t } = useT();
   const [clients, setClients] = useState<Client[] | null>(null);
-  const [issuer, setIssuer] = useState("");
+  const [issuer, setIssuer] = useState('');
+  const [loadErr, setLoadErr] = useState('');
   const [form, setForm] = useState<Form | null>(null);
   const [secret, setSecret] = useState<{ client_id: string; client_secret: string } | null>(null);
-  const [err, setErr] = useState("");
+  const [removing, setRemoving] = useState<Client | null>(null);
 
   const load = useCallback(async () => {
-    const r = await api.get<{ clients: Client[]; issuer: string }>("/api/sso-clients");
-    setClients(r.clients); setIssuer(r.issuer);
-  }, []);
-  useEffect(() => { void load(); }, [load]);
-
-  const lines = (s: string) => s.split(/\n|,/).map((x) => x.trim()).filter(Boolean);
-  const save = async () => {
-    if (!form) return;
-    setErr("");
-    const body = { name: form.name, public: form.public, redirect_uris: lines(form.redirect_uris), post_logout_uris: lines(form.post_logout_uris), scopes: form.scopes };
     try {
-      if (form.id) {
-        await api.put(`/api/sso-clients/${form.id}`, body);
-        toast(t("Хадгалагдлаа"));
-      } else {
-        const r = await api.post<{ client_id: string; client_secret: string }>("/api/sso-clients", body);
-        if (r.client_secret) setSecret(r);
-        toast(t("Клиент үүслээ"));
-      }
-      setForm(null); await load();
-    } catch (e) { setErr(e instanceof ApiError ? e.message : t("Алдаа гарлаа")); }
+      const r = await api.get<{ clients: Client[]; issuer: string }>('/api/sso-clients');
+      setClients(r.clients);
+      setIssuer(r.issuer);
+    } catch (e) {
+      setLoadErr(msg(e, t('Алдаа гарлаа')));
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const copy = (s: string) => {
+    void navigator.clipboard?.writeText(s);
+    toast({ title: t('Хуулагдлаа'), variant: 'success' });
   };
-  const remove = async (c: Client) => {
-    if (!confirm(`"${c.name}" ${t("клиентийг устгах уу? Олгосон бүх токен хүчингүй болно.")}`)) return;
-    try { await api.del(`/api/sso-clients/${c.id}`); toast(t("Устгагдлаа")); await load(); }
-    catch (e) { toast(e instanceof ApiError ? t(e.message) : t("Алдаа гарлаа")); }
-  };
-  const copy = (s: string) => { void navigator.clipboard?.writeText(s); toast(t("Хуулагдлаа")); };
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{t("SSO клиентүүд")}</h1>
-          <div className="sub">{t("Гадны систем энэ байгууллагын бүртгэлээр нэвтрэх (OpenID Connect)")}</div>
+      <PageHead
+        title={t('SSO клиентүүд')}
+        description={t('Гадны систем энэ байгууллагын бүртгэлээр нэвтрэх (OpenID Connect)')}
+        actions={
+          <Button leadingIcon={<Icons.Plus />} onClick={() => setForm(EMPTY)}>
+            {t('Клиент нэмэх')}
+          </Button>
+        }
+      />
+
+      <Card className="mb-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-foreground font-medium">{t('Issuer')}:</span>
+          <code className="text-foreground-muted font-mono text-xs break-all">{issuer}</code>
+          <Tooltip label={t('Хуулах')}>
+            <IconButton
+              aria-label={t('Хуулах')}
+              icon={<Icons.Copy />}
+              variant="ghost"
+              size="sm"
+              onClick={() => copy(issuer)}
+            />
+          </Tooltip>
         </div>
-        <div className="spacer" />
-        <button className="btn" onClick={() => { setErr(""); setForm(empty); }}><Plus size={16} /> {t("Клиент нэмэх")}</button>
-      </div>
+        <p className="text-foreground-muted mt-1 text-sm break-all">
+          {t('Discovery')}:{' '}
+          <code className="font-mono text-xs">{issuer}/.well-known/openid-configuration</code> ·
+          PKCE S256 {t('заавал')} · RS256
+        </p>
+      </Card>
 
-      <div className="card card__pad" style={{ marginBottom: "1rem", fontSize: "0.9rem", color: "var(--text-2)" }}>
-        <b>{t("Issuer")}:</b> <code>{issuer}</code>{" "}
-        <button className="btn btn--ghost btn--sm" onClick={() => copy(issuer)} aria-label={t("Хуулах")}><Copy size={13} /></button>
-        <div style={{ marginTop: "0.3rem" }}>{t("Discovery")}: <code>{issuer}/.well-known/openid-configuration</code> · PKCE S256 {t("заавал")} · RS256</div>
-      </div>
-
-      <div className="card">
-        {clients === null ? <div className="empty">{t("Уншиж байна…")}</div> : clients.length === 0 ? (
-          <div className="empty"><KeyRound size={36} strokeWidth={1.4} /><b>{t("Клиент байхгүй")}</b>{t("Гадны системээ бүртгээд client_id авна")}</div>
-        ) : (
-          <table className="table">
-            <thead><tr><th>{t("Нэр")}</th><th>client_id</th><th>{t("Төрөл")}</th><th>Redirect</th><th>Scope</th><th></th></tr></thead>
-            <tbody>
-              {clients.map((c) => (
-                <tr key={c.id}>
-                  <td><b style={{ fontWeight: 600 }}>{c.name}</b></td>
-                  <td><code>{c.client_id}</code> <button className="btn btn--ghost btn--sm" onClick={() => copy(c.client_id)} aria-label={t("Хуулах")}><Copy size={12} /></button></td>
-                  <td>{c.public ? <span className="badge badge--muted">public · PKCE</span> : <span className="badge badge--accent">confidential</span>}</td>
-                  <td style={{ fontSize: "0.82rem", color: "var(--text-2)" }}>{c.redirect_uris.map((u) => <div key={u}>{u}</div>)}</td>
-                  <td style={{ fontSize: "0.82rem", color: "var(--text-2)" }}>{c.scopes}</td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    <button className="btn btn--ghost btn--sm" aria-label={`${c.name} ${t("засах")}`}
-                      onClick={() => { setErr(""); setForm({ id: c.id, name: c.name, public: c.public, redirect_uris: c.redirect_uris.join("\n"), post_logout_uris: c.post_logout_uris.join("\n"), scopes: c.scopes }); }}>
-                      <Pencil size={13} />
-                    </button>{" "}
-                    <button className="btn btn--ghost btn--sm" aria-label={`${c.name} ${t("устгах")}`} onClick={() => remove(c)}><Trash2 size={13} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {secret && (
-        <div className="modal-back" onClick={() => setSecret(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>{t("Клиентийн нууц үг — нэг л удаа харагдана")}</h3>
-            <div className="field"><label>client_id</label><input readOnly value={secret.client_id} onFocus={(e) => e.target.select()} /></div>
-            <div className="field"><label>client_secret</label><input readOnly value={secret.client_secret} onFocus={(e) => e.target.select()} /></div>
-            <div className="hint">{t("Хадгалаад хаа — дахин харуулахгүй, алдвал клиентээ шинээр үүсгэнэ.")}</div>
-            <div className="modal__actions"><button className="btn" onClick={() => setSecret(null)}>{t("Хадгалсан")}</button></div>
+      <Card padding="none">
+        {loadErr ? (
+          <div className="p-5">
+            <Alert variant="danger">{loadErr}</Alert>
           </div>
-        </div>
-      )}
+        ) : clients === null ? (
+          <div className="flex justify-center py-12">
+            <Spinner label={t('Уншиж байна…')} />
+          </div>
+        ) : clients.length === 0 ? (
+          <EmptyState
+            icon={<Icons.Key />}
+            title={t('Клиент байхгүй')}
+            description={t('Гадны системээ бүртгээд client_id авна')}
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('Нэр')}</TableHead>
+                <TableHead>client_id</TableHead>
+                <TableHead>{t('Төрөл')}</TableHead>
+                <TableHead>Redirect</TableHead>
+                <TableHead>Scope</TableHead>
+                <TableHead align="right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clients.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1">
+                      <code className="text-foreground-muted font-mono text-xs">{c.client_id}</code>
+                      <Tooltip label={t('Хуулах')}>
+                        <IconButton
+                          aria-label={t('Хуулах')}
+                          icon={<Icons.Copy />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copy(c.client_id)}
+                        />
+                      </Tooltip>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {c.public ? (
+                      <Badge tone="neutral">public · PKCE</Badge>
+                    ) : (
+                      <Badge tone="accent">confidential</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-foreground-muted text-xs">
+                    {c.redirect_uris.map((u) => (
+                      <span key={u} className="block break-all">
+                        {u}
+                      </span>
+                    ))}
+                  </TableCell>
+                  <TableCell className="text-foreground-muted text-xs">{c.scopes}</TableCell>
+                  <TableCell align="right">
+                    <span className="flex justify-end gap-1">
+                      <Tooltip label={t('засах')}>
+                        <IconButton
+                          aria-label={`${c.name} — ${t('засах')}`}
+                          icon={<Icons.Pencil />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setForm({
+                              id: c.id,
+                              name: c.name,
+                              public: c.public,
+                              redirect_uris: c.redirect_uris.join('\n'),
+                              post_logout_uris: c.post_logout_uris.join('\n'),
+                              scopes: c.scopes,
+                            })
+                          }
+                        />
+                      </Tooltip>
+                      <Tooltip label={t('устгах')}>
+                        <IconButton
+                          aria-label={`${c.name} — ${t('устгах')}`}
+                          icon={<Icons.Trash2 />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRemoving(c)}
+                        />
+                      </Tooltip>
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+
+      {/* Нууц үг нэг л удаа — хаахаас нааш өөр зүйл харуулахгүй */}
+      <Dialog open={secret !== null} onOpenChange={(o) => !o && setSecret(null)}>
+        <DialogContent size="md" showClose={false}>
+          <DialogHeader>
+            <DialogTitle>{t('Клиентийн нууц үг — нэг л удаа харагдана')}</DialogTitle>
+          </DialogHeader>
+          {secret && (
+            <div className="space-y-4">
+              <Input
+                label="client_id"
+                readOnly
+                value={secret.client_id}
+                onFocus={(e) => e.target.select()}
+              />
+              <Input
+                label="client_secret"
+                readOnly
+                value={secret.client_secret}
+                onFocus={(e) => e.target.select()}
+                helperText={t('Хадгалаад хаа — дахин харуулахгүй, алдвал клиентээ шинээр үүсгэнэ.')}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setSecret(null)}>{t('Хадгалсан')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {form && (
-        <div className="modal-back" onClick={() => setForm(null)} onKeyDown={(e) => e.key === "Escape" && setForm(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h3>{form.id ? t("Клиент засах") : t("Клиент нэмэх")}</h3>
-            {err && <div className="alert alert--danger">{t(err)}</div>}
-            <div className="field"><label>{t("Нэр")}</label>
-              <input value={form.name} autoFocus onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Bold ERP" /></div>
-            {!form.id && (
-              <div className="field"><label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input type="checkbox" checked={form.public} style={{ width: "auto" }} onChange={(e) => setForm({ ...form, public: e.target.checked })} />
-                {t("Public клиент (SPA/mobile — secret-гүй, PKCE)")}
-              </label></div>
-            )}
-            <div className="field"><label>{t("Redirect URI-ууд (мөр тус бүр)")}</label>
-              <textarea rows={3} value={form.redirect_uris} onChange={(e) => setForm({ ...form, redirect_uris: e.target.value })} placeholder="https://erp.bold.mn/auth/callback" /></div>
-            <div className="field"><label>{t("Logout-ын дараах URI-ууд")}</label>
-              <textarea rows={2} value={form.post_logout_uris} onChange={(e) => setForm({ ...form, post_logout_uris: e.target.value })} /></div>
-            <div className="field"><label>Scope</label>
-              <span style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
-                {ALL_SCOPES.map((s) => {
-                  const on = form.scopes.split(" ").includes(s);
-                  return <button key={s} type="button" className={`um__pill${on ? " is-on" : ""}`}
-                    onClick={() => setForm({ ...form, scopes: (on ? form.scopes.split(" ").filter((x) => x !== s) : [...form.scopes.split(" ").filter(Boolean), s]).join(" ") })}>{s}</button>;
-                })}
-              </span></div>
-            <div className="modal__actions">
-              <button className="btn btn--ghost" onClick={() => setForm(null)}>{t("Болих")}</button>
-              <button className="btn" onClick={save}>{t("Хадгалах")}</button>
-            </div>
-          </div>
-        </div>
+        <ClientDialog
+          form={form}
+          onClose={() => setForm(null)}
+          onSaved={(s) => {
+            setForm(null);
+            if (s) setSecret(s);
+            void load();
+          }}
+        />
       )}
+
+      <ConfirmationDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title={removing ? `"${removing.name}"` : ''}
+        description={t('клиентийг устгах уу? Олгосон бүх токен хүчингүй болно.')}
+        confirmLabel={t('устгах')}
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!removing) return;
+          await api.del(`/api/sso-clients/${removing.id}`);
+          toast({ title: t('Устгагдлаа'), variant: 'success' });
+          await load();
+        }}
+      />
     </>
+  );
+}
+
+function ClientDialog({
+  form: initial,
+  onClose,
+  onSaved,
+}: {
+  form: Form;
+  onClose: () => void;
+  onSaved: (secret: { client_id: string; client_secret: string } | null) => void;
+}) {
+  const { t } = useT();
+  const [form, setForm] = useState(initial);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const lines = (s: string) =>
+    s
+      .split(/\n|,/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr('');
+    setBusy(true);
+    const body = {
+      name: form.name,
+      public: form.public,
+      redirect_uris: lines(form.redirect_uris),
+      post_logout_uris: lines(form.post_logout_uris),
+      scopes: form.scopes,
+    };
+    try {
+      if (form.id) {
+        await api.put(`/api/sso-clients/${form.id}`, body);
+        toast({ title: t('Хадгалагдлаа'), variant: 'success' });
+        onSaved(null);
+      } else {
+        const r = await api.post<{ client_id: string; client_secret: string }>(
+          '/api/sso-clients',
+          body,
+        );
+        toast({ title: t('Клиент үүслээ'), variant: 'success' });
+        onSaved(r.client_secret ? r : null);
+      }
+    } catch (ex) {
+      setErr(msg(ex, t('Алдаа гарлаа')));
+      setBusy(false);
+    }
+  };
+
+  const scopes = form.scopes.split(' ').filter(Boolean);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>{form.id ? t('Клиент засах') : t('Клиент нэмэх')}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={submit} className="space-y-4">
+          {err && <Alert variant="danger">{err}</Alert>}
+
+          <Input
+            label={t('Нэр')}
+            value={form.name}
+            autoFocus
+            required
+            placeholder="Bold ERP"
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+
+          {!form.id && (
+            <Checkbox
+              checked={form.public}
+              onCheckedChange={(v) => setForm({ ...form, public: v === true })}
+              label={t('Public клиент (SPA/mobile — secret-гүй, PKCE)')}
+            />
+          )}
+
+          <Textarea
+            label={t('Redirect URI-ууд (мөр тус бүр)')}
+            rows={3}
+            value={form.redirect_uris}
+            placeholder="https://erp.bold.mn/auth/callback"
+            onChange={(e) => setForm({ ...form, redirect_uris: e.target.value })}
+          />
+
+          <Textarea
+            label={t('Logout-ын дараах URI-ууд')}
+            rows={2}
+            value={form.post_logout_uris}
+            onChange={(e) => setForm({ ...form, post_logout_uris: e.target.value })}
+          />
+
+          <div className="space-y-1.5">
+            <span className="text-foreground block text-sm font-medium">Scope</span>
+            <span className="flex flex-wrap gap-1.5">
+              {ALL_SCOPES.map((s) => {
+                const on = scopes.includes(s);
+                return (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant={on ? 'primary' : 'outline'}
+                    aria-pressed={on}
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        scopes: (on ? scopes.filter((x) => x !== s) : [...scopes, s]).join(' '),
+                      })
+                    }
+                  >
+                    {s}
+                  </Button>
+                );
+              })}
+            </span>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {t('Болих')}
+            </Button>
+            <Button type="submit" loading={busy}>
+              {t('Хадгалах')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,43 +1,52 @@
-import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/toaster";
+import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
+import { DesignSystemProvider, Toaster, TooltipProvider, mnStrings } from '@craftzbay/ui';
+import './globals.css';
 
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-inter",
+const sans = Geist({
+  subsets: ['latin', 'cyrillic', 'cyrillic-ext'],
+  weight: ['400', '500', '600'],
+  variable: '--font-geist-sans',
+  display: 'swap',
 });
 
-const mono = JetBrains_Mono({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-mono",
+const mono = Geist_Mono({
+  subsets: ['latin', 'cyrillic-ext'],
+  weight: ['400', '500'],
+  variable: '--font-geist-mono',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "nexus-mini",
+  title: 'nexus-mini',
   description:
-    "Татаад ажиллуулаад, дээр нь модулиа бичээд, store-д нийтэлдэг платформын цөм",
+    'Татаад ажиллуулаад, дээр нь модулиа бичээд, store-д нийтэлдэг платформын цөм',
 };
 
-// Театрчлахгүйгээр dark/light-ээ эрт тогтооно (flash-гүй).
+// Эхний зурагдалтаас өмнө класс тавина — theme flash-аас сэргийлнэ.
+// Сан `dark` классаар ажиллана (data-theme биш).
 const themeScript = `
 try {
   var t = localStorage.getItem('nexus_theme');
   if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.dataset.theme = 'dark';
+    document.documentElement.classList.add('dark');
   }
 } catch (e) {}
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="mn" suppressHydrationWarning>
+    <html lang="mn" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${inter.variable} ${mono.variable}`}>
-        {children}
-        <Toaster />
+      <body className="bg-background text-foreground font-sans antialiased">
+        <DesignSystemProvider strings={mnStrings}>
+          <TooltipProvider>
+            {children}
+            <Toaster />
+          </TooltipProvider>
+        </DesignSystemProvider>
       </body>
     </html>
   );

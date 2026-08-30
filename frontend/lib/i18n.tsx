@@ -24,6 +24,17 @@ export function setLocale(l: Locale) {
 }
 
 const en: Record<string, string> = {
+  "Апп алга": "No apps",
+  "Аппууд": "Apps",
+  "Бичлэг алга": "No entries",
+  "Дахин оролдох": "Try again",
+  "Каталогт хараахан апп нэмэгдээгүй байна.": "No apps have been added to the catalog yet.",
+  "Устгагдлаа": "Deleted",
+  "Хараахан бүртгэгдсэн үйлдэл байхгүй байна.": "No actions have been recorded yet.",
+  "Хасах": "Remove",
+  "Цэс нээх": "Open menu",
+  "засах": "edit",
+  "устгах": "delete",
   // ─── Нийтлэг ───
   "Дашбоард": "Dashboard",
   "Апп дэлгүүр": "App store",

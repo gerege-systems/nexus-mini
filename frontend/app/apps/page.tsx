@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Package } from "lucide-react";
-import { api } from "@/lib/api";
-import { MktHeader, MktFooter } from "@/components/mkt";
-import { useT } from "@/lib/i18n";
+import Link from 'next/link';
+import { Badge, Button, Card, EmptyState, Icons } from '@craftzbay/ui';
+import { MktHeader, MktFooter } from '@/components/mkt';
+import { Resource } from '@/components/states';
+import { useT } from '@/lib/i18n';
+import { useResource } from '@/lib/use-resource';
 
 type CatalogApp = {
   id: string;
@@ -20,76 +20,123 @@ type CatalogApp = {
 // Нийтийн апп дэлгүүрийн хуудас — нэвтрэлт шаардахгүй каталог.
 export default function PublicAppsPage() {
   const { t } = useT();
-  const [apps, setApps] = useState<CatalogApp[] | null>(null);
-  useEffect(() => {
-    void api.get<{ apps: CatalogApp[] }>("/api/catalog").then((r) => setApps(r.apps));
-  }, []);
+  const res = useResource<{ apps: CatalogApp[] }>('/api/catalog');
+
+  const steps = [
+    {
+      n: 1,
+      title: t('Дэлгүүрээс сонгоно'),
+      body: t('Каталогоос аппаа сонгоод «Суулгах» — хамаарлуудыг нь платформ өөрөө цэгцэлнэ.'),
+    },
+    {
+      n: 2,
+      title: t('Эрх автоматаар'),
+      body: t(
+        'Аппын permission-ууд role-уудад тунхагласан ёсоороо оноогдоно; админ дараа нь чөлөөтэй өөрчилнө.',
+      ),
+    },
+    {
+      n: 3,
+      title: t('Цэс гарч ирнэ'),
+      body: t(
+        'Эрхтэй хэрэглэгчид л аппын цэсийг харна. Rail дээр аппын icon нэмэгдэж, өөрийн цэстэйгээ ирнэ.',
+      ),
+    },
+  ];
 
   return (
-    <div className="mkt">
+    <div className="flex min-h-dvh flex-col">
       <MktHeader />
 
-      <section className="mkt-hero" style={{ paddingBottom: "1.5rem" }}>
-        <h1>{t("Апп дэлгүүр")}</h1>
-        <p>
-          {t("Байгууллага бүр өөрт хэрэгтэй модулиа л суулгана. Суусан апп нь permission-уудаа role-уудад тунхагласан ёсоор оноож, цэсээ эрхтэй хүнд л харуулна; унтраавал бүгд эргэж алга болно.")}
-        </p>
-      </section>
-
-      <section className="mkt-sect" style={{ paddingTop: 0 }}>
-        <div className="mkt-steps" style={{ marginBottom: "2rem" }}>
-          <div className="card mkt-feature">
-            <span className="mkt-num">1</span>
-            <h3>{t("Дэлгүүрээс сонгоно")}</h3>
-            <p>{t("Каталогоос аппаа сонгоод «Суулгах» — хамаарлуудыг нь платформ өөрөө цэгцэлнэ.")}</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="mkt-num">2</span>
-            <h3>{t("Эрх автоматаар")}</h3>
-            <p>{t("Аппын permission-ууд role-уудад тунхагласан ёсоороо оноогдоно; админ дараа нь чөлөөтэй өөрчилнө.")}</p>
-          </div>
-          <div className="card mkt-feature">
-            <span className="mkt-num">3</span>
-            <h3>{t("Цэс гарч ирнэ")}</h3>
-            <p>{t("Эрхтэй хэрэглэгчид л аппын цэсийг харна. Rail дээр аппын icon нэмэгдэж, өөрийн цэстэйгээ ирнэ.")}</p>
-          </div>
-        </div>
-
-        <h2 style={{ fontSize: "1.3rem", margin: "0 0 1rem" }}>{t("Одоо байгаа аппууд")}</h2>
-        <div className="app-grid">
-          {apps?.map((a) => (
-            <div key={a.id} className="card app-card">
-              <div className="app-card__head">
-                <span className="app-card__icon"><Package size={22} strokeWidth={1.7} /></span>
-                <div>
-                  <b>{a.name}</b>
-                  <div style={{ color: "var(--text-3)", fontSize: "0.8rem" }}>{a.publisher || "—"}</div>
-                </div>
-              </div>
-              <p>{a.description || t("Тайлбар оруулаагүй.")}</p>
-              <div className="app-card__foot">
-                {a.compiled
-                  ? <span className="badge badge--ok">{t("Бэлэн")}</span>
-                  : <span className="badge badge--muted" title={`nexus add ${a.short_id}`}>{t("Registry-д бүртгэлтэй")} · <code>nexus add {a.short_id}</code></span>}
-                <span className="v">v{a.version}</span>
-              </div>
-            </div>
-          ))}
-          {apps && apps.length === 0 && (
-            <p style={{ color: "var(--text-2)" }}>{t("Каталог хоосон байна.")}</p>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 md:px-6 md:py-16">
+        <h1 className="text-foreground text-3xl font-semibold text-balance">{t('Апп дэлгүүр')}</h1>
+        <p className="text-foreground-muted mt-3 max-w-3xl text-pretty">
+          {t(
+            'Байгууллага бүр өөрт хэрэгтэй модулиа л суулгана. Суусан апп нь permission-уудаа role-уудад тунхагласан ёсоор оноож, цэсээ эрхтэй хүнд л харуулна; унтраавал бүгд эргэж алга болно.',
           )}
+        </p>
+
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {steps.map((s) => (
+            <Card key={s.n}>
+              <span className="bg-accent text-accent-foreground grid size-7 place-items-center rounded-md text-sm font-semibold">
+                {s.n}
+              </span>
+              <h2 className="text-foreground mt-3 font-semibold">{s.title}</h2>
+              <p className="text-foreground-muted mt-2 text-sm">{s.body}</p>
+            </Card>
+          ))}
         </div>
 
-        <div className="card card__pad" style={{ marginTop: "2rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 240 }}>
-            <b>{t("Өөрийн модулиа энд гаргамаар байна уу?")}</b>
-            <div style={{ color: "var(--text-2)", fontSize: "0.9rem" }}>
-              {t("Гарын авлагыг дагаад модулиа бичээд каталогт PR илгээгээрэй.")}
+        <h2 className="text-foreground mt-12 mb-4 text-xl font-semibold">
+          {t('Одоо байгаа аппууд')}
+        </h2>
+
+        <Resource
+          state={res}
+          skeleton={
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="h-40" />
+              ))}
             </div>
+          }
+          isEmpty={(d) => d.apps.length === 0}
+          empty={<EmptyState icon={<Icons.Package />} title={t('Каталог хоосон байна.')} />}
+        >
+          {(d) => (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {d.apps.map((a) => (
+                <Card key={a.id} className="flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="bg-background-muted text-foreground-muted grid size-10 shrink-0 place-items-center rounded-md">
+                      <Icons.Package className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-foreground block truncate font-medium">{a.name}</span>
+                      <span className="text-foreground-subtle block truncate text-xs">
+                        {a.publisher || '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-foreground-muted flex-1 text-sm">
+                    {a.description || t('Тайлбар оруулаагүй.')}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {a.compiled ? (
+                      <Badge tone="success">{t('Бэлэн')}</Badge>
+                    ) : (
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <Badge tone="neutral">{t('Registry-д бүртгэлтэй')}</Badge>
+                        <code className="text-foreground-subtle font-mono text-xs">
+                          nexus add {a.short_id}
+                        </code>
+                      </span>
+                    )}
+                    <span className="text-foreground-subtle ml-auto text-xs tabular-nums">
+                      v{a.version}
+                    </span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Resource>
+
+        <Card className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="min-w-[15rem] flex-1">
+            <p className="text-foreground font-medium">
+              {t('Өөрийн модулиа энд гаргамаар байна уу?')}
+            </p>
+            <p className="text-foreground-muted text-sm">
+              {t('Гарын авлагыг дагаад модулиа бичээд каталогт PR илгээгээрэй.')}
+            </p>
           </div>
-          <Link href="/developers" className="btn">{t("Модуль хөгжүүлэх заавар")}</Link>
-        </div>
-      </section>
+          <Button asChild>
+            <Link href="/developers">{t('Модуль хөгжүүлэх заавар')}</Link>
+          </Button>
+        </Card>
+      </main>
 
       <MktFooter />
     </div>
