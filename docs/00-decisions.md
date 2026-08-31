@@ -96,8 +96,8 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 
 | Хэсэг | Хаяг | Порт |
 |---|---|---|
-| Portal + API (/api/* → Go) | nexus.runestonetechnologies.com | 3020 / 8084 |
-| Платформын админ | nexus-admin.runestonetechnologies.com | 3021 |
+| Portal + API (/api/* → Go) | nexus.craftzbay.com | 3020 / 8084 |
+| Платформын админ | nexus-admin.craftzbay.com | 3021 |
 | Registry | raw.githubusercontent.com/gerege-systems/nexus-registry (статик) | — |
 
 Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.
