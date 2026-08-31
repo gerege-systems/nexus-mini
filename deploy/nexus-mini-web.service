@@ -3,7 +3,9 @@ Description=nexus-mini Web (Next.js)
 After=network.target nexus-mini-api.service
 
 [Service]
-User=bay
+# Үйлчилгээний хэрэглэгч: өөрийн орчиндоо тааруулна. Энэ файлыг засахын оронд
+# drop-in ашигла: /etc/systemd/system/<unit>.d/override.conf → [Service] User=<өөрийн>
+User=nexus
 WorkingDirectory=/srv/nexus-mini/frontend
 Environment=NODE_ENV=production
 Environment=API_URL=http://127.0.0.1:8084

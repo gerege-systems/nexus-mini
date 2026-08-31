@@ -14,7 +14,7 @@
 - Модулийн UI: `backend/apps/<нэр>/ui/{pages,i18n.ts}` → `frontend/scripts/sync-modules.mjs` (prebuild/predev) `app/(portal)/<нэр>/` + `lib/i18n.modules.ts` үүсгэнэ (git-д ордоггүй). Модуль цөмийн frontend файлд гар хүрэхгүй; `frontend/modules.json` жагсаалт.
 - **SDK semver**: `pkg/nexus` + `core.Main` гэрээг v1.x дотор эвдэхгүй (tag `backend/v1.0.0`-ээс). Эвдэх өөрчлөлт = major; `internal/*` чөлөөтэй.
 - `frontend/` — landing + tenant portal (:3020) · `admin/` — платформын админ, ТУСДАА апп (:3021) · API :8084
-- `pkg/registry` — app store-ийн нийтийн гэрээ: манифест (`make manifest` кодоос), гарын үсэгтэй `index.json` (Ed25519), Fetch/ETag/кэш. Registry = статик репо `gerege-systems/nexus-registry` (raw URL, default түлхүүр цөмд). `catalog/index.json` — локал fallback (`CATALOG_PATH`). Private key: `~/.secrets/nexus-registry.key` (репод хэзээ ч биш).
+- `pkg/registry` — app store-ийн нийтийн гэрээ: манифест (`make manifest` кодоос), гарын үсэгтэй `index.json` (Ed25519), Fetch/ETag/кэш. Registry = статик репо `gerege-systems/nexus-registry` (raw URL, default түлхүүр цөмд). `catalog/index.json` — локал fallback (`CATALOG_PATH`). Гарын үсгийн private key нь операторын машин дээр, репод хэзээ ч биш.
 - `cmd/nexus` — дистрибуцийн CLI (`go run …/cmd/nexus@latest init|add|upgrade|remove|list`): main.go маркер, go get, `frontend/modules/<id>/ui` хуулбар, permission өргөсвөл `-approve`. `cmd/nexus-registry` — keygen/build/verify.
 - `deploy/` — `01-roles.sql` (DB role-ууд), `deploy.sh`, 3 systemd unit, `nginx-nexus-mini.conf`
 - Тохиргоо `backend/nexus-mini.env` (`.env.example`-оос; gitignore-д). DB role-ууд: `nexus_app` (RLS үйлчилнэ, апп), `nexus_admin` (`nexus_platform` гишүүн → бодлого платформ гэж таньдаг), `nexus_owner` (schema эзэн, зөвхөн миграц).
@@ -29,15 +29,15 @@
 - `docker compose up -d` — PG + migrate + api + web + admin (ADMIN_* env-ээр дамжуулна)
 
 ## Deploy
-- runestone VPS (`ssh bay@46.250.254.85`), `/srv/nexus-mini`, deploy key alias `github-nexus-mini`.
+- Лавлах байрлуулалт: Linux VPS, код `/srv/nexus-mini`, origin HTTPS (репо public тул pull-д түлхүүр хэрэггүй). Хостын хаяг/хэрэглэгч/түлхүүр репод БИЧИГДЭХГҮЙ.
 - Модулиуд: `apps/devices` (жишээ), `apps/organisation` (хэлтэс/нэгж + ажилтны байршил). Цөмд: байгууллагын профайл (`/api/tenant/profile`, `core.settings.manage`), түдгэлзүүлэх/зөвхөн-унших/устгалын 30 хоногийн хүлээлт (`RequireTenant` → `tenant_state()`; админ `PUT …/state`, `POST …/delete[/cancel]`, цагийн `SweepDeletions`); аппын хувилбарын түүх (`app_releases`, `installation_events`, `GET /api/store/apps/{id}/history`).
 - Үе 3 (✅ 2026-08-23): `internal/core/oidc` — OIDC provider (`/api/oauth2/*`: discovery, jwks, authorize, consent, token [code+PKCE, refresh rotation+replay, client_credentials], userinfo, introspect, revoke, end_session; RS256 түлхүүр `oidc_keys`; хүснэгтүүд зөвхөн nexus_auth); `internal/core/ssoclient` + `handlers/sso.go` — RP (Google, `SSO_ISSUER`, federation, `SSO_AUTO_SIGNUP`); portal `/sso-clients` (`core.sso.manage`), `/oauth/consent`, login `?next=`. Docs: `docs/04-integrations.md`.
 - Env: `PORTAL_URL` (portal-ийн гадаад URL; admin → impersonation handover холбоос). Cross-process cache invalidation Postgres LISTEN/NOTIFY (`internal/core/bus`) — Redis хэрэггүй.
 - Домэйн: `nexus.runestonetechnologies.com` (portal; nginx `/api/*` → :8084, бусад → :3020), `nexus-admin.runestonetechnologies.com` (admin :3021, мөн `/api/*` → :8084). CORS байхгүй — same-origin rewrite.
-- Сервер дээр: `bash deploy/deploy.sh` — pull → go build (атом mv, `.prev` үлдээнэ) → `migrate --env /home/bay/secrets/nexus-mini.env` → frontend/admin `pnpm build` (`.next.new` → атом солилт) → restart 3 unit → health curl.
+- Сервер дээр: `bash deploy/deploy.sh` — pull → go build (атом mv, `.prev` үлдээнэ) → `migrate --env <secrets>/nexus-mini.env` → frontend/admin `pnpm build` (`.next.new` → атом солилт) → restart 3 unit → health curl.
 - systemd: `nexus-mini-api`, `nexus-mini-web`, `nexus-mini-adminweb`. Unit нь `node_modules/.bin/next start` шууд дууддаг — pnpm/corepack дуудахгүй (ProtectHome).
 - deploy.sh ХИЙДЭГГҮЙ зүйлс (гараар): unit файл өөрчлөгдвөл `sudo cp deploy/*.service /etc/systemd/system/ && sudo systemctl daemon-reload`; nginx conf өөрчлөгдвөл `sudo systemctl reload nginx`.
-- Secrets: `/home/bay/secrets/nexus-mini.env` (600) — DATABASE_URL / _ADMIN / _OWNER / _AUTH, ADMIN_*, CATALOG_PATH, REGISTRY_CACHE_DIR, PORTAL_URL, ENVIRONMENT=production. DB нэр `nexus_mini`.
+- Secrets: репогийн ГАДНА, зөвхөн сервер дээр `nexus-mini.env` (mode 600; нарийн зам операторынх) — DATABASE_URL / _ADMIN / _OWNER / _AUTH, ADMIN_*, CATALOG_PATH, REGISTRY_CACHE_DIR, PORTAL_URL, ENVIRONMENT=production. DB нэр `nexus_mini`.
 - Go сервер дээр `/usr/local/go` (1.25); apt-ийн `/usr/bin/go` 1.22 — гараар build хийвэл PATH-ыг түрүүлж тавь.
 - Прод DB цэвэр, demo дата байхгүй; тест мөр оруулсан бол устга.
 

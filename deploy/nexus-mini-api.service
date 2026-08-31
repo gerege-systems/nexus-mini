@@ -3,9 +3,11 @@ Description=nexus-mini API
 After=network.target postgresql.service
 
 [Service]
-User=bay
+# Үйлчилгээний хэрэглэгч: өөрийн орчиндоо тааруулна. Энэ файлыг засахын оронд
+# drop-in ашигла: /etc/systemd/system/<unit>.d/override.conf → [Service] User=<өөрийн>
+User=nexus
 WorkingDirectory=/srv/nexus-mini
-EnvironmentFile=/home/bay/secrets/nexus-mini.env
+EnvironmentFile=/etc/nexus-mini/nexus-mini.env
 ExecStart=/srv/nexus-mini/backend/bin/nexus-mini serve
 Restart=always
 RestartSec=3

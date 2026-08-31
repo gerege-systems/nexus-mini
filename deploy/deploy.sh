@@ -22,7 +22,7 @@ main() {
   echo "== backend build + migrate (Makefile) =="
   # Атом солилт Makefile-ийн build-д; env-ийг export хийхгүй (#8: ADMIN_*
   # гэх мэт нууц child process бүрт задрах ёсгүй) — ENV_FILE флагаар уншина.
-  make migrate ENV_FILE=/home/bay/secrets/nexus-mini.env
+  make migrate ENV_FILE="${NEXUS_ENV_FILE:-/etc/nexus-mini/nexus-mini.env}"
   cd backend
 
   # Next build-ийг амьд .next дээр биш тусдаа хавтаст хийж, дуусмагц
