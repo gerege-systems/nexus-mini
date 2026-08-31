@@ -38,7 +38,7 @@ Runtime plugin/WASM хийхгүй — ойлгомжтой байдал нь mi
 
 - Төв registry = **статик, гарын үсэгтэй** `index.json` (Ed25519), Git репо
   `gerege-systems/nexus-registry` raw URL-аар — сервер код байхгүй
-  (2026-08-22-нд «runestone дээр сервер» гэснээс ингэж хялбарчилсан)
+  (2026-08-22-нд «өөрийн сервер дээр registry сервис» гэснээс ингэж хялбарчилсан)
 - Инстанс бүр `REGISTRY_URL`-ээс (default gerege-systems/nexus-registry (GitHub raw), түлхүүр цөмд) татна;
   офлайн бол кэш → `catalog/index.json` файл
 - Community хөгжүүлэгч манифестаа (`make manifest`) registry репод PR-аар нийтэлнэ
@@ -92,15 +92,16 @@ open-gerege-nexus-ийн дизайныг жишиг болгоно (өөрөө 
 - **DB backup стратеги**: cron-оор өдөр тутмын pg_dump — production
   ашиглалтын өмнө заавал (одоогоор demo instance тул алга).
 
-## Deploy (runestone)
+## Deploy
 
 | Хэсэг | Хаяг | Порт |
 |---|---|---|
-| Portal + API (/api/* → Go) | nexus.craftzbay.com | 3020 / 8084 |
-| Платформын админ | admin.nexus.craftzbay.com | 3021 |
+| Portal + API (/api/* → Go) | `<portal-host>` | 3020 / 8084 |
+| Платформын админ | `<admin-host>` | 3021 |
 | Registry | raw.githubusercontent.com/gerege-systems/nexus-registry (статик) | — |
 
-Хуучин nexus-ийн deploy 2026-08-20-нд бүрэн устгагдсан, портууд чөлөөтэй.
+Бодит домэйн, зам, secrets нь **зөвхөн сервер дээр** — репод ерөнхий хэлбэр л
+бичигдэнэ (`deploy/nginx-nexus-mini.conf` бол хуулж тохируулах дээж).
 
 ## OGN-ээс авсан 3 зүйл (2026-08-22)
 
