@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { DesignSystemProvider, Toaster, TooltipProvider, mnStrings } from '@craftzbay/ui';
 import './globals.css';
@@ -18,7 +19,7 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'nexus-mini · Платформын админ',
+  title: { default: 'nexus-mini · Платформын админ', template: '%s · Платформын админ' },
   description: 'nexus-mini платформын удирдлагын систем',
 };
 
@@ -33,11 +34,15 @@ try {
 } catch (e) {}
 `;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// middleware хүсэлт бүрт CSP nonce үүсгэдэг — доорх inline script түүнийг
+// авахгүй бол хатуу script-src-д хаагдана.
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="mn" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="bg-background text-foreground font-sans antialiased">
         <DesignSystemProvider strings={mnStrings}>

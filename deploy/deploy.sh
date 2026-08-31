@@ -10,6 +10,7 @@ set -euo pipefail
 
 main() {
   cd /srv/nexus-mini
+  local root=$PWD
   # Next build (NEXT_DIST_DIR=.next.new) нь эдгээр ҮҮСГЭСЭН файлуудыг .next.new
   # рүү заалгаж бичдэг — track хийгддэг тул upstream тэдгээрт хүрвэл pull унана.
   # Хүний засвар биш учир pull-ийн өмнө буцаана (бусад файлд хүрэхгүй).
@@ -51,6 +52,11 @@ main() {
   curl -sf http://127.0.0.1:8084/health > /dev/null && echo "api: ok"
   curl -sf -o /dev/null http://127.0.0.1:3020/ && echo "web: ok"
   curl -sf -o /dev/null http://127.0.0.1:3021/login && echo "admin: ok"
+
+  # nginx-ийн нэр бүр өөрийгөө хамарсан сертификаттай эсэх. Wildcard нь нэг л
+  # шат таардаг тул хоёр шаттай дэд домэйн чимээгүй унасан байж болно.
+  echo "== TLS =="
+  bash "$root/deploy/check-tls.sh" || true
   exit 0
 }
 

@@ -183,6 +183,11 @@ build үед `frontend/app/(portal)/<нэр>/` руу хуулагдана (`scr
 Бэлэн загвар: [devices](../backend/apps/devices/ui/pages/page.tsx),
 олон хуудастай нь [organisation](../backend/apps/organisation/ui/pages/).
 
+Хуудасны нэр (browser tab): хуудас нь client component тул `metadata`-г
+зэрэгцээ `layout.tsx`-аас өгнө — `export const metadata = { title: "Төхөөрөмжүүд" }`,
+`export default function Layout({ children }) { return children; }`. Цөмийн
+root layout нь `%s · nexus-mini` загвараар дүүргэнэ.
+
 Толь: `ui/i18n.ts` — түлхүүр нь монгол текст, утга нь орчуулга
 (`{ en: { "Төхөөрөмжүүд": "Devices" } }`). Цөмийн `lib/i18n.tsx`-д **гар
 хүрэхгүй** — ингэж байж цөмийг шинэчлэхэд мөргөлдөөн гарахгүй.

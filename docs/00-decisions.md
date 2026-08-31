@@ -256,3 +256,29 @@ Signup, нууц үг солих, гишүүн нэмэх гурвуулаа `ut
 **1.25.13** суулгаж дахин build хийсэн (`go version -m bin/nexus-mini` →
 go1.25.13); одоо кодоос дуудагддаг эмзэг байдал алга. Локал toolchain-ыг ч
 шинэчлэх нь зүйтэй (`brew upgrade go`).
+
+## Хуудасны CSP, tab-ийн нэр, TLS шалгалт (2026-08-31)
+
+1. **HTML хуудсанд CSP** — API хариу `default-src 'none'`-той байсан ч Next-ийн
+   өгдөг баримтууд ямар ч `Content-Security-Policy` авдаггүй байв. Одоо хоёр
+   аппын `middleware.ts` хүсэлт бүрт nonce үүсгээд бүрэн бодлого тавина:
+   `script-src 'self' 'nonce-…' 'strict-dynamic'`, бусад нь `'self'`
+   (`style-src`-т л `'unsafe-inline'` — React-ийн style атрибутыг nonce-оор
+   хамгаалах боломжгүй). Next өөрийн inline flight script-үүддээ nonce-ыг
+   ХҮСЭЛТИЙН CSP толгойгоос уншиж тавьдаг тул middleware түүнийг request
+   header-т ч давхар бичнэ; layout нь `x-nonce`-оос уншиж theme script-д өгнө.
+   **Үр дагавар**: root layout `headers()` уншдаг тул бүх хуудас dynamic —
+   энэ апп-д static хуудас байхгүй тул зардал нь бага. RSC/prefetch хариуд CSP
+   тавихгүй (баримт биш, nonce нь client-д кэшлэгдэж хуучирна).
+2. **Хуудас бүр өөрийн нэртэй** — бүх page нь client component тул `metadata`-г
+   зэрэгцээ `layout.tsx`-аас өгнө; root layout-д `title.template` (`%s · nexus-mini`,
+   админд `%s · Платформын админ`). Модулийн хуудас ч мөн адил (03-module-guide #6).
+3. **`Next-Action` толгойг nginx таслана** — апп server action ашигладаггүй
+   атал сканнерууд хог `Next-Action`-той POST илгээж Next-ийн лог руу
+   `Server Reference ID did not match…` алдаа бичүүлж байв.
+4. **`deploy/check-tls.sh`** — nginx-ийн 443 дээр үйлчилдэг нэр бүрээр SNI
+   тавьж, сертификатын SAN-д тэр нэр байгаа эсэхийг шалгана; `deploy.sh`
+   төгсгөлд ажиллана. Шалтгаан: wildcard серт **нэг л шат** таардаг тул
+   `admin.nexus.*` шиг хоёр шаттай нэр `*.<домэйн>` сертэд хамрагдахгүй —
+   nginx/DNS/service бүгд хэвийн, лог цэвэр байхад браузер л TLS дээр унана
+   (2026-08-31-нд яг ингэж админ домэйн чимээгүй унасан).
