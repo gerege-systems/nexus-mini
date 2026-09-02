@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Badge, Button, Card, Icons } from '@craftzbay/ui';
+import { Badge, Button, Card, Icons } from '@gerege-systems/ui';
 import { MktHeader, MktFooter } from '@/components/mkt';
 import { useT } from '@/lib/i18n';
 

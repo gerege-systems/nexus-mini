@@ -211,7 +211,7 @@ export default function NamePage() {
   `created_by === me.user.id` үед л харуул (devices-ийн `canEdit` жишээ).
 - Цэсэнд зарласан icon нэрээ `frontend/components/icons.tsx`-ийн map-д
   нэм (утга нь lucide-ийн kebab нэр, ж: `building-2`).
-- **UI бүхэлдээ `@craftzbay/ui` дээр** (2026-08-31-ээс). Гараар CSS класс
+- **UI бүхэлдээ `@gerege-systems/ui` дээр** (2026-08-31-ээс). Гараар CSS класс
   бичихгүй — `card / table / btn / field / badge / modal` зэрэг хуучин
   класснууд УСТСАН. Оронд нь сангийн компонентыг импортол:
   `Card`, `Table`/`TableHeader`/`TableRow`/`TableHead`/`TableCell`,
@@ -220,15 +220,15 @@ export default function NamePage() {
   `Switch`, `Badge`, `Alert`, `Dialog` (+`DialogHeader/Content/Footer`),
   `ConfirmationDialog` (устгах гэх мэт эргэлт буцалтгүй үйлдэлд),
   `EmptyState`, `ErrorState`, `Spinner`, `Tooltip`.
-- Дүрс `Icons.*`-ээс (`import { Icons } from '@craftzbay/ui'`), тэнд
-  байхгүй бол `import { Icon } from '@craftzbay/ui/icon'` → `<Icon
+- Дүрс `Icons.*`-ээс (`import { Icons } from '@gerege-systems/ui'`), тэнд
+  байхгүй бол `import { Icon } from '@gerege-systems/ui/icon'` → `<Icon
   name="…" />`. **`lucide-react`-ийг шууд импортлохгүй.**
 - Өнгө/зай/радиусыг гараар бүү бич — Tailwind токен класс
   (`text-foreground-muted`, `bg-background-muted`, `border-border`…).
 - Амжилт/алдаанд `toast({ title, variant: 'success' | 'danger' })`
-  (`@craftzbay/ui`-ээс; хуучин `@/lib/toast` УСТСАН), текстэд `t(...)`
+  (`@gerege-systems/ui`-ээс; хуучин `@/lib/toast` УСТСАН), текстэд `t(...)`
   (шинэ текстээ модулийнхаа `ui/i18n.ts`-д нэмнэ).
-- Огноо `formatDate(...)` (`@craftzbay/ui`) — `yyyy-MM-dd HH:mm`,
+- Огноо `formatDate(...)` (`@gerege-systems/ui`) — `yyyy-MM-dd HH:mm`,
   Asia/Ulaanbaatar.
 - Гарчигт `PageHead` (`@/components/states`) ашигла.
 - Хуудас бүр loading/хоосон/алдааны төлөвтэй байх — `Spinner`,

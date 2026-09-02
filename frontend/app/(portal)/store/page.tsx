@@ -24,7 +24,7 @@ import {
   Tooltip,
   formatDate,
   toast,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { PageHead, Resource } from '@/components/states';
 import { api, ApiError, type StoreApp } from '@/lib/api';
 import { useShell } from '@/components/shell';

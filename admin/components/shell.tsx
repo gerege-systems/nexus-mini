@@ -1,6 +1,6 @@
 'use client';
 
-// Админ аппын chrome — бүхэлдээ @craftzbay/ui дээр: TopNav + Sidebar + Sheet.
+// Админ аппын chrome — бүхэлдээ @gerege-systems/ui дээр: TopNav + Sidebar + Sheet.
 // Гараар бичсэн CSS класс байхгүй; өнгө/зай/радиус бүгд theme.css-ийн токеноос.
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -29,8 +29,8 @@ import {
   Spinner,
   Tooltip,
   TopNav,
-} from '@craftzbay/ui';
-import { Icon } from '@craftzbay/ui/icon';
+} from '@gerege-systems/ui';
+import { Icon } from '@gerege-systems/ui/icon';
 import { api, ApiError, type Me } from '@/lib/api';
 import { locales, setLocale, useT } from '@/lib/i18n';
 import { useThemeMode, type ThemeMode } from '@/lib/theme';

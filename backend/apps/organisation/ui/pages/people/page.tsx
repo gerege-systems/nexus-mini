@@ -27,7 +27,7 @@ import {
   TableRow,
   Tooltip,
   toast,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { PageHead } from '@/components/states';
 import { api, ApiError } from '@/lib/api';
 import { useShell } from '@/components/shell';

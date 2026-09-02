@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input } from '@craftzbay/ui';
+import { Alert, Button, Input } from '@gerege-systems/ui';
 import { AuthCard } from '@/components/auth-card';
 import { api, ApiError } from '@/lib/api';
 import { slugify } from '@/lib/slug';

@@ -16,7 +16,7 @@ import {
   IconButton,
   Tooltip,
   cn,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { locales, setLocale, useT } from '@/lib/i18n';
 import { useThemeMode } from '@/lib/theme';
 

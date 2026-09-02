@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Separator } from '@craftzbay/ui';
+import { Alert, Button, Input, Separator } from '@gerege-systems/ui';
 import { AuthCard } from '@/components/auth-card';
 import { api, ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';

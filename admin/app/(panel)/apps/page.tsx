@@ -11,7 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { PageHead, Resource } from '@/components/states';
 import { useT } from '@/lib/i18n';
 import { useResource } from '@/lib/use-resource';

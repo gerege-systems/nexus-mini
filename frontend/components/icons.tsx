@@ -3,7 +3,7 @@
 // Цэсний icon нэр → сангийн нэрээр хандах <Icon>. Модулиуд icon-оо богино
 // string нэрээр зарладаг (modules.json / manifest) тул энд lucide-ийн бодит
 // нэр рүү буулгана. Сангийн Icon нь lazy — бүх icon багц bundle-д ордоггүй.
-import { Icon as UiIcon } from '@craftzbay/ui/icon';
+import { Icon as UiIcon } from '@gerege-systems/ui/icon';
 
 const MAP: Record<string, string> = {
   dashboard: 'layout-grid',

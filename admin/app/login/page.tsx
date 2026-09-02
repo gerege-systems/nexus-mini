@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, Input } from '@craftzbay/ui';
+import { Alert, Button, Card, Input } from '@gerege-systems/ui';
 import { api, ApiError, type Me } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 

@@ -1,11 +1,11 @@
-/* nexus-mini admin — @craftzbay/ui дээр бүхэлдээ.
+/* nexus-mini admin — @gerege-systems/ui дээр бүхэлдээ.
    Интеграцын зам (b): апп өөрөө Tailwind v4 ажиллуулж, сангийн токен + классыг
    хамт компайл хийнэ. Тиймээс энд зөвхөн 4 мөр — өнгө, зай, радиус бүгд
    theme.css-ээс ирнэ, гараар бичсэн token байхгүй. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '@craftzbay/ui/theme.css';
-@source "../node_modules/@craftzbay/ui/dist-lib";
+@import '@gerege-systems/ui/theme.css';
+@source "../node_modules/@gerege-systems/ui/dist-lib";
 
 /* next/font-оор өөрөө host хийсэн Geist-ийг сангийн токенд холбоно
    (theme.css нь литерал 'Geist' нэрийг хүлээдэг). Кирилл Өө/Үү нь

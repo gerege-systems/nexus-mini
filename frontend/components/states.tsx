@@ -5,7 +5,7 @@
 // чимээгүй хоосон хүснэгт үлдээхгүй.
 
 import type { ReactNode } from 'react';
-import { Button, EmptyState, ErrorState, Skeleton } from '@craftzbay/ui';
+import { Button, EmptyState, ErrorState, Skeleton } from '@gerege-systems/ui';
 import { useT } from '@/lib/i18n';
 import type { ResourceState } from '@/lib/use-resource';
 

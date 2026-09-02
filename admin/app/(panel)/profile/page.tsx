@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, CardTitle, Input, Spinner, toast } from '@craftzbay/ui';
+import { Button, Card, CardTitle, Input, Spinner, toast } from '@gerege-systems/ui';
 import { PageHead } from '@/components/states';
 import { api, ApiError, type Me } from '@/lib/api';
 import { useT } from '@/lib/i18n';

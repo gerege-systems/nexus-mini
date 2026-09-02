@@ -1,8 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Card, Icons, Skeleton } from '@craftzbay/ui';
-import { Icon } from '@craftzbay/ui/icon';
+import { Card, Icons, Skeleton } from '@gerege-systems/ui';
+import { Icon } from '@gerege-systems/ui/icon';
 import { PageHead, Resource } from '@/components/states';
 import { useT } from '@/lib/i18n';
 import { useResource } from '@/lib/use-resource';

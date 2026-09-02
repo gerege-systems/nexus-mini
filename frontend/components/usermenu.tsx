@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icons,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { api, type Me } from '@/lib/api';
 import { useThemeMode, type ThemeMode } from '@/lib/theme';
 import { locales, setLocale, useT } from '@/lib/i18n';

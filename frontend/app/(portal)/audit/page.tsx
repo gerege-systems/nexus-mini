@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
   formatDate,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { PageHead, Resource } from '@/components/states';
 import { api, type AuditEntry } from '@/lib/api';
 import { useT } from '@/lib/i18n';

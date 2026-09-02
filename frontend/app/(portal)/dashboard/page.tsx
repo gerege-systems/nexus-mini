@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Card, CardTitle, Icons, Separator } from '@craftzbay/ui';
+import { Card, CardTitle, Icons, Separator } from '@gerege-systems/ui';
 import { useShell } from '@/components/shell';
 import { Icon } from '@/components/icons';
 import { PageHead } from '@/components/states';

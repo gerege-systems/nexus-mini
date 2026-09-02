@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Icons, Spinner } from '@craftzbay/ui';
+import { Alert, Button, Card, Icons, Spinner } from '@gerege-systems/ui';
 import { api, ApiError } from '@/lib/api';
 import { useShell } from '@/components/shell';
 import { useT } from '@/lib/i18n';

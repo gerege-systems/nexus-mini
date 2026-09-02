@@ -1,6 +1,6 @@
 'use client';
 
-// Ажлын мужийн chrome — @craftzbay/ui дээр. Хоёр түвшний навигац:
+// Ажлын мужийн chrome — @gerege-systems/ui дээр. Хоёр түвшний навигац:
 // rail = идэвхтэй АПП сонгогч (платформ + суусан модулиуд), panel = тэр аппын цэс.
 // Сан нэг түвшний Sidebar өгдөг тул rail-ыг токеноор өөрсдөө угсарна.
 
@@ -25,7 +25,7 @@ import {
   TopNav,
   cn,
   formatDate,
-} from '@craftzbay/ui';
+} from '@gerege-systems/ui';
 import { api, ApiError, type Me, type MenuApp } from '@/lib/api';
 import { Icon } from './icons';
 import { UserMenu } from './usermenu';

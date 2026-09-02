@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Card } from '@craftzbay/ui';
+import { Card } from '@gerege-systems/ui';
 
 /** login / signup / org-new хуудсуудын нийтлэг бүрхүүл. */
 export function AuthCard({

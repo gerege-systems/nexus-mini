@@ -26,8 +26,8 @@ import {
   TableRow,
   formatDate,
   toast,
-} from '@craftzbay/ui';
-import { Icon } from '@craftzbay/ui/icon';
+} from '@gerege-systems/ui';
+import { Icon } from '@gerege-systems/ui/icon';
 import { PageHead, Resource } from '@/components/states';
 import { api, ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
