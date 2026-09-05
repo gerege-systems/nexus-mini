@@ -54,19 +54,26 @@ GOOGLE_CLIENT_SECRET=…        # redirect URI: <PORTAL_URL>/api/auth/sso/google
 SSO_ISSUER=https://idp.example.com     # дурын OIDC (discovery-тэй)
 SSO_CLIENT_ID=… SSO_CLIENT_SECRET=… SSO_NAME="Компанийн SSO"
 SSO_AUTO_SIGNUP=false         # true: танигдаагүй имэйлд данс үүсгэнэ (JIT)
+SSO_TRUST_EMAIL=false         # true: SSO_ISSUER-ийн имэйлд email_verified-гүй ч итгэнэ (federation)
 ```
 
 Тохируулсан provider бүрт login хуудсанд товч гарна. Урсгал PKCE + state +
 nonce (HMAC-тэй 10 мин cookie), id_token-ийг issuer-ийн JWKS-ээр (RS256)
-шалгана, `iss/aud/exp/nonce` тулгана. Хэрэглэгчийг таних (`sso_identities`):
+шалгана, `iss/aud/exp/nonce` тулгана. Хэрэглэгчийг таних (`sso_identities`); «баталгаажсан» = `email_verified=true`
+эсвэл тухайн provider-д `SSO_TRUST_EMAIL=true`:
 1. `(iss, sub)` холбоос байвал → тэр данс (email_verified-ээс хамаарахгүй).
 2. Холбоосгүй эхний нэвтрэлт: имэйлээр бүртгэлтэй данс руу **зөвхөн
-   `email_verified=true`** үед холбоно. Баталгаажаагүй имэйл (nexus-mini
-   өөрөө provider болохдоо үргэлж `false` өгдөг) + байгаа данс → татгалзана,
+   баталгаажсан** үед холбоно. Баталгаажаагүй + байгаа данс → татгалзана,
    хэрэглэгч нууц үгээрээ нэвтэрнэ. Өөр issuer дээр хохирогчийн имэйлээр
    бүртгүүлж дансыг нь авах боломжгүй.
-3. Бүртгэлгүй имэйл → `SSO_AUTO_SIGNUP` байвал нууц үггүй данс (зөвхөн
-   SSO-оор нэвтэрнэ), холбоос бичигдэнэ; үгүй бол татгалзана.
+3. Бүртгэлгүй имэйл → `SSO_AUTO_SIGNUP` **ба** баталгаажсан бол нууц үггүй
+   данс + холбоос нэг гүйлгээнд; баталгаажаагүй бол татгалзана (имэйл
+   squatting: хохирогч дараа Google-ээр орохдоо халдагчийн данс руу
+   холбогдох байсан).
+
+nexus-mini өөрөө provider болохдоо `email_verified=false` өгдөг (signup-д
+имэйл баталгаажуулдаггүй) тул federation-д `SSO_TRUST_EMAIL=true` тавина —
+энэ нь «upstream-ийн бүх имэйлд итгэнэ» гэсэн операторын ил шийдвэр.
 
 ## 3. Federation — хоёр nexus-mini
 

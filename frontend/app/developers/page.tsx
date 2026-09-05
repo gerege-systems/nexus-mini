@@ -259,6 +259,7 @@ export default function DevelopersPage() {
           <div>GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=…&nbsp;&nbsp;<span className="c">{t("# redirect: <PORTAL_URL>/api/auth/sso/google/callback")}</span></div>
           <div>SSO_ISSUER=https://nexus.bold.mn/api/oauth2 SSO_CLIENT_ID=… SSO_CLIENT_SECRET=… SSO_NAME=&quot;Bold SSO&quot;&nbsp;&nbsp;<span className="c">{t("# federation")}</span></div>
           <div>SSO_AUTO_SIGNUP=false&nbsp;&nbsp;<span className="c">{t("# true: танигдаагүй имэйлд данс үүсгэнэ (JIT)")}</span></div>
+          <div>SSO_TRUST_EMAIL=false&nbsp;&nbsp;<span className="c">{t("# true: issuer-ийн имэйлд email_verified-гүй ч итгэнэ (federation)")}</span></div>
         </Code>
         <p>{t("Login хуудсанд товч гарна; PKCE + state + nonce, id_token-ийг issuer-ийн JWKS-ээр шалгана. Дэлгэрэнгүй:")} <a href="https://github.com/gerege-systems/nexus-mini/blob/main/docs/04-integrations.md">docs/04-integrations.md</a>.</p>
 

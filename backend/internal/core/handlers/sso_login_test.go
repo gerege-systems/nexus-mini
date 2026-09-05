@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/auth"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/handlers"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/ssoclient"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // fakeIDP — тест доторх OIDC provider (discovery + JWKS + token).
@@ -326,10 +328,25 @@ func TestSSOUnverifiedEmailNeverLinksExistingAccount(t *testing.T) {
 		t.Fatal("өөр sub-аар ижил имэйлийн данс руу орлоо")
 	}
 
-	// 5. JIT: бүртгэлгүй имэйл, баталгаажаагүй → данс + холбоос үүснэ.
+	// 5. JIT: бүртгэлгүй имэйл, баталгаажаагүй → данс үүсгэхгүй (email squatting:
+	// хохирогч дараа verified-ээр орохдоо халдагчийн данс руу холбогдох байсан).
 	idp.email = "htest-ssolink-jit@x.mn"
 	idp.sub = "jit-sub"
 	t.Cleanup(func() { _, _ = h.owner.Exec(ctx, `DELETE FROM users WHERE email = 'htest-ssolink-jit@x.mn'`) })
+	state, cookie = h.ssoStart(t, idp)
+	w = h.ssoCallback(t, cookie, "code=good&state="+url.QueryEscape(state))
+	if sessionOf(w) != "" {
+		t.Fatal("баталгаажаагүй имэйлээр JIT данс үүсэв")
+	}
+	if err := h.owner.QueryRow(ctx, `SELECT count(*) FROM users WHERE email = 'htest-ssolink-jit@x.mn'`).Scan(&users); err != nil {
+		t.Fatal(err)
+	}
+	if users != 0 {
+		t.Fatalf("JIT users = %d", users)
+	}
+
+	// 6. JIT баталгаажсан имэйлээр → данс + холбоос нэг гүйлгээнд.
+	idp.verified = true
 	state, cookie = h.ssoStart(t, idp)
 	w = h.ssoCallback(t, cookie, "code=good&state="+url.QueryEscape(state))
 	if sessionOf(w) == "" {
@@ -341,5 +358,45 @@ func TestSSOUnverifiedEmailNeverLinksExistingAccount(t *testing.T) {
 	}
 	if links(jitUID) != 1 {
 		t.Fatalf("JIT холбоос = %d", links(jitUID))
+	}
+
+	// 7. sso_identities апп role-д огт харагдахгүй (зөвхөн nexus_auth-ийн definer функцээр).
+	var pgErr *pgconn.PgError
+	if _, err := h.app.Exec(ctx, `SELECT 1 FROM sso_identities`); !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+		t.Fatalf("nexus_app sso_identities = %v (42501 хүлээв)", err)
+	}
+}
+
+// SSO_TRUST_EMAIL: операторын итгэсэн issuer (nexus-mini federation) —
+// email_verified=false байсан ч имэйлээр холбоно, JIT хийнэ.
+func TestSSOTrustEmailProvider(t *testing.T) {
+	h := newHarness(t)
+	idp := startIDP(t)
+	ctx := context.Background()
+	existing := h.signup(t, "ssotrust")
+	idp.email = "htest-ssotrust@x.mn"
+	idp.sub = "trusted-sub"
+	idp.verified = false
+	c := ssoclient.New([]ssoclient.Provider{{Key: "sso", Name: "Federation", Issuer: idp.issuer, ClientID: "cid", ClientSecret: "sec", TrustEmail: true}})
+	*h.sso = *handlers.NewSSO(c, h.authHandler, "https://portal.mn", true, false, "тест-нууц")
+
+	state, cookie := h.ssoStart(t, idp)
+	w := h.ssoCallback(t, cookie, "code=good&state="+url.QueryEscape(state))
+	var sc string
+	for _, ck := range w.Result().Cookies() {
+		if ck.Name == auth.CookieName && ck.Value != "" {
+			sc = ck.Value
+		}
+	}
+	if sc == "" {
+		t.Fatalf("итгэсэн issuer = %d %s", w.Code, w.Header().Get("Location"))
+	}
+	me := (&session{h: h, cookie: sc}).json(t, http.MethodGet, "/api/me", nil)
+	if me["user"].(map[string]any)["id"] != existing.userID {
+		t.Fatalf("өөр данс: %v", me["user"])
+	}
+	var n int
+	if err := h.owner.QueryRow(ctx, `SELECT count(*) FROM sso_identities WHERE user_id = $1::uuid`, existing.userID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("холбоос = %d %v", n, err)
 	}
 }

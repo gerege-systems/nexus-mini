@@ -133,7 +133,7 @@ func (s *SSO) Callback(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "sso баталгаажуулалт амжилтгүй")
 		return
 	}
-	uid, msg, err := s.resolveUser(r.Context(), p.Issuer, id)
+	uid, msg, err := s.resolveUser(r.Context(), p, id)
 	if err != nil {
 		log.Printf("sso callback %s: %v", key, err)
 		s.fail(w, r, "login failed")
@@ -152,17 +152,20 @@ func (s *SSO) Callback(w http.ResponseWriter, r *http.Request) {
 }
 
 // resolveUser — id_token → хэрэглэгч. Эхлээд (issuer, sub) холбоосоор;
-// холбоосгүй эхний нэвтрэлтэд имэйлээр байгаа данс руу ЗӨВХӨН provider
-// имэйлийг баталгаажуулсан үед холбоно — баталгаажаагүй имэйлээр байгаа
-// дансанд хэзээ ч орохгүй (өөр issuer дээр хохирогчийн имэйлээр бүртгүүлж
-// дансыг нь авах боломж). Бүртгэлгүй бол JIT (SSO_AUTO_SIGNUP), нууц үггүй.
-// Аль ч замаар (issuer, sub) холбоос бичигдэнэ — дараагийн нэвтрэлт
-// email_verified-ээс хамаарахгүй. msg != "" бол хэрэглэгчид харуулах татгалзал.
-func (s *SSO) resolveUser(ctx context.Context, issuer string, id *ssoclient.Identity) (uid, msg string, err error) {
+// холбоосгүй эхний нэвтрэлтэд имэйлээр байгаа данс руу ЗӨВХӨН имэйл
+// баталгаажсан (email_verified, эсвэл операторын SSO_TRUST_EMAIL) үед холбоно
+// — баталгаажаагүй имэйлээр байгаа дансанд хэзээ ч орохгүй (өөр issuer дээр
+// хохирогчийн имэйлээр бүртгүүлж дансыг нь авах боломж). JIT ч мөн
+// баталгаажсан имэйл шаардана: баталгаажаагүй имэйлээр данс үүсгэвэл
+// хохирогч дараа Google-ээр (verified) орохдоо халдагчийн үүсгэсэн данс руу
+// холбогдоно (email squatting). Аль ч замаар (issuer, sub) холбоос бичигдэнэ —
+// дараагийн нэвтрэлт email_verified-ээс хамаарахгүй. msg != "" бол хэрэглэгчид
+// харуулах татгалзал.
+func (s *SSO) resolveUser(ctx context.Context, p ssoclient.Provider, id *ssoclient.Identity) (uid, msg string, err error) {
 	var name string
 	var isAdmin bool
 	err = s.Auth.Pool.QueryRow(ctx,
-		`SELECT id, name, platform_admin FROM auth_sso_user($1::varchar(255), $2::varchar(255))`, issuer, id.Subject).
+		`SELECT id, name, platform_admin FROM auth_sso_user($1::varchar(255), $2::varchar(255))`, p.Issuer, id.Subject).
 		Scan(&uid, &name, &isAdmin)
 	if err == nil {
 		return uid, "", nil
@@ -170,18 +173,27 @@ func (s *SSO) resolveUser(ctx context.Context, issuer string, id *ssoclient.Iden
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", "", fmt.Errorf("sso lookup: %w", err)
 	}
+	verified := id.EmailVerified || p.TrustEmail
 	var hash string
 	err = s.Auth.Pool.QueryRow(ctx,
 		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`, id.Email).
 		Scan(&uid, &hash, &name, &isAdmin)
 	switch {
 	case err == nil:
-		if !id.EmailVerified {
+		if !verified {
 			return "", "энэ имэйлтэй данс бүртгэлтэй, гэхдээ provider имэйлийг баталгаажуулаагүй — нууц үгээр нэвтэр", nil
 		}
+		if _, err := s.Auth.Pool.Exec(ctx,
+			`SELECT auth_sso_link($1::varchar(255), $2::varchar(255), $3::uuid)`, p.Issuer, id.Subject, uid); err != nil {
+			return "", "", fmt.Errorf("sso link: %w", err)
+		}
+		return uid, "", nil
 	case errors.Is(err, pgx.ErrNoRows):
 		if !s.AutoSignup {
 			return "", "энэ имэйл бүртгэлгүй — админаас урилга ав (SSO_AUTO_SIGNUP хаалттай)", nil
+		}
+		if !verified {
+			return "", "provider имэйлийг баталгаажуулаагүй тул данс үүсгэх боломжгүй", nil
 		}
 		n := strings.TrimSpace(id.Name)
 		if n == "" {
@@ -190,20 +202,17 @@ func (s *SSO) resolveUser(ctx context.Context, issuer string, id *ssoclient.Iden
 		if len(n) > 120 {
 			n = n[:120]
 		}
-		// Нууц үггүй данс: argon2-гүй санамсаргүй hash — SSO-оор л нэвтэрнэ.
+		// Нууц үггүй данс + (issuer, sub) холбоос нэг гүйлгээнд: argon2-гүй
+		// санамсаргүй hash — SSO-оор л нэвтэрнэ.
 		if err := s.Auth.Pool.QueryRow(ctx,
-			`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
-			id.Email, "sso:"+ssoclient.RandString(), n).Scan(&uid); err != nil {
+			`SELECT auth_sso_signup($1::varchar(255), $2::varchar(255), $3::varchar(255), $4::varchar(255), $5::varchar(120))`,
+			p.Issuer, id.Subject, id.Email, "sso:"+ssoclient.RandString(), n).Scan(&uid); err != nil {
 			return "", "", fmt.Errorf("sso jit signup: %w", err)
 		}
+		return uid, "", nil
 	default:
 		return "", "", fmt.Errorf("sso email lookup: %w", err)
 	}
-	if _, err := s.Auth.Pool.Exec(ctx,
-		`SELECT auth_sso_link($1::varchar(255), $2::varchar(255), $3::uuid)`, issuer, id.Subject, uid); err != nil {
-		return "", "", fmt.Errorf("sso link: %w", err)
-	}
-	return uid, "", nil
 }
 
 func (s *SSO) fail(w http.ResponseWriter, r *http.Request, msg string) {

@@ -126,7 +126,7 @@ func cmdServe(_ []string) error {
 	// SSO client (relying party): Google + ерөнхий OIDC issuer (өөр nexus-mini ч).
 	ssoC := ssoclient.New([]ssoclient.Provider{
 		{Key: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
-		{Key: "sso", Name: cfg.SSOName, Issuer: cfg.SSOIssuer, ClientID: cfg.SSOClientID, ClientSecret: cfg.SSOClientSecret},
+		{Key: "sso", Name: cfg.SSOName, Issuer: cfg.SSOIssuer, ClientID: cfg.SSOClientID, ClientSecret: cfg.SSOClientSecret, TrustEmail: cfg.SSOTrustEmail},
 	})
 	ssoH := handlers.NewSSO(ssoC, authH, cfg.PortalURL, cfg.SSOAutoSignup, cfg.CookieSecure, cfg.DatabaseURLAuth)
 	r.Get("/api/auth/sso/providers", ssoH.Providers)

@@ -75,13 +75,14 @@ check-db: check
 	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] && \
 	 [ -n "$(NEXUS_TEST_DATABASE_URL_AUTH)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_ADMIN)" ] || \
 	 { echo "check-db: NEXUS_TEST_DATABASE_URL, _OWNER, _AUTH, _ADMIN бүгд шаардлагатай"; exit 1; }
-	$(MAKE) build
-	cd backend && DATABASE_URL_OWNER="$(NEXUS_TEST_DATABASE_URL_OWNER)" ./bin/nexus-mini migrate --env /dev/null
+	cd backend && DATABASE_URL_OWNER="$(NEXUS_TEST_DATABASE_URL_OWNER)" go run ./cmd/nexus-mini migrate --env /dev/null
 	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 -p 1 ./...
 
-# Тест DB-г эхлээд бинариар migrate хийнэ (цөм + бүх модуль) — ADMIN_* env
-# файлаас уншихгүй (/dev/null). Package-уудыг цуваа (-p 1): бүгд нэг DB-г
-# хуваалцдаг тул зэрэг ажиллавал хоосон DB дээр хоорондоо уралдана.
+# Тест DB-г эхлээд migrate хийнэ (цөм + бүх модуль; go run — bin/nexus-mini
+# ба .prev rollback бинарийг дарахгүй). --env /dev/null: env файл уншихгүй,
+# гэхдээ shell-д export хийсэн ADMIN_* байвал тест DB-д админ үүсгэнэ — бүү
+# export хий. Package-уудыг цуваа (-p 1): бүгд нэг DB-г хуваалцдаг тул зэрэг
+# ажиллавал хоосон DB дээр хоорондоо уралдана.
 # check-race — уралдаан илрүүлэгчтэй (concurrency: bus, кэшүүд, semaphore).
 check-race:
 	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -race -count=1 -p 1 ./...

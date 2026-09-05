@@ -212,6 +212,7 @@ const en: Record<string, string> = {
   "# redirect: <PORTAL_URL>/api/auth/sso/google/callback": "# redirect: <PORTAL_URL>/api/auth/sso/google/callback",
   "# federation": "# federation",
   "# true: танигдаагүй имэйлд данс үүсгэнэ (JIT)": "# true: creates an account for unknown emails (JIT)",
+  "# true: issuer-ийн имэйлд email_verified-гүй ч итгэнэ (federation)": "# true: trust the issuer's email even without email_verified (federation)",
   "Login хуудсанд товч гарна; PKCE + state + nonce, id_token-ийг issuer-ийн JWKS-ээр шалгана. Дэлгэрэнгүй:": "A button appears on the login page; PKCE + state + nonce, the id_token is verified against the issuer's JWKS. Details:",
   "Аюулгүй байдлын дүрэм — модуль, цөм хоёуланд": "Security rules — for modules and the core alike",
   "Эрх зөвхөн серверт: route бүр RequirePermission; UI-гийн нуулт нь UX. Мөрийн түвшин — RLS + query-дээ tenant_id, own scope бол created_by.": "Authorization only on the server: every route has RequirePermission; hiding UI is UX. Row level — RLS + tenant_id in the query, created_by for own scope.",

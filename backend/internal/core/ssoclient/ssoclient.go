@@ -29,6 +29,11 @@ import (
 
 type Provider struct {
 	Key, Name, Issuer, ClientID, ClientSecret string
+	// TrustEmail — issuer-ийн email claim-ийг email_verified=false байсан ч
+	// баталгаажсан гэж үзэх. Зөвхөн операторын ил шийдвэр (SSO_TRUST_EMAIL):
+	// nexus-mini өөрөө provider болохдоо email_verified=false өгдөг тул
+	// federation-д JIT/имэйлээр холбохын тулд хэрэгтэй. Default false.
+	TrustEmail bool
 }
 
 type discovery struct {

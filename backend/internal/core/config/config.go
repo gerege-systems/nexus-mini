@@ -36,6 +36,9 @@ type Config struct {
 	GoogleClientID, GoogleClientSecret               string
 	// SSOAutoSignup — танигдаагүй имэйлд данс үүсгэх (JIT). Default хаалттай.
 	SSOAutoSignup bool
+	// SSOTrustEmail — SSO_ISSUER-ийн имэйлийг email_verified-гүй ч итгэх
+	// (federation: nexus-mini provider үргэлж false өгдөг). Default хаалттай.
+	SSOTrustEmail bool
 	// CookieSecure — production дээр true.
 	CookieSecure bool
 	// PortalURL — portal-ийн гадаад URL (админ панелээс impersonation
@@ -61,6 +64,7 @@ func Load() (Config, error) {
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		SSOAutoSignup:      os.Getenv("SSO_AUTO_SIGNUP") == "true",
+		SSOTrustEmail:      os.Getenv("SSO_TRUST_EMAIL") == "true",
 		PortalURL:          getenv("PORTAL_URL", "http://localhost:3020"),
 	}
 	c.CookieSecure = c.Env == "production"

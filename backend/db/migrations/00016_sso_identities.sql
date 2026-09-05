@@ -36,10 +36,30 @@ LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $
 $$;
 -- +goose StatementEnd
 
-REVOKE EXECUTE ON FUNCTION auth_sso_user(varchar, varchar), auth_sso_link(varchar, varchar, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth_sso_user(varchar, varchar), auth_sso_link(varchar, varchar, uuid) TO nexus_auth;
+-- JIT: данс + холбоос нэг гүйлгээнд — дунд нь тасарвал холбоосгүй,
+-- нууц үггүй (сэргээх аргагүй) данс үлдэхгүй.
+-- +goose StatementBegin
+CREATE FUNCTION auth_sso_signup(p_issuer varchar(255), p_subject varchar(255),
+                                p_email varchar(255), p_password_hash varchar(255), p_name varchar(120))
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE v_id uuid;
+BEGIN
+  INSERT INTO users (email, password_hash, name)
+  VALUES (lower(p_email), p_password_hash, p_name)
+  RETURNING users.id INTO v_id;
+  INSERT INTO sso_identities (issuer, subject, user_id) VALUES (p_issuer, p_subject, v_id);
+  RETURN v_id;
+END $$;
+-- +goose StatementEnd
+
+REVOKE EXECUTE ON FUNCTION auth_sso_user(varchar, varchar), auth_sso_link(varchar, varchar, uuid),
+  auth_sso_signup(varchar, varchar, varchar, varchar, varchar) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION auth_sso_user(varchar, varchar), auth_sso_link(varchar, varchar, uuid),
+  auth_sso_signup(varchar, varchar, varchar, varchar, varchar) TO nexus_auth;
 
 -- +goose Down
+DROP FUNCTION auth_sso_signup(varchar, varchar, varchar, varchar, varchar);
 DROP FUNCTION auth_sso_link(varchar, varchar, uuid);
 DROP FUNCTION auth_sso_user(varchar, varchar);
 DROP TABLE sso_identities;
