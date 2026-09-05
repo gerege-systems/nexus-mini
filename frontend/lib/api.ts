@@ -46,6 +46,8 @@ export const api = {
 export type Me = {
   user: { id: string; name: string; email: string; platform_admin: boolean };
   impersonated_by?: string;
+  // Админ түр нууц үгтэй үүсгэсэн данс — солих хүртэл tenant-ийн API 403.
+  must_change_password?: boolean;
   tenant_state?: { suspended: boolean; reason?: string; read_only: boolean; deletion_at?: string | null } | null;
   tenant_id: string;
   tenants: { id: string; slug: string; name: string }[];

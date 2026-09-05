@@ -72,7 +72,7 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		if _, err := tx.Exec(r.Context(),
-			`UPDATE users SET password_hash = $2::varchar(255) WHERE id = $1::uuid`,
+			`UPDATE users SET password_hash = $2::varchar(255), must_change_password = false WHERE id = $1::uuid`,
 			p.UserID, newHash); err != nil {
 			return err
 		}

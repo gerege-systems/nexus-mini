@@ -341,8 +341,9 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, map[string]any{
-		"tenant_state":    state,
-		"impersonated_by": p.ImpersonatedBy,
+		"tenant_state":         state,
+		"impersonated_by":      p.ImpersonatedBy,
+		"must_change_password": p.MustChangePassword,
 		"user": map[string]any{
 			"id": p.UserID, "name": p.Name, "email": p.Email,
 			"platform_admin": p.PlatformAdmin,

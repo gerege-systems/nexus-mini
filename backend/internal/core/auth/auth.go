@@ -38,6 +38,9 @@ type Principal struct {
 	// ImpersonatedBy — платформын админ энэ хэрэглэгчийн нэрийн өмнөөс
 	// орсон бол админы id (хоосон = энгийн session).
 	ImpersonatedBy string
+	// MustChangePassword — админ түр нууц үгтэй үүсгэсэн данс, хэрэглэгч
+	// хараахан солиогүй: RequireTenant 403 password_change_required өгнө.
+	MustChangePassword bool
 }
 
 type principalKey struct{}
@@ -130,9 +133,9 @@ func (s *Service) Resolve(ctx context.Context, r *http.Request) (Principal, bool
 		var p Principal
 		var tenantID, imp *string
 		err := s.pool.QueryRow(ctx,
-			`SELECT session_id, user_id, tenant_id, platform_admin, name, email, impersonated_by
+			`SELECT session_id, user_id, tenant_id, platform_admin, name, email, impersonated_by, must_change_password
 			   FROM auth_session_lookup($1::char(64), $2::interval)`, hashToken(c.Value), sessionIdle).
-			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email, &imp)
+			Scan(&p.SessionID, &p.UserID, &tenantID, &p.PlatformAdmin, &p.Name, &p.Email, &imp, &p.MustChangePassword)
 		if err != nil {
 			continue // хуучирсан/танигдахгүй token — дараагийнхыг үзнэ
 		}
@@ -272,6 +275,13 @@ func (s *Service) RequireTenant(next http.Handler) http.Handler {
 		p, _ := PrincipalFrom(r.Context())
 		if p.TenantID == "" {
 			http.Error(w, `{"error":"no tenant selected"}`, http.StatusForbidden)
+			return
+		}
+		// Админ өгсөн түр нууц үгийг солиогүй бол tenant-ийн юунд ч хүрэхгүй
+		// (/api/me, /api/me/password RequireUser-т үлдэнэ). Impersonation-д
+		// хамаарахгүй — админ өөр хүний нууц үгийг солих боломжгүй.
+		if p.MustChangePassword && p.ImpersonatedBy == "" {
+			http.Error(w, `{"error":"нууц үгээ солих шаардлагатай","code":"password_change_required"}`, http.StatusForbidden)
 			return
 		}
 		if s.state != nil {

@@ -47,6 +47,7 @@
 - Модуль зөвхөн `pkg/nexus`-ээс хамаарна, `internal/*` хэзээ ч импортлохгүй (`make check` барина). Permission код модулийн prefix-тэй байхыг `Register` албаддаг; default оноолт `DefaultRoles` тунхаглал (`"user:own"` хэлбэр); scope `all|own` (`created_by` + `nexus.Scope(ctx)`); модулийн router платформ урьдчилан хамгаална (auth + install gate) — модуль өөрөө auth хийхгүй.
 - Role implies гинж admin⊃manager⊃user (recursive CTE). Платформ админ = DB role (`pg_has_role`), GUC флаг биш.
 - Нэвтрэлт/танилтын бүх хайлт (session, имэйл, audit prev_hash) RLS-ийн ӨМНӨ ажилладаг тул SECURITY DEFINER функцээр явна; SECURITY DEFINER функц бүр `SET search_path = pg_catalog, public`-тэй.
+- Админ түр нууц үгтэй үүсгэсэн данс (`auth_provision`) `must_change_password=true`: `RequireTenant` 403 `password_change_required` → portal `PasswordGate`; `/api/me/password` цэвэрлэнэ. SSO: `(iss, sub)` холбоос `sso_identities`; имэйлээр холбох/JIT зөвхөн баталгаажсан имэйл (`email_verified` эсвэл `SSO_TRUST_EMAIL`). OIDC токен бүрд гишүүнчлэл + tenant төлөв дахин шалгагдана; impersonated session код авахгүй.
 - Мутаци бүр `Audit(...)` бичнэ + RBAC-д нөлөөлбөл `rbac.Invalidate` дуудна (кэш). Audit hash гинж DB дотор, append-only trigger-тэй.
 - Шинэ tenant үүсгэхдээ id-г урьдчилан гаргаж `app.tenant_id`-г ЭХЭЛЖ тохируулна — INSERT..RETURNING нь RLS SELECT бодлого шаарддаг (handlers/auth.go createTenant).
 - Миграц зөвхөн `nexus_owner`-оор; апп `nexus_app`/`nexus_admin`-аар. Модулийн миграц модулийн өөрийн FS-д (`backend/apps/<x>/migrations/`), цөмийнхөд нэмэхгүй.

@@ -28,10 +28,11 @@ import {
 } from '@gerege-systems/ui';
 import { api, ApiError, type Me, type MenuApp } from '@/lib/api';
 import { Icon } from './icons';
+import { PasswordGate } from './password-gate';
 import { UserMenu } from './usermenu';
 import { useT } from '@/lib/i18n';
 
-type ShellData = { me: Me; menu: MenuApp[]; refresh: () => void; blocked?: boolean };
+type ShellData = { me: Me; menu: MenuApp[]; refresh: () => void; blocked?: boolean; mustChange?: boolean };
 const ShellCtx = createContext<ShellData | null>(null);
 export const useShell = () => useContext(ShellCtx)!;
 
@@ -46,6 +47,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const load = useCallback(async () => {
     try {
       const me = await api.get<Me>('/api/me');
+      // Түр нууц үг солиогүй: tenant-ийн API бүр 403 тул menu-г дуудахгүй.
+      if (me.must_change_password) {
+        setData({ me, menu: [], mustChange: true, refresh: () => void load() });
+        return;
+      }
       if (!me.tenant_id) {
         // Байгууллагагүй/сонгоогүй: жагсаалтаас эхнийхийг идэвхжүүлнэ.
         if (me.tenants.length > 0) {
@@ -100,6 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   const { me, menu } = data;
 
+  if (data.mustChange) return <PasswordGate me={me} onDone={() => void load()} />;
   if (data.blocked) return <BlockedScreen me={me} onSwitched={() => void load()} />;
 
   const perms = me.permissions;

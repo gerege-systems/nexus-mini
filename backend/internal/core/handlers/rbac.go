@@ -532,8 +532,9 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusInternalServerError, "hash failed")
 			return
 		}
+		// Түр нууц үг админд мэдэгдэж байдаг → эхний нэвтрэлтэд заавал солиулна.
 		if err := h.Pool.QueryRow(r.Context(),
-			`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
+			`SELECT auth_provision($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
 			in.Email, hash, in.Name).Scan(&userID); err != nil {
 			httpx.Error(w, http.StatusConflict, "хэрэглэгч үүсгэж чадсангүй")
 			return
