@@ -30,8 +30,10 @@ main() {
   dbname=${dbname:-nexus_mini}
   bdir="${NEXUS_BACKUP_DIR:-/var/backups/nexus-mini}"
   # sudo -n: password асуувал зогсох биш шууд унана (non-interactive deploy).
-  sudo -n mkdir -p "$bdir"
-  sudo -n -u postgres pg_dump -Fc "$dbname" | sudo -n tee "$bdir/$dbname-$(date +%Y%m%d-%H%M%S).dump" > /dev/null
+  local dump="$bdir/$dbname-$(date +%Y%m%d-%H%M%S).dump"
+  sudo -n install -d -m 700 "$bdir"
+  sudo -n -u postgres pg_dump -Fc "$dbname" | sudo -n tee "$dump" > /dev/null
+  sudo -n chmod 600 "$dump"   # нууц үгийн hash, session агуулна — зөвхөн root
   ls -1t "$bdir"/*.dump | tail -n +15 | xargs -r sudo -n rm --
   echo "нөөц: $(ls -1t "$bdir"/*.dump | head -1)"
 
