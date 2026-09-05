@@ -34,7 +34,13 @@ func hrSession(t *testing.T, h *harness, owner *session, tenantID, email string)
 		map[string]any{"email": email, "name": "HR", "password": "password-12", "roles": []string{"hr"}}); w.Code >= 400 {
 		t.Fatalf("гишүүн нэмэх = %d: %s", w.Code, w.Body.String())
 	}
-	return h.login(t, email, "password-12", tenantID)
+	s := h.login(t, email, "password-12", tenantID)
+	// Админ өгсөн түр нууц үг — эхний нэвтрэлтэд солих хүртэл tenant route 403.
+	if w := s.do(t, http.MethodPost, "/api/me/password",
+		map[string]string{"current_password": "password-12", "new_password": "password-13"}); w.Code != 200 {
+		t.Fatalf("түр нууц үг солих = %d: %s", w.Code, w.Body.String())
+	}
+	return s
 }
 
 func TestMembersManagerCannotEscalate(t *testing.T) {
