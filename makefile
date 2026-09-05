@@ -7,7 +7,7 @@
 
 ENV_FLAG := $(if $(ENV_FILE),--env $(ENV_FILE),)
 
-.PHONY: help build migrate serve web admin check check-db push manifest
+.PHONY: help build migrate serve web admin check check-static check-db push manifest
 
 help:
 	@echo "make migrate   миграц + (env-д ADMIN_* байвал) анхны платформ админ"
@@ -55,10 +55,8 @@ admin:
 
 # push бүрийн өмнө заавал (docs/01-lessons.md #4): linux build + vet + test
 # + SDK-ийн хил: модуль (apps/) internal/*-ээс юу ч импортлохгүй байх ёстой
-check:
-	cd backend && GOOS=linux GOARCH=amd64 go build ./... && go vet ./... && go test ./...
-	@cd backend && bad=$$(go list -deps ./apps/... | grep 'backend/internal' || true); \
-	 if [ -n "$$bad" ]; then echo "SDK хил зөрчигдөв — модуль internal/* импортолж байна:"; echo "$$bad"; exit 1; fi
+check: check-static
+	cd backend && go test ./...
 	@if [ -z "$$NEXUS_TEST_DATABASE_URL" ]; then \
 	 echo ""; \
 	 echo "⚠  RLS + RBAC-ийн integration тест АЛГАСАГДЛАА (NEXUS_TEST_DATABASE_URL алга)."; \
@@ -69,20 +67,27 @@ check:
 	 echo ""; \
 	 fi
 
+# check-static — тестгүй хэсэг: linux build + vet + SDK хил.
+check-static:
+	cd backend && GOOS=linux GOARCH=amd64 go build ./... && go vet ./...
+	@cd backend && bad=$$(go list -deps ./apps/... | grep 'backend/internal' || true); \
+	 if [ -n "$$bad" ]; then echo "SDK хил зөрчигдөв — модуль internal/* импортолж байна:"; echo "$$bad"; exit 1; fi
+
 # check-db — check-ийн бүрэн хувилбар: DB заавал, алгасалт = алдаа.
-# CI болон прод deploy-ийн өмнө үүнийг ажиллуулна.
-check-db: check
+# CI болон прод deploy-ийн өмнө үүнийг ажиллуулна. Дараалал чухал: эхлээд
+# migrate (хоосон DB-д package-ууд зэрэг DDL хийж уралдахгүй), дараа нь
+# тестүүд цуваа (-p 1, нэг DB хуваалцдаг).
+check-db:
 	@[ -n "$(NEXUS_TEST_DATABASE_URL)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_OWNER)" ] && \
 	 [ -n "$(NEXUS_TEST_DATABASE_URL_AUTH)" ] && [ -n "$(NEXUS_TEST_DATABASE_URL_ADMIN)" ] || \
 	 { echo "check-db: NEXUS_TEST_DATABASE_URL, _OWNER, _AUTH, _ADMIN бүгд шаардлагатай"; exit 1; }
 	cd backend && DATABASE_URL_OWNER="$(NEXUS_TEST_DATABASE_URL_OWNER)" go run ./cmd/nexus-mini migrate --env /dev/null
+	$(MAKE) check-static
 	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -count=1 -p 1 ./...
 
-# Тест DB-г эхлээд migrate хийнэ (цөм + бүх модуль; go run — bin/nexus-mini
-# ба .prev rollback бинарийг дарахгүй). --env /dev/null: env файл уншихгүй,
-# гэхдээ shell-д export хийсэн ADMIN_* байвал тест DB-д админ үүсгэнэ — бүү
-# export хий. Package-уудыг цуваа (-p 1): бүгд нэг DB-г хуваалцдаг тул зэрэг
-# ажиллавал хоосон DB дээр хоорондоо уралдана.
+# migrate нь go run (bin/nexus-mini ба .prev rollback бинарийг дарахгүй);
+# --env /dev/null: env файл уншихгүй, гэхдээ shell-д export хийсэн ADMIN_*
+# байвал тест DB-д админ үүсгэнэ — бүү export хий.
 # check-race — уралдаан илрүүлэгчтэй (concurrency: bus, кэшүүд, semaphore).
 check-race:
 	cd backend && NEXUS_TEST_REQUIRE_DB=1 go test -race -count=1 -p 1 ./...
