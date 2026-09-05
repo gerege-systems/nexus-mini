@@ -29,6 +29,7 @@ main() {
     fi
   fi
 
+  echo "== deploy.sh @ $(git rev-parse --short HEAD) =="
   export PATH=/usr/local/go/bin:$PATH
 
   local envf="${NEXUS_ENV_FILE:-/etc/nexus-mini/nexus-mini.env}"
