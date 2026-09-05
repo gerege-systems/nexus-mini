@@ -36,6 +36,8 @@
 - Домэйн: portal нэг домэйнд (nginx `/api/*` → :8084, бусад → :3020), платформын админ ӨӨР домэйнд (:3021, мөн `/api/*` → :8084). CORS байхгүй — same-origin rewrite; API-г тусдаа домэйн болговол сессийн cookie явахгүй, `sameOriginOnly` 403 өгнө. Бодит домэйн энд бичигдэхгүй — дээж `deploy/nginx-nexus-mini.conf`.
 - Сервер дээр: `bash deploy/deploy.sh` — pull → go build (атом mv, `.prev` үлдээнэ) → `migrate --env <secrets>/nexus-mini.env` → frontend/admin `pnpm build` (`.next.new` → атом солилт) → restart 3 unit → health curl.
 - systemd: `nexus-mini-api`, `nexus-mini-web`, `nexus-mini-adminweb`. Unit нь `node_modules/.bin/next start` шууд дууддаг — pnpm/corepack дуудахгүй (ProtectHome).
+- CI: `.github/workflows/check.yml` — push/PR бүрт `make check-db` (postgres:16 service, `deploy/docker-init.sql` role-ууд) + `make check-web`. Улаан бол push-ийг прод руу гаргахгүй.
+- nginx: `deploy/nginx-proxy.conf` → `/etc/nginx/snippets/nexus-proxy.conf` (vhost-ууд include хийдэг). Unit-ууд Next-ийг `-H 127.0.0.1`-тэй асаана — гаднаас :3020/:3021 хүрэхгүй.
 - deploy.sh ХИЙДЭГГҮЙ зүйлс (гараар): unit файл өөрчлөгдвөл `sudo cp deploy/*.service /etc/systemd/system/ && sudo systemctl daemon-reload`; nginx conf өөрчлөгдвөл `sudo systemctl reload nginx`.
 - Secrets: репогийн ГАДНА, зөвхөн сервер дээр `nexus-mini.env` (mode 600; нарийн зам операторынх) — DATABASE_URL / _ADMIN / _OWNER / _AUTH, ADMIN_*, CATALOG_PATH, REGISTRY_CACHE_DIR, PORTAL_URL, ENVIRONMENT=production. DB нэр `nexus_mini`.
 - Go сервер дээр `/usr/local/go` (1.25); apt-ийн `/usr/bin/go` 1.22 — гараар build хийвэл PATH-ыг түрүүлж тавь.

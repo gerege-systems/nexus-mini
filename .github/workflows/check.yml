@@ -1,0 +1,61 @@
+# Push/PR бүрт: make check-db (linux build + vet + unit + SDK хил + RLS/RBAC/OIDC
+# integration тест бодит Postgres дээр) ба make check-web (i18n/middleware/
+# hydration аудит + Next build). Локалд яг ижил target-уудыг ажиллуулна.
+name: check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      PGPASSWORD: postgres
+      # deploy/docker-init.sql-ийн dev нууц үгүүд — зөвхөн CI-ийн түр DB.
+      NEXUS_TEST_DATABASE_URL: postgres://nexus_app:nexus-dev@localhost:5432/nexus_mini
+      NEXUS_TEST_DATABASE_URL_OWNER: postgres://nexus_owner:nexus-dev@localhost:5432/nexus_mini
+      NEXUS_TEST_DATABASE_URL_AUTH: postgres://nexus_auth:nexus-dev@localhost:5432/nexus_mini
+      NEXUS_TEST_DATABASE_URL_ADMIN: postgres://nexus_admin:nexus-dev@localhost:5432/nexus_mini
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: DB role-ууд + сан
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f deploy/docker-init.sql
+      - name: make check-db
+        run: make check-db
+
+  web:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: http://127.0.0.1:8084
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            admin/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: pnpm install --frozen-lockfile
+        working-directory: admin
+      - name: make check-web
+        run: make check-web

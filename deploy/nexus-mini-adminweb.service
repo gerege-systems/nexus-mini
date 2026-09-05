@@ -9,7 +9,7 @@ User=nexus
 WorkingDirectory=/srv/nexus-mini/admin
 Environment=NODE_ENV=production
 Environment=API_URL=http://127.0.0.1:8084
-ExecStart=/srv/nexus-mini/admin/node_modules/.bin/next start -p 3021
+ExecStart=/srv/nexus-mini/admin/node_modules/.bin/next start -H 127.0.0.1 -p 3021
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

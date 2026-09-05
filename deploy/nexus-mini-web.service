@@ -11,7 +11,7 @@ Environment=NODE_ENV=production
 Environment=API_URL=http://127.0.0.1:8084
 # pnpm/corepack-ийг systemd дор дуудахгүй (ProtectHome мөргөлдөөн) —
 # next-ийн бинариар шууд (docs/01-lessons.md #5).
-ExecStart=/srv/nexus-mini/frontend/node_modules/.bin/next start -p 3020
+ExecStart=/srv/nexus-mini/frontend/node_modules/.bin/next start -H 127.0.0.1 -p 3020
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
