@@ -48,7 +48,7 @@ for (const f of sources) {
     if (ticks % 2 === 1) inTemplate = !inTemplate;
     if (was || inTemplate) return;
     const code = stripStrings(line);
-    if (/useEffect\(|onClick|onChange|onSubmit|=>\s*{|function /.test(code)) inEffect = 8;
+    if (/useEffect\(|on[A-Z]\w*=|=>\s*{|function /.test(code)) inEffect = 8; // onX= = JSX handler prop
     if (/(matchMedia|localStorage|sessionStorage|window\.(location|innerWidth|navigator))/.test(code) &&
         inEffect === 0 && !/typeof window/.test(code)) risky.push(`admin/${f.replace(root + "/", "")}:${i + 1}`);
     if (inEffect > 0) inEffect--;

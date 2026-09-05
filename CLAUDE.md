@@ -23,7 +23,7 @@
 - `make migrate` — миграц + env-д ADMIN_* байгаа бөгөөд админ огт байхгүй бол анхны платформ админ үүсгэнэ
 - `make serve` / `make web` / `make admin` — API :8084 / portal dev :3020 / админ dev :3021. **Бүх команд зөвхөн Makefile-аар** — `go run`/бинарийг шууд дуудахгүй (systemd unit + Docker image л үл хамаарна). `ENV_FILE=` өөр env файл.
 - `make check` — `GOOS=linux GOARCH=amd64 go build` + `go vet` + `go test` + SDK-ийн хилийн шалгалт (`apps/` → `backend/internal/*` импорт байвал унана). DB байхгүй бол RLS/RBAC-ийн integration тест алгасагдсаныг тод анхааруулна — `ok` гэдэг нь тэдгээр шалгагдсан гэсэн үг БИШ.
-- `make check-db` — check + RLS/RBAC integration заавал (`NEXUS_TEST_DATABASE_URL` + `_OWNER`). `NEXUS_TEST_REQUIRE_DB=1` тавьдаг тул алгасалт = алдаа. CI/прод deploy-ийн өмнөх хаалт.
+- `make check-db` — check + RLS/RBAC integration заавал (`NEXUS_TEST_DATABASE_URL` + `_OWNER` + `_AUTH` + `_ADMIN`). Эхлээд тест DB-г бинариар migrate хийнэ (цөм + модулиуд — handlers/OIDC тестүүд бэлэн schema гэж үздэг), дараа нь `go test -p 1` (нэг DB хуваалцдаг тул цуваа). `NEXUS_TEST_REQUIRE_DB=1` тавьдаг тул алгасалт = алдаа. CI/прод deploy-ийн өмнөх хаалт. gecore дээр тест DB `nexus_mini_test`.
 - `make push` — check амжилттай бол л `git push`
 - Integration тестүүд (`db/rls_test.go`, `rbac/rbac_integration_test.go`) `NEXUS_TEST_DATABASE_URL` + `NEXUS_TEST_DATABASE_URL_OWNER` шаардана, хоёулаа байхгүй бол Skip. Нэг нь дутуу бол Skip биш **унана** (үсгийн алдааг чимээгүй өнгөрөөхгүй)
 - `docker compose up -d` — PG + migrate + api + web + admin (ADMIN_* env-ээр дамжуулна)

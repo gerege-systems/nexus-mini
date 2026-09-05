@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gerege-systems/nexus-mini/backend/apps/devices"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,11 +22,11 @@ func TestRunAllIsIdempotent(t *testing.T) {
 		t.Skip("DB тохируулаагүй — алгасав")
 	}
 	var logged []string
-	if err := RunAll(ownerURL, func(f string, a ...any) { logged = append(logged, f) }); err != nil {
+	if err := Run(ownerURL, func(f string, a ...any) { logged = append(logged, f) }, devices.New()); err != nil {
 		t.Fatalf("нэг дэх ажиллалт: %v", err)
 	}
 	// Хоёр дахь удаа — өөрчлөлтгүй, алдаагүй.
-	if err := RunAll(ownerURL, func(f string, a ...any) {}); err != nil {
+	if err := Run(ownerURL, func(f string, a ...any) {}, devices.New()); err != nil {
 		t.Fatalf("хоёр дахь ажиллалт: %v", err)
 	}
 	ctx := context.Background()
@@ -41,7 +42,7 @@ func TestRunAllIsIdempotent(t *testing.T) {
 	if version < 15 {
 		t.Fatalf("цөмийн миграцын хувилбар = %d", version)
 	}
-	// Модуль бүр өөрийн goose хүснэгттэй.
+	// Модуль бүр өөрийн goose хүснэгттэй (цөм + devices).
 	var tables int
 	if err := pool.QueryRow(ctx,
 		`SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'goose_%'`).Scan(&tables); err != nil {

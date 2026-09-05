@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -131,20 +133,55 @@ func (s *SSO) Callback(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "sso баталгаажуулалт амжилтгүй")
 		return
 	}
-	if !id.EmailVerified && key == "google" {
-		s.fail(w, r, "имэйл баталгаажаагүй")
+	uid, msg, err := s.resolveUser(r.Context(), p.Issuer, id)
+	if err != nil {
+		log.Printf("sso callback %s: %v", key, err)
+		s.fail(w, r, "login failed")
 		return
 	}
-	// Бүртгэлтэй хэрэглэгч (имэйлээр) → session; үгүй бол JIT (тохиргоотой).
-	var uid, hash, name string
+	if msg != "" {
+		s.fail(w, r, msg)
+		return
+	}
+	if _, err := s.Auth.Svc.StartSession(r.Context(), w, uid); err != nil {
+		s.fail(w, r, "session failed")
+		return
+	}
+	_, _ = s.Auth.Svc.LoginResult(r.Context(), id.Email, true)
+	http.Redirect(w, r, s.PortalURL+st.Next, http.StatusSeeOther)
+}
+
+// resolveUser — id_token → хэрэглэгч. Эхлээд (issuer, sub) холбоосоор;
+// холбоосгүй эхний нэвтрэлтэд имэйлээр байгаа данс руу ЗӨВХӨН provider
+// имэйлийг баталгаажуулсан үед холбоно — баталгаажаагүй имэйлээр байгаа
+// дансанд хэзээ ч орохгүй (өөр issuer дээр хохирогчийн имэйлээр бүртгүүлж
+// дансыг нь авах боломж). Бүртгэлгүй бол JIT (SSO_AUTO_SIGNUP), нууц үггүй.
+// Аль ч замаар (issuer, sub) холбоос бичигдэнэ — дараагийн нэвтрэлт
+// email_verified-ээс хамаарахгүй. msg != "" бол хэрэглэгчид харуулах татгалзал.
+func (s *SSO) resolveUser(ctx context.Context, issuer string, id *ssoclient.Identity) (uid, msg string, err error) {
+	var name string
 	var isAdmin bool
-	err = s.Auth.Pool.QueryRow(r.Context(),
+	err = s.Auth.Pool.QueryRow(ctx,
+		`SELECT id, name, platform_admin FROM auth_sso_user($1::varchar(255), $2::varchar(255))`, issuer, id.Subject).
+		Scan(&uid, &name, &isAdmin)
+	if err == nil {
+		return uid, "", nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", fmt.Errorf("sso lookup: %w", err)
+	}
+	var hash string
+	err = s.Auth.Pool.QueryRow(ctx,
 		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`, id.Email).
 		Scan(&uid, &hash, &name, &isAdmin)
-	if errors.Is(err, pgx.ErrNoRows) {
+	switch {
+	case err == nil:
+		if !id.EmailVerified {
+			return "", "энэ имэйлтэй данс бүртгэлтэй, гэхдээ provider имэйлийг баталгаажуулаагүй — нууц үгээр нэвтэр", nil
+		}
+	case errors.Is(err, pgx.ErrNoRows):
 		if !s.AutoSignup {
-			s.fail(w, r, "энэ имэйл бүртгэлгүй — админаас урилга ав (SSO_AUTO_SIGNUP хаалттай)")
-			return
+			return "", "энэ имэйл бүртгэлгүй — админаас урилга ав (SSO_AUTO_SIGNUP хаалттай)", nil
 		}
 		n := strings.TrimSpace(id.Name)
 		if n == "" {
@@ -154,22 +191,19 @@ func (s *SSO) Callback(w http.ResponseWriter, r *http.Request) {
 			n = n[:120]
 		}
 		// Нууц үггүй данс: argon2-гүй санамсаргүй hash — SSO-оор л нэвтэрнэ.
-		if err := s.Auth.Pool.QueryRow(r.Context(),
+		if err := s.Auth.Pool.QueryRow(ctx,
 			`SELECT auth_signup($1::varchar(255), $2::varchar(255), $3::varchar(120))`,
 			id.Email, "sso:"+ssoclient.RandString(), n).Scan(&uid); err != nil {
-			s.fail(w, r, "данс үүсгэж чадсангүй")
-			return
+			return "", "", fmt.Errorf("sso jit signup: %w", err)
 		}
-	} else if err != nil {
-		s.fail(w, r, "login failed")
-		return
+	default:
+		return "", "", fmt.Errorf("sso email lookup: %w", err)
 	}
-	if _, err := s.Auth.Svc.StartSession(r.Context(), w, uid); err != nil {
-		s.fail(w, r, "session failed")
-		return
+	if _, err := s.Auth.Pool.Exec(ctx,
+		`SELECT auth_sso_link($1::varchar(255), $2::varchar(255), $3::uuid)`, issuer, id.Subject, uid); err != nil {
+		return "", "", fmt.Errorf("sso link: %w", err)
 	}
-	_, _ = s.Auth.Svc.LoginResult(r.Context(), id.Email, true)
-	http.Redirect(w, r, s.PortalURL+st.Next, http.StatusSeeOther)
+	return uid, "", nil
 }
 
 func (s *SSO) fail(w http.ResponseWriter, r *http.Request, msg string) {

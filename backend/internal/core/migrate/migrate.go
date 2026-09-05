@@ -12,9 +12,15 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// RunAll — ownerURL дээр цөмийн дараа модулиудын миграцыг ажиллуулна.
-// Модуль бүр өөрийн goose хүснэгттэй (goose_<shortid>).
+// RunAll — ownerURL дээр цөмийн дараа бүртгэгдсэн модулиудын миграцыг
+// ажиллуулна. Модуль бүр өөрийн goose хүснэгттэй (goose_<shortid>).
 func RunAll(ownerURL string, logf func(format string, args ...any)) error {
+	return Run(ownerURL, logf, nexus.Registered()...)
+}
+
+// Run — цөм + өгөгдсөн модулиудын миграц. Тест DB-гээ өөрсдөө бэлтгэдэг
+// модулийн тестүүд бүртгэлгүйгээр дуудна (Register давхардал, глобал төлөв үгүй).
+func Run(ownerURL string, logf func(format string, args ...any), modules ...nexus.Module) error {
 	db, err := sql.Open("pgx", ownerURL)
 	if err != nil {
 		return err
@@ -35,7 +41,7 @@ func RunAll(ownerURL string, logf func(format string, args ...any)) error {
 	}
 	logf("миграц: цөм ok")
 
-	for _, m := range nexus.Registered() {
+	for _, m := range modules {
 		goose.SetBaseFS(m.Migrations())
 		goose.SetTableName("goose_" + m.ShortID())
 		if err := goose.Up(db, "migrations"); err != nil {

@@ -56,21 +56,35 @@ const missing = [...used].filter((k) => !keys.has(k));
 if (missing.length) fail(`i18n дутуу орчуулга (${missing.length}): ${missing.slice(0, 5).map((m) => m.slice(0, 40)).join(" | ")}`);
 else okMsg(`i18n: ${used.size} түлхүүр ашиглагдсан, бүгд ${keys.size} толинд бий`);
 
-// ─── 2. middleware matcher ─────────────────────────────────────────────
+// ─── 2. middleware: matcher + нийтийн зам ───────────────────────────
+// Matcher нь CSP-ийн тулд бүх хуудсыг (нийтийн ч) хамрах ёстой; статик
+// файл, _next, /api-г алгасна. Нэвтрээгүй зочныг /login руу шилжүүлэх
+// шалгалт нь PUBLIC regex + "/" — хамгаалалттай зам түүнд таарах ёсгүй.
 const mw = readFileSync(join(root, "middleware.ts"), "utf8");
 const matcher = mw.match(/matcher:\s*\[\s*"([^"]+)"/)?.[1];
-if (!matcher) fail("middleware matcher олдсонгүй");
+const publicSrc = mw.match(/const PUBLIC = \/(.+)\/;/)?.[1];
+if (!matcher || !publicSrc) fail("middleware matcher / PUBLIC олдсонгүй");
 else {
   const re = new RegExp("^" + matcher.replace(/\\\\/g, "\\") + "$");
+  const pub = new RegExp(publicSrc);
+  const isPublic = (p) => p === "/" || pub.test(p);
   const guarded = ["/dashboard", "/dashboard/x", "/store", "/members", "/roles", "/audit",
-    "/settings", "/org/new", "/sso-clients", "/oauth/consent", "/devices", "/organisation/people"];
-  const publicPaths = ["/", "/apps", "/apps/x", "/developers", "/login", "/signup",
-    "/api/me", "/_next/static/x.js", "/favicon.ico", "/robots.txt", "/icon.png"];
+    "/settings", "/org/new", "/sso-clients", "/oauth/consent", "/devices", "/organisation/people",
+    "/loginx", "/appsx"];
+  const publicPaths = ["/", "/apps", "/apps/x", "/developers", "/login", "/signup"];
+  const skipped = ["/api/me", "/_next/static/x.js", "/favicon.ico", "/robots.txt", "/icon.png"];
   const bad = [];
-  for (const p of guarded) if (!re.test(p)) bad.push(`хамгаалагдаагүй: ${p}`);
-  for (const p of publicPaths) if (re.test(p)) bad.push(`нийтийн зам хаагдсан: ${p}`);
+  for (const p of guarded) {
+    if (!re.test(p)) bad.push(`matcher-т ороогүй: ${p}`);
+    if (isPublic(p)) bad.push(`хамгаалагдаагүй (PUBLIC-т таарав): ${p}`);
+  }
+  for (const p of publicPaths) {
+    if (!re.test(p)) bad.push(`CSP-гүй (matcher-т ороогүй): ${p}`);
+    if (!isPublic(p)) bad.push(`нийтийн зам хаагдсан: ${p}`);
+  }
+  for (const p of skipped) if (re.test(p)) bad.push(`статик/API matcher-т орсон: ${p}`);
   if (bad.length) fail(`middleware: ${bad.join(" | ")}`);
-  else okMsg(`middleware: ${guarded.length} хамгаалалттай, ${publicPaths.length} нийтийн зам зөв`);
+  else okMsg(`middleware: ${guarded.length} хамгаалалттай, ${publicPaths.length} нийтийн, ${skipped.length} алгассан зам зөв`);
 }
 
 // ─── 3. hydration эрсдэл ───────────────────────────────────────────────
@@ -91,7 +105,7 @@ for (const f of sources) {
     if (ticks % 2 === 1) inTemplate = !inTemplate;
     if (wasTemplate || inTemplate) return;
     const code = stripStrings(line);
-    if (/useEffect\(|useLayoutEffect\(|onClick|onChange|onSubmit|=>\s*{|function /.test(code)) inEffect = 8;
+    if (/useEffect\(|useLayoutEffect\(|on[A-Z]\w*=|=>\s*{|function /.test(code)) inEffect = 8; // onX= = JSX handler prop
     const risk = /(matchMedia|localStorage|sessionStorage|window\.(location|innerWidth|navigator))/.test(code);
     if (risk && inEffect === 0 && !/typeof window/.test(code)) {
       risky.push(`${f.replace(repo + "/", "")}:${i + 1}`);

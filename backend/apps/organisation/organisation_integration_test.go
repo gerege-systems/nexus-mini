@@ -16,6 +16,7 @@ import (
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
 	coredb "github.com/gerege-systems/nexus-mini/backend/internal/core/db"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/identity"
+	"github.com/gerege-systems/nexus-mini/backend/internal/core/migrate"
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/rbac"
 	"github.com/gerege-systems/nexus-mini/backend/pkg/nexus"
 	"github.com/go-chi/chi/v5"
@@ -47,6 +48,10 @@ func setup(t *testing.T) *fx {
 	}
 	owner, err := pgxpool.New(ctx, ownerURL)
 	if err != nil {
+		t.Fatal(err)
+	}
+	// Модулийн хүснэгтүүд — бинарийн migrate-ээс хамаарахгүй, шинэ тест DB-д ч ажиллана.
+	if err := migrate.Run(ownerURL, t.Logf, organisation.New()); err != nil {
 		t.Fatal(err)
 	}
 	f := &fx{owner: owner}
