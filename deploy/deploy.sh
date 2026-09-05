@@ -5,7 +5,8 @@
 # Бүх ажил main() дотор: bash скриптийг мөр мөрөөр уншдаг тул git pull
 # скриптийг өөрийг нь шинэчлэхэд дундаас нь хуучин/шинэ хольж уншихаас
 # хамгаална — main-ийг дуудах мөр файлын төгсгөлд байгаа үед функц бүхэлдээ
-# аль хэдийн уншигдсан байдаг.
+# аль хэдийн уншигдсан байдаг. Pull-аар deploy.sh өөрөө өөрчлөгдвөл шинэ
+# хувилбараар exec-ээр дахин эхэлнэ (NEXUS_DEPLOY_REEXEC) — засвар тэр даруй хэрэгжинэ.
 set -euo pipefail
 
 main() {
@@ -16,7 +17,17 @@ main() {
   # Хүний засвар биш учир pull-ийн өмнө буцаана (бусад файлд хүрэхгүй).
   git checkout -- frontend/next-env.d.ts frontend/tsconfig.json \
                   admin/next-env.d.ts admin/tsconfig.json 2>/dev/null || true
-  git pull --ff-only
+  # Дахин ачаалагдсан (доор) бол pull аль хэдийн хийгдсэн.
+  if [ -z "${NEXUS_DEPLOY_REEXEC:-}" ]; then
+    local before; before=$(git rev-parse HEAD)
+    git pull --ff-only
+    # main() бүхэлдээ уншигдсан тул энэ ажиллалт ХУУЧИН deploy.sh — скрипт
+    # өөрөө өөрчлөгдсөн бол шинэ хувилбараар нэг удаа дахин эхэлнэ.
+    if ! git diff --quiet "$before" HEAD -- deploy/deploy.sh; then
+      echo "== deploy.sh өөрчлөгдсөн → шинэ хувилбараар дахин эхэлнэ =="
+      NEXUS_DEPLOY_REEXEC=1 exec bash "$root/deploy/deploy.sh" "$@"
+    fi
+  fi
 
   export PATH=/usr/local/go/bin:$PATH
 
