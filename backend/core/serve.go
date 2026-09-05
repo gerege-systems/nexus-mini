@@ -51,13 +51,7 @@ func cmdServe(_ []string) error {
 	}
 	syncCancel()
 
-	// Админгүй instance ажиллах л болно, гэхдээ сануулна.
-	var hasAdmin bool
-	_ = pools.Admin.QueryRow(context.Background(),
-		`SELECT EXISTS (SELECT 1 FROM users WHERE platform_admin)`).Scan(&hasAdmin)
-	if !hasAdmin {
-		log.Println("АНХААР: платформын админ алга — env-д ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD өгөөд `make migrate` ажиллуул")
-	}
+	// Админгүй instance ажиллах л болно — сануулга + /setup токеныг setupH.Arm (доор) бичнэ.
 
 	tdb := db.NewTenantDB(pools.App)
 	authSvc := auth.NewService(pools.Auth, cfg.CookieSecure)
