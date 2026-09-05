@@ -29,9 +29,10 @@ main() {
   dbname=$(grep -E '^DATABASE_URL_OWNER=' "$envf" | sed -E 's#.*/([^/?"[:space:]]+).*#\1#' || true)
   dbname=${dbname:-nexus_mini}
   bdir="${NEXUS_BACKUP_DIR:-/var/backups/nexus-mini}"
-  sudo mkdir -p "$bdir"
-  sudo -u postgres pg_dump -Fc "$dbname" | sudo tee "$bdir/$dbname-$(date +%Y%m%d-%H%M%S).dump" > /dev/null
-  ls -1t "$bdir"/*.dump | tail -n +15 | xargs -r sudo rm --
+  # sudo -n: password асуувал зогсох биш шууд унана (non-interactive deploy).
+  sudo -n mkdir -p "$bdir"
+  sudo -n -u postgres pg_dump -Fc "$dbname" | sudo -n tee "$bdir/$dbname-$(date +%Y%m%d-%H%M%S).dump" > /dev/null
+  ls -1t "$bdir"/*.dump | tail -n +15 | xargs -r sudo -n rm --
   echo "нөөц: $(ls -1t "$bdir"/*.dump | head -1)"
 
   echo "== backend build + migrate (Makefile) =="

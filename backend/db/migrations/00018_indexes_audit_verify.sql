@@ -43,7 +43,7 @@ END $$;
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION audit_verify(p_tenant uuid)
 RETURNS bigint
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   r      record;
   v_prev char(64) := repeat('0', 64);
