@@ -373,13 +373,13 @@ function Actions({ me }: { me: Me }) {
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/profile">
-              <Icons.User aria-hidden />
+              <Icons.User className="size-4" aria-hidden />
               {t("Профайл")}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={logout}>
-            <Icons.LogOut aria-hidden />
+            <Icons.LogOut className="size-4" aria-hidden />
             {t("Гарах")}
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -85,7 +85,7 @@ export function UserMenu({ me }: { me: Me }) {
 
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={logout}>
-          <Icons.LogOut aria-hidden />
+          <Icons.LogOut className="size-4" aria-hidden />
           {t('Гарах')}
         </DropdownMenuItem>
       </DropdownMenuContent>
