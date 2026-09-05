@@ -34,8 +34,9 @@ main() {
   sudo -n install -d -m 700 "$bdir"
   sudo -n -u postgres pg_dump -Fc "$dbname" | sudo -n tee "$dump" > /dev/null
   sudo -n chmod 600 "$dump"   # нууц үгийн hash, session агуулна — зөвхөн root
-  ls -1t "$bdir"/*.dump | tail -n +15 | xargs -r sudo -n rm --
-  echo "нөөц: $(ls -1t "$bdir"/*.dump | head -1)"
+  # Хавтас 700 root тул жагсаалт/эргэлтийг ч root-оор.
+  sudo -n sh -c "ls -1t '$bdir'/*.dump | tail -n +15 | xargs -r rm --"
+  echo "нөөц: $dump"
 
   echo "== backend build + migrate (Makefile) =="
   # Атом солилт Makefile-ийн build-д; env-ийг export хийхгүй (#8: ADMIN_*
