@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// Нийтийн хуудас (landing /, /apps, /developers, /login, /signup) — бусад
+// Нийтийн хуудас (landing /, /apps, /developers, /login, /signup, /setup) — бусад
 // бүх зам хамгаалалттай, модулийн шинэ route нэмэгдэхэд энд гар хүрэхгүй.
 // (Модулийн ShortID нь эдгээр нийтийн нэртэй давхцахыг Register хориглоно.)
-const PUBLIC = /^\/(?:login|signup|apps|developers)(?:\/|$)/;
+const PUBLIC = /^\/(?:login|signup|setup|apps|developers)(?:\/|$)/;
 
 // Хатуу CSP. script-src нь nonce + strict-dynamic — Next өөрийн inline
 // (flight) script-үүддээ nonce-ыг ХҮСЭЛТИЙН Content-Security-Policy

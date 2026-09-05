@@ -36,6 +36,7 @@ type harness struct {
 	state                    *tenantstate.Store
 	ssoClient                *ssoclient.Client
 	sso                      *handlers.SSO
+	setup                    *handlers.Setup
 	authHandler              *handlers.Auth
 	prefix                   string
 }
@@ -96,6 +97,9 @@ func newHarness(t *testing.T) *harness {
 
 	r := chi.NewRouter()
 	r.Post("/api/signup", authH.Signup)
+	h.setup = handlers.NewSetup(authH, "https://portal.mn")
+	r.Get("/api/setup/status", h.setup.Status)
+	r.Post("/api/setup/complete", h.setup.Complete)
 	r.Post("/api/login", authH.Login)
 	r.Post("/api/logout", authH.Logout)
 	r.Post("/api/auth/handover", authH.Handover)

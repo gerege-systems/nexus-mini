@@ -71,7 +71,7 @@ else {
   const guarded = ["/dashboard", "/dashboard/x", "/store", "/members", "/roles", "/audit",
     "/settings", "/org/new", "/sso-clients", "/oauth/consent", "/devices", "/organisation/people",
     "/loginx", "/appsx"];
-  const publicPaths = ["/", "/apps", "/apps/x", "/developers", "/login", "/signup"];
+  const publicPaths = ["/", "/apps", "/apps/x", "/developers", "/login", "/signup", "/setup"];
   const skipped = ["/api/me", "/_next/static/x.js", "/favicon.ico", "/robots.txt", "/icon.png"];
   const bad = [];
   for (const p of guarded) {

@@ -7,6 +7,7 @@ import { Alert, Button, Input, Separator } from '@gerege-systems/ui';
 import { AuthCard } from '@/components/auth-card';
 import { api, ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import { setupStatus } from '@/lib/setup';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,6 +19,10 @@ export default function LoginPage() {
   // ?next= — зөвхөн энэ сайтын харьцангуй зам (open redirect хаалттай).
   const [next, setNext] = useState('/dashboard');
   const [providers, setProviders] = useState<{ key: string; name: string }[]>([]);
+
+  useEffect(() => {
+    void setupStatus().then((s) => s.required && router.replace('/setup'));
+  }, [router]);
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);

@@ -123,6 +123,13 @@ func cmdServe(_ []string) error {
 	r.With(httprate.LimitByIP(30, time.Minute)).Post("/api/logout", authH.Logout)
 	r.Get("/api/catalog", storeH.Catalog)
 
+	// Анхны тохиргооны шидтэн (/setup): платформ админ байхгүй үед л зэвсэглэнэ,
+	// токен нь зөвхөн логт. env ADMIN_* + make migrate зам хэвээр.
+	setupH := handlers.NewSetup(authH, cfg.PortalURL)
+	r.Get("/api/setup/status", setupH.Status)
+	r.With(authLimit).Post("/api/setup/complete", setupH.Complete)
+	setupH.Arm(busCtx)
+
 	// SSO client (relying party): Google + ерөнхий OIDC issuer (өөр nexus-mini ч).
 	ssoC := ssoclient.New([]ssoclient.Provider{
 		{Key: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},

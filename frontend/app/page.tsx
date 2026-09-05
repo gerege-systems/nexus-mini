@@ -1,14 +1,22 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge, Button, Card, Icons } from '@gerege-systems/ui';
 import { MktHeader, MktFooter } from '@/components/mkt';
 import { useT } from '@/lib/i18n';
+import { setupStatus } from '@/lib/setup';
 
 // Нүүр — ерөнхий танилцуулга. Апп дэлгүүр (/apps) ба модуль хөгжүүлэх
 // (/developers) тус тусдаа хуудсуудтай.
 export default function Landing() {
   const { t } = useT();
+  const router = useRouter();
+  // Платформ админгүй суулгац дээр танилцуулга худал — шидтэн рүү.
+  useEffect(() => {
+    void setupStatus().then((s) => s.required && router.replace('/setup'));
+  }, [router]);
 
   return (
     <div className="flex min-h-dvh flex-col">

@@ -4,7 +4,7 @@
 
 ## Стек ба бүтэц
 - Go 1.25 (chi + pgx + goose + httprate) · PostgreSQL 16 RLS · Next.js 16 / React 19 / TS 7. ORM байхгүй, ESLint байхгүй (TS7-той зөрчилддөг, хойшлуулсан — `next build`-ийн tsc л шалгана).
-- `backend/cmd/nexus-mini/` — 1 мөр: `core.Main(apps.All()...)`; CLI өөрөө `backend/core`-д (migrate · serve · manifest) (setup/admin комманд байхгүй, санал болгохгүй)
+- `backend/cmd/nexus-mini/` — 1 мөр: `core.Main(apps.All()...)`; CLI өөрөө `backend/core`-д (migrate · serve · manifest) (setup/admin CLI комманд байхгүй; вэб `/setup` бий)
 - `backend/db/migrations/` — цөмийн goose SQL; `backend/db/embed.go`-оор embed
 - `backend/pkg/nexus/` — модулийн SDK (Module interface, Register, Scope, DB/web туслахууд)
 - `backend/internal/core/{auth,rbac,audit,appstore,identity,db,config,handlers,...}` — цөм (handlers нь тусдаа subpackage — import cycle-ээс сэргийлэх)
@@ -51,7 +51,7 @@
 - Мутаци бүр `Audit(...)` бичнэ + RBAC-д нөлөөлбөл `rbac.Invalidate` дуудна (кэш). Audit hash гинж DB дотор, append-only trigger-тэй.
 - Шинэ tenant үүсгэхдээ id-г урьдчилан гаргаж `app.tenant_id`-г ЭХЭЛЖ тохируулна — INSERT..RETURNING нь RLS SELECT бодлого шаарддаг (handlers/auth.go createTenant).
 - Миграц зөвхөн `nexus_owner`-оор; апп `nexus_app`/`nexus_admin`-аар. Модулийн миграц модулийн өөрийн FS-д (`backend/apps/<x>/migrations/`), цөмийнхөд нэмэхгүй.
-- Вэб талд setup wizard байхгүй, landing төлөв шалгадаггүй; анхны админ зөвхөн env + `migrate`-ээс. Энэ чиглэлээр "сайжруулалт" санал болгохгүй.
+- Анхны админ хоёр замтай (2026-09-06): env `ADMIN_*` + `migrate`, эсвэл `/setup` шидтэн (`handlers/setup.go`: платформ админгүй үед API асахад токен логт, `X-Setup-Token`, 404 = буруу/хуучирсан, `auth_setup_admin` DB талд хоёр дахийг татгалзана). Landing/login `/api/setup/status` шалгана. Setup-д CLI комманд байхгүй.
 - **UI бүхэлдээ `@gerege-systems/ui` дээр** (admin 2026-08-30, portal + модулийн UI 2026-08-31-нд шилжсэн). Хуучин гараар бичсэн CSS/token (teal accent, `--accent:#0064e1`) хүчингүй. Интеграц: `@import 'tailwindcss'` + `tw-animate-css` + `@gerege-systems/ui/theme.css` + `@source "../node_modules/@gerege-systems/ui/dist-lib"` (globals.css 4 мөр); фонт next/font-ийн Geist-ийг `--font-sans`-д холбоно. Dark горим **`dark` класс** (`data-theme` БИШ). Монгол мөрүүд `DesignSystemProvider strings={mnStrings}`. Дүрс `Icons.*`-ээс, байхгүйг `@gerege-systems/ui/icon`-ийн `<Icon name>`-ээр — **`lucide-react`-ийг шууд импортлохгүй**. Гараар өнгө/зай/радиус бичихгүй, токеноор л. Хуудас бүр loading/empty/error төлөвтэй (`components/states.tsx`, `lib/use-resource.ts`). Модулийн UI-д ч мөн адил — гэрээ `docs/03-module-guide.md` §6-д. **Хамаарал шинэчлэхдээ pnpm 11-ээр** (серверийн `minimumReleaseAge` бодлого; локал pnpm 9 нийцгүй lockfile үүсгэнэ).
 - Frontend-ийн `.next` gitignore-д — серверт build заавал (deploy.sh хийнэ).
 
