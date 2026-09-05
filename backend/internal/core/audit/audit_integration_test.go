@@ -78,12 +78,29 @@ func TestAuditChainAndAppendOnly(t *testing.T) {
 	}
 	// Гинж бүрэн.
 	// audit_verify нь эвдэрсэн мөрийн id, эсвэл NULL (бүрэн) буцаана.
+	// 00018-аас хойш зөвхөн өөрийн tenant-ийн context-оос (эсвэл платформ)
+	// дуудагдана — апп role-оор, app.tenant_id тохируулсан гүйлгээнд.
 	var brokenAt *int64
-	if err := owner.QueryRow(ctx, `SELECT audit_verify($1::uuid)`, tid).Scan(&brokenAt); err != nil {
+	verify := func(asTenant string) error {
+		tx, err := app.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(ctx)
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, asTenant); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx, `SELECT audit_verify($1::uuid)`, tid).Scan(&brokenAt)
+	}
+	if err := verify(tid); err != nil {
 		t.Fatal(err)
 	}
 	if brokenAt != nil {
 		t.Fatalf("гинж #%d дээр тасарсан", *brokenAt)
+	}
+	// Өөр tenant-ийн гинжийг шалгаж болохгүй.
+	if err := verify("00000000-0000-0000-0000-000000000001"); err == nil {
+		t.Fatal("өөр tenant-ийн audit_verify зөвшөөрөгдөв")
 	}
 	// Append-only: UPDATE/DELETE хориотой (owner-оор ч).
 	if _, err := owner.Exec(ctx, `UPDATE audit_log SET action = 'hack' WHERE tenant_id = $1::uuid`, tid); err == nil {
