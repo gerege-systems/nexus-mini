@@ -1,2 +1,2 @@
 minimumReleaseAgeExclude:
-  - '@gerege-systems/ui@0.11.2'
+  - '@gerege-systems/ui@0.11.2 || 0.12.3'

@@ -20,10 +20,24 @@ main() {
 
   export PATH=/usr/local/go/bin:$PATH
 
+  local envf="${NEXUS_ENV_FILE:-/etc/nexus-mini/nexus-mini.env}"
+
+  echo "== DB нөөц (миграцын өмнө) =="
+  # pg_dump -Fc; хамгийн сүүлийн 14-ийг үлдээнэ. DB нэрийг env-ийн
+  # DATABASE_URL_OWNER-оос авна (default nexus_mini). Сэргээх: pg_restore -d <db> <файл>.
+  local dbname bdir
+  dbname=$(grep -E '^DATABASE_URL_OWNER=' "$envf" | sed -E 's#.*/([^/?"[:space:]]+).*#\1#' || true)
+  dbname=${dbname:-nexus_mini}
+  bdir="${NEXUS_BACKUP_DIR:-/var/backups/nexus-mini}"
+  sudo mkdir -p "$bdir"
+  sudo -u postgres pg_dump -Fc "$dbname" | sudo tee "$bdir/$dbname-$(date +%Y%m%d-%H%M%S).dump" > /dev/null
+  ls -1t "$bdir"/*.dump | tail -n +15 | xargs -r sudo rm --
+  echo "нөөц: $(ls -1t "$bdir"/*.dump | head -1)"
+
   echo "== backend build + migrate (Makefile) =="
   # Атом солилт Makefile-ийн build-д; env-ийг export хийхгүй (#8: ADMIN_*
   # гэх мэт нууц child process бүрт задрах ёсгүй) — ENV_FILE флагаар уншина.
-  make migrate ENV_FILE="${NEXUS_ENV_FILE:-/etc/nexus-mini/nexus-mini.env}"
+  make migrate ENV_FILE="$envf"
   cd backend
 
   # Next build-ийг амьд .next дээр биш тусдаа хавтаст хийж, дуусмагц

@@ -246,23 +246,26 @@ func cmdServe(_ []string) error {
 			case <-purgeStop:
 				return
 			case <-t.C:
+				// DB гацвал энэ goroutine мөнхөд зогсохгүй — tick бүрд хугацаатай ctx.
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 				var n int
-				if err := pools.Auth.QueryRow(context.Background(),
+				if err := pools.Auth.QueryRow(ctx,
 					`SELECT auth_sessions_purge()`).Scan(&n); err != nil {
 					log.Printf("session purge: %v", err)
 				} else if n > 0 {
 					log.Printf("session purge: %d устгав", n)
 				}
-				if n, err := oidcP.Purge(context.Background()); err != nil {
+				if n, err := oidcP.Purge(ctx); err != nil {
 					log.Printf("oauth purge: %v", err)
 				} else if n > 0 {
 					log.Printf("oauth purge: %d устгав", n)
 				}
-				if n, err := handlers.SweepDeletions(context.Background(), pools.Admin); err != nil {
+				if n, err := handlers.SweepDeletions(ctx, pools.Admin); err != nil {
 					log.Printf("tenant deletion sweep: %v", err)
 				} else if n > 0 {
 					log.Printf("tenant deletion sweep: %d байгууллага устгав", n)
 				}
+				cancel()
 			}
 		}
 	}()

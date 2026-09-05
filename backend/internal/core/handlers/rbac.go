@@ -517,7 +517,7 @@ func (h *RBACH) AddMember(w http.ResponseWriter, r *http.Request) {
 	err := h.Pool.QueryRow(r.Context(),
 		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`,
 		in.Email).Scan(&userID, &existingHash, &existingName, &isAdmin)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		in.Name = strings.TrimSpace(in.Name)
 		if in.Name == "" {
 			httpx.Error(w, http.StatusBadRequest, "шинэ хэрэглэгчид нэр шаардлагатай")
@@ -641,7 +641,7 @@ func (h *RBACH) SetMemberRoles(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "үл мэдэх role код байна")
 		return
 	}
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "гишүүн олдсонгүй")
 		return
 	}

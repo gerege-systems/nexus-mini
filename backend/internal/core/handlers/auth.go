@@ -4,11 +4,13 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gerege-systems/nexus-mini/backend/internal/core/audit"
@@ -36,6 +38,22 @@ type Auth struct {
 
 var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
+// slugRe — tenants.slug-ийн CHECK-тэй ижил; Go талд шалгаж 400 өгнө (DB-ийн
+// 23514 → 500 болж, Signup-д хэрэглэгч үүсгээд буцааж устгах мөчлөг давтагддаг байв).
+var slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
+
+const slugHint = "slug: жижиг латин үсэг, тоо, зураас (2–63 тэмдэгт)"
+
+// dummyHash — байхгүй имэйлд ч argon2 нэг удаа ажиллуулж хариу хугацааг
+// тэнцүүлнэ (хэрэглэгчийн enumeration). Эхний хэрэглээнд нэг удаа тооцно.
+var dummyHash = sync.OnceValue(func() string {
+	h, err := password.Hash("nexus-mini-dummy-" + strconv.FormatInt(time.Now().UnixNano(), 36))
+	if err != nil {
+		return ""
+	}
+	return h
+})
+
 // POST /api/signup — landing-аас: хэрэглэгч + байгууллага хамт бүртгэнэ.
 func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -54,6 +72,10 @@ func (h *Auth) Signup(w http.ResponseWriter, r *http.Request) {
 	in.TenantSlug = strings.ToLower(strings.TrimSpace(in.TenantSlug))
 	if in.Name == "" || !emailRe.MatchString(in.Email) || in.TenantName == "" || in.TenantSlug == "" {
 		httpx.Error(w, http.StatusBadRequest, "бүх талбарыг зөв бөглөнө үү")
+		return
+	}
+	if !slugRe.MatchString(in.TenantSlug) {
+		httpx.Error(w, http.StatusBadRequest, slugHint)
 		return
 	}
 	if err := password.Validate(in.Password); err != nil {
@@ -178,6 +200,10 @@ func (h *Auth) CreateTenant(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "нэр ба slug шаардлагатай")
 		return
 	}
+	if !slugRe.MatchString(in.Slug) {
+		httpx.Error(w, http.StatusBadRequest, slugHint)
+		return
+	}
 	var tenantID string
 	err := h.DB.Tx(r.Context(), func(tx pgx.Tx) error {
 		var err error
@@ -254,7 +280,12 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	err := h.Pool.QueryRow(r.Context(),
 		`SELECT id, password_hash, name, platform_admin FROM auth_user_by_email($1::varchar(255))`,
 		email).Scan(&uid, &hash, &name, &isAdmin)
-	if err == pgx.ErrNoRows || (err == nil && !password.Verify(in.Password, hash)) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Байхгүй имэйл: argon2-г мөн ажиллуулна — хариу хугацаагаар данс
+		// байгаа эсэхийг ялгаж болохгүй.
+		password.Verify(in.Password, dummyHash())
+	}
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !password.Verify(in.Password, hash)) {
 		if err == nil {
 			// Зөвхөн бодит дансанд тоолно (байхгүй имэйлийг тоолох утгагүй).
 			if locked, lerr := h.Svc.LoginResult(r.Context(), email, false); lerr == nil && locked {
@@ -361,6 +392,10 @@ func (h *Auth) SelectTenant(w http.ResponseWriter, r *http.Request) {
 		TenantID string `json:"tenant_id"`
 	}
 	if !httpx.Decode(w, r, &in) {
+		return
+	}
+	if !nexus.IsUUID(in.TenantID) {
+		httpx.Error(w, http.StatusBadRequest, "tenant_id буруу")
 		return
 	}
 	ok, err := h.Svc.SetTenant(r.Context(), p.SessionID, in.TenantID)

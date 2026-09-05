@@ -709,14 +709,20 @@ func (p *Provider) Revoke(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// EndSession — RP-initiated logout: id_token_hint батлагдвал бүртгэлтэй
-// post_logout_redirect_uri руу; portal session-ийг ч дуусгана.
+// EndSession — RP-initiated logout: id_token_hint батлагдаж, sub нь одоогийн
+// portal session-ийн хэрэглэгчтэй таарвал л portal session-ийг дуусгана
+// (энгийн GET холбоосоор дурын хүнийг logout хийлгэх CSRF хаалттай); бүртгэлтэй
+// post_logout_redirect_uri руу, үгүй бол portal руу.
 func (p *Provider) EndSession(w http.ResponseWriter, r *http.Request) {
 	hint := r.URL.Query().Get("id_token_hint")
 	target := p.PortalURL + "/"
+	endPortal := false
 	if hint != "" {
 		if k, err := p.key(r.Context()); err == nil {
 			if claims, ok := verifyJWT(k, hint); ok {
+				if pr, ok := p.sessions.Resolve(r.Context(), r); ok && claims["sub"] == pr.UserID {
+					endPortal = true
+				}
 				if aud, _ := claims["aud"].(string); aud != "" {
 					if c, err := p.loadClient(r.Context(), aud); err == nil {
 						if want := r.URL.Query().Get("post_logout_redirect_uri"); want != "" {
@@ -731,7 +737,9 @@ func (p *Provider) EndSession(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	p.sessions.EndSession(r.Context(), w, r)
+	if endPortal {
+		p.sessions.EndSession(r.Context(), w, r)
+	}
 	if st := r.URL.Query().Get("state"); st != "" {
 		u, _ := url.Parse(target)
 		q := u.Query()
