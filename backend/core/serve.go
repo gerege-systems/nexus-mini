@@ -104,7 +104,7 @@ func cmdServe(_ []string) error {
 	go b.Run(busCtx)
 
 	r := chi.NewRouter()
-	r.Use(clientIP, middleware.Logger, middleware.Recoverer, securityHeaders(cfg.Env == "production"))
+	r.Use(clientIP, requestLog, middleware.Recoverer, securityHeaders(cfg.Env == "production"))
 	r.Use(middleware.Timeout(30 * time.Second))
 	// CSRF (#5): SameSite=Lax нь same-site (*.домэйн) хоорондын хүсэлтээс
 	// хамгаалдаггүй — бичих хүсэлт бүрд Origin-ийг хостой тулгана.
@@ -331,6 +331,22 @@ func oauthCORS(next http.Handler) http.Handler {
 // X-Forwarded-For зэрэг клиентийн тавьж болох толгойг итгэдэг (GHSA-3fxj-6jh8-hvhx)
 // тул хэрэглэхгүй. Зөвхөн шууд холбогч нь loopback/private (манай nginx)
 // үед л nginx-ийн өөрөө тавьдаг X-Real-IP-г авна; өөр тохиолдолд RemoteAddr.
+// requestLog — chi-ийн middleware.Logger-ийн оронд: query string ЛОГЛОХГҮЙ.
+// /api/members/lookup?email= (PII), /api/oauth2/end_session?id_token_hint=<JWT>,
+// SSO callback ?code= — эдгээр логт үлдэх ёсгүй. clientIP-ийн дараа тул
+// RemoteAddr нь proxy-гоос ирсэн бодит IP.
+func requestLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		start := time.Now()
+		defer func() {
+			log.Printf("%s %s %d %dB %s %s", r.Method, r.URL.Path, ww.Status(), ww.BytesWritten(),
+				time.Since(start).Round(time.Millisecond), r.RemoteAddr)
+		}()
+		next.ServeHTTP(ww, r)
+	})
+}
+
 func clientIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)

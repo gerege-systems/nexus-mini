@@ -444,3 +444,123 @@ func TestOIDCEndSession(t *testing.T) {
 		t.Fatal("String() хоосон")
 	}
 }
+
+// Гишүүнчлэл хасагдсан / tenant түдгэлзсэний дараа access, refresh хоёулаа
+// үхнэ — RP дээр 1 цаг/30 хоног амьд үлдэхгүй.
+func TestOIDCRevokedMembershipAndSuspensionKillTokens(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	issue := func() (access, refresh string) {
+		t.Helper()
+		verifier, challenge := pkce()
+		q := f.authzQuery(challenge, "openid profile email offline_access")
+		code := f.approve(t, q)
+		tok := f.token(t, url.Values{"grant_type": {"authorization_code"}, "code": {code},
+			"redirect_uri": {"https://rp.mn/cb"}, "code_verifier": {verifier}}, 200)
+		return tok["access_token"].(string), tok["refresh_token"].(string)
+	}
+	userinfoCode := func(access string) int {
+		r := httptest.NewRequest(http.MethodGet, "/api/oauth2/userinfo", nil)
+		r.Header.Set("Authorization", "Bearer "+access)
+		w := httptest.NewRecorder()
+		f.p.Userinfo(w, r)
+		return w.Code
+	}
+	introspectActive := func(access string) any {
+		w := f.postForm(t, f.p.Introspect, "/api/oauth2/introspect", url.Values{"token": {access}}, true)
+		var in map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &in)
+		return in["active"]
+	}
+
+	// 1. Гишүүнчлэл хасагдав.
+	access, refresh := issue()
+	if userinfoCode(access) != 200 {
+		t.Fatal("эхлэлд userinfo ажиллахгүй байна")
+	}
+	if _, err := f.owner.Exec(ctx, `DELETE FROM memberships WHERE tenant_id = $1::uuid AND user_id = $2::uuid`, f.tenantID, f.userID); err != nil {
+		t.Fatal(err)
+	}
+	if c := userinfoCode(access); c != http.StatusUnauthorized {
+		t.Fatalf("гишүүн хасагдсан ч userinfo = %d", c)
+	}
+	if introspectActive(access) != false {
+		t.Fatal("гишүүн хасагдсан ч introspect active")
+	}
+	f.token(t, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refresh}}, 400)
+
+	// 2. Гишүүнчлэл сэргээж, tenant түдгэлзүүлэв.
+	var memberID, roleID string
+	if err := f.owner.QueryRow(ctx, `INSERT INTO memberships (tenant_id, user_id) VALUES ($1::uuid,$2::uuid) RETURNING id`, f.tenantID, f.userID).Scan(&memberID); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.owner.QueryRow(ctx, `SELECT id FROM roles WHERE tenant_id = $1::uuid AND code = 'admin'`, f.tenantID).Scan(&roleID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.owner.Exec(ctx, `INSERT INTO membership_roles (membership_id, role_id) VALUES ($1::uuid,$2::uuid)`, memberID, roleID); err != nil {
+		t.Fatal(err)
+	}
+	access, refresh = issue()
+	if _, err := f.owner.Exec(ctx, `UPDATE tenants SET suspended_at = now(), suspension_reason = 'тест' WHERE id = $1::uuid`, f.tenantID); err != nil {
+		t.Fatal(err)
+	}
+	if c := userinfoCode(access); c != http.StatusUnauthorized {
+		t.Fatalf("түдгэлзүүлсэн ч userinfo = %d", c)
+	}
+	f.token(t, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refresh}}, 400)
+}
+
+// Impersonated session (админ хэрэглэгчийн нэрийн өмнөөс) OAuth код авч
+// чадахгүй — authorize ч, consent ч access_denied.
+func TestOIDCImpersonatedSessionDenied(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	var adminID string
+	if err := f.owner.QueryRow(ctx, `INSERT INTO users (email, password_hash, name, platform_admin)
+		VALUES ('oidctest-admin@x.mn','x','Платформ админ', true) RETURNING id`).Scan(&adminID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = f.owner.Exec(ctx, `DELETE FROM users WHERE email = 'oidctest-admin@x.mn'`) })
+	token, err := f.svc.CreateHandover(ctx, adminID, f.userID, f.tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	hv, err := f.svc.ConsumeHandover(ctx, w, token)
+	if err != nil || hv == nil {
+		t.Fatalf("handover = %v %v", hv, err)
+	}
+	var imp string
+	for _, c := range w.Result().Cookies() {
+		if c.Name == auth.CookieName {
+			imp = c.Value
+		}
+	}
+	if imp == "" {
+		t.Fatal("impersonated cookie алга")
+	}
+	_, challenge := pkce()
+	q := f.authzQuery(challenge, "openid offline_access")
+	r := httptest.NewRequest(http.MethodGet, "/api/oauth2/authorize?"+q, nil)
+	r.AddCookie(&http.Cookie{Name: auth.CookieName, Value: imp})
+	w = httptest.NewRecorder()
+	f.p.Authorize(w, r)
+	if w.Code != http.StatusFound || !strings.Contains(w.Header().Get("Location"), "error=access_denied") {
+		t.Fatalf("impersonated authorize = %d %s", w.Code, w.Header().Get("Location"))
+	}
+	body, _ := json.Marshal(map[string]any{"approve": true, "query": q})
+	r = httptest.NewRequest(http.MethodPost, "/api/oauth2/consent", strings.NewReader(string(body)))
+	r.Header.Set("Content-Type", "application/json")
+	r.AddCookie(&http.Cookie{Name: auth.CookieName, Value: imp})
+	w = httptest.NewRecorder()
+	f.p.Consent(w, r)
+	var out map[string]string
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	if !strings.Contains(out["redirect"], "error=access_denied") || strings.Contains(out["redirect"], "code=") {
+		t.Fatalf("impersonated consent = %d %s", w.Code, w.Body.String())
+	}
+	// Жинхэнэ session-ийн хувьд урсгал хэвээр.
+	if code := f.approve(t, q); code == "" {
+		t.Fatal("ердийн session код авсангүй")
+	}
+}

@@ -243,8 +243,10 @@ func (p *Provider) Authorize(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, p.PortalURL+"/login?next="+url.QueryEscape(next), http.StatusFound)
 		return
 	}
-	// Хэрэглэгч клиентийн байгууллагын гишүүн байх ёстой.
-	if !p.isMember(r.Context(), c.TenantID, pr.UserID) {
+	// Хэрэглэгч клиентийн байгууллагын гишүүн байх ёстой. Impersonated
+	// session (админ хэрэглэгчийн нэрийн өмнөөс, 30 мин) гадны RP-д 30 хоногийн
+	// refresh token үүсгэж чадахгүй — audit-д ч бичигддэггүй зам.
+	if pr.ImpersonatedBy != "" || !p.isMember(r.Context(), c.TenantID, pr.UserID) {
 		redirectErr(w, r, a.RedirectURI, a.State, "access_denied")
 		return
 	}
@@ -279,6 +281,19 @@ func (p *Provider) isMember(ctx context.Context, tenantID, userID string) bool {
 	// сонголтын definer функцээр батална.
 	ok, err := p.sessions.IsMember(ctx, tenantID, userID)
 	return err == nil && ok
+}
+
+// active — токены эзэн клиентийн байгууллагын гишүүн хэвээр, байгууллага
+// түдгэлзүүлээгүй/устгагдаагүй эсэх. Refresh grant, userinfo, introspect
+// бүрд дахин шалгана: гишүүнийг хассан, tenant-ийг түдгэлзүүлсэн ч access
+// 1 цаг, refresh 30 хоног амьд үлдэхгүй. userID == nil = client_credentials
+// (гишүүнчлэлгүй, зөвхөн tenant төлөв).
+func (p *Provider) active(ctx context.Context, tenantID string, userID *string) bool {
+	var suspended bool
+	if err := p.pool.QueryRow(ctx, `SELECT suspended FROM tenant_state($1::uuid)`, tenantID).Scan(&suspended); err != nil || suspended {
+		return false
+	}
+	return userID == nil || p.isMember(ctx, tenantID, *userID)
 }
 
 // ConsentInfo — GET /api/oauth2/consent?... (portal consent хуудас уншина).
@@ -333,7 +348,7 @@ func (p *Provider) Consent(w http.ResponseWriter, r *http.Request) {
 		nexus.JSON(w, http.StatusOK, map[string]string{"redirect": withErr(a.RedirectURI, a.State, "access_denied")})
 		return
 	}
-	if !p.isMember(r.Context(), c.TenantID, pr.UserID) {
+	if pr.ImpersonatedBy != "" || !p.isMember(r.Context(), c.TenantID, pr.UserID) {
 		nexus.JSON(w, http.StatusOK, map[string]string{"redirect": withErr(a.RedirectURI, a.State, "access_denied")})
 		return
 	}
@@ -507,6 +522,12 @@ func (p *Provider) grantRefresh(w http.ResponseWriter, r *http.Request, c *clien
 		tokenErr(w, 500, "server_error", "")
 		return
 	}
+	// Гишүүнчлэл хасагдсан / tenant түдгэлзсэн бол шинэ токен өгөхгүй —
+	// гэр бүл дээр аль хэдийн хаагдсан.
+	if !p.active(r.Context(), c.TenantID, userID) {
+		tokenErr(w, 400, "invalid_grant", "membership or tenant no longer active")
+		return
+	}
 	p.respondTokensFamily(w, r, c, userID, scope, "", true, family)
 }
 
@@ -617,7 +638,7 @@ func (p *Provider) lookupAccess(ctx context.Context, token string) (*tokenInfo, 
 		SELECT client_id, tenant_id, user_id, scope, expires_at FROM oauth_tokens
 		 WHERE token_hash = $1::char(64) AND kind = 'access' AND revoked_at IS NULL AND expires_at > clock_timestamp()`,
 		sha256hex(token)).Scan(&ti.ClientID, &ti.TenantID, &ti.UserID, &ti.Scope, &ti.Exp)
-	if err != nil {
+	if err != nil || !p.active(ctx, ti.TenantID, ti.UserID) {
 		return nil, false
 	}
 	return &ti, true

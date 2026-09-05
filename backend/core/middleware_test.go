@@ -5,8 +5,11 @@ package core
 // байдлын толгойнууд, OAuth2-ийн CORS.
 
 import (
+	"bytes"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -129,5 +132,23 @@ func TestOAuthCORS(t *testing.T) {
 	oauthCORS(http.HandlerFunc(ok)).ServeHTTP(w, r)
 	if w.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatal("consent-д CORS нээгдсэн байна")
+	}
+}
+
+// requestLog query string-ийг (имэйл, код, JWT) логлохгүй.
+func TestRequestLogOmitsQuery(t *testing.T) {
+	var buf bytes.Buffer
+	prev := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(prev) })
+	h := requestLog(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
+	r := httptest.NewRequest(http.MethodGet, "/api/members/lookup?email=secret%40x.mn&id_token_hint=eyJ", nil)
+	h.ServeHTTP(httptest.NewRecorder(), r)
+	out := buf.String()
+	if !strings.Contains(out, "GET /api/members/lookup 204") {
+		t.Fatalf("лог = %q", out)
+	}
+	if strings.Contains(out, "secret") || strings.Contains(out, "eyJ") || strings.Contains(out, "?") {
+		t.Fatalf("query string логт орсон: %q", out)
 	}
 }
