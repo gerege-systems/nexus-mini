@@ -7,6 +7,23 @@
 @import '@gerege-systems/ui/theme.css';
 @source "../node_modules/@gerege-systems/ui/dist-lib";
 
+/* Depth давхарга: <html data-depth="flat"> (layout.tsx) — утгууд нь сангаас ирнэ. */
+
+/* Theme editor — ui.gecore.mn/#theme (accent hue 240) */
+:root {
+  --accent: oklch(0.457 0.185 240);
+  --accent-subtle: oklch(0.96 0.03 240);
+  --accent-subtle-foreground: oklch(0.397 0.175 240);
+  --ring: oklch(0.527 0.185 240);
+}
+
+.dark {
+  --accent: oklch(0.637 0.165 240);
+  --accent-subtle: oklch(0.24 0.07 240);
+  --accent-subtle-foreground: oklch(0.82 0.12 240);
+  --ring: oklch(0.677 0.165 240);
+}
+
 /* next/font-оор өөрөө host хийсэн Geist-ийг сангийн токенд холбоно
    (theme.css нь литерал 'Geist' нэрийг хүлээдэг). Кирилл Өө/Үү нь
    cyrillic-ext subset-д багтана. */

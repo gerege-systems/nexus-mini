@@ -40,7 +40,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return (
-    <html lang="mn" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html
+      lang="mn"
+      suppressHydrationWarning
+      data-depth="flat"
+      className={`${sans.variable} ${mono.variable}`}
+    >
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

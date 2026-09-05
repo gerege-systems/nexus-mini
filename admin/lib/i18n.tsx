@@ -53,6 +53,7 @@ const en: Record<string, string> = {
   "Нууц үг": "Password",
   "Нэвтрэх": "Sign in",
   "Гарах": "Log out",
+  "Навигац": "Navigation",
   "Тойм": "Overview",
   "Байгууллагууд": "Organizations",
   "30 хоногийн дараа бүрмөсөн устгахаар товлох уу? Гишүүд тэр дороо хандах боломжгүй болно; хүртэл нь буцааж болно.": "schedule permanent deletion in 30 days? Members lose access immediately; it can be cancelled until then.",

@@ -1,5 +1,8 @@
 'use client';
 
+// Хэрэглэгчийн цэс: профайл, хэл, загвар, гарах. Байгууллага солих нь
+// shell-ийн panel толгойн TenantSwitcher-д (загварын WorkspaceSwitcher).
+
 import { useRouter } from 'next/navigation';
 import {
   Avatar,
@@ -17,7 +20,7 @@ import { api, type Me } from '@/lib/api';
 import { useThemeMode, type ThemeMode } from '@/lib/theme';
 import { locales, setLocale, useT } from '@/lib/i18n';
 
-export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () => void }) {
+export function UserMenu({ me }: { me: Me }) {
   const router = useRouter();
   const [theme, setTheme] = useThemeMode();
   const { t, locale } = useT();
@@ -28,13 +31,6 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
     .join('')
     .slice(0, 2)
     .toUpperCase();
-
-  const selectTenant = async (id: string) => {
-    if (id === me.tenant_id) return;
-    await api.post('/api/session/tenant', { tenant_id: id });
-    if (onTenantChange) onTenantChange();
-    else window.location.reload();
-  };
 
   const logout = async () => {
     await api.post('/api/logout').catch(() => {});
@@ -61,25 +57,6 @@ export function UserMenu({ me, onTenantChange }: { me: Me; onTenantChange?: () =
           </span>
           <span className="text-foreground-subtle block truncate text-xs">{me.user.email}</span>
         </DropdownMenuLabel>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-foreground-subtle text-xs font-normal">
-          {t('Байгууллага')}
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={me.tenant_id ?? ''}
-          onValueChange={(v) => void selectTenant(v)}
-        >
-          {me.tenants.map((x) => (
-            <DropdownMenuRadioItem key={x.id} value={x.id}>
-              {x.name}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuItem onSelect={() => router.push('/org/new')}>
-          <Icons.Plus aria-hidden />
-          {t('Байгууллага нэмэх')}
-        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-foreground-subtle text-xs font-normal">
